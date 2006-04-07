@@ -1,0 +1,365 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Deutsch (Deutschland) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_DEU)
+#ifdef _WIN32
+LANGUAGE LANG_GERMAN, SUBLANG_GERMAN
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_DEU)\r\n"
+    "#ifdef _WIN32\r\n"
+    "LANGUAGE 7, 1\r\n"
+    "#pragma code_page(1252)\r\n"
+    "#endif //_WIN32\r\n"
+    "#include ""res\\AVIMux_GUI.rc2""  // Nicht mit Microsoft Visual C++ bearbeitete Ressourcen\r\n"
+    "#include ""l.deu\\afxres.rc""          // Standardkomponenten\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON    DISCARDABLE     "res\\AVIMux_GUI.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 235, 55
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Info über AVIMux_GUI"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "AVIMux_GUI Version 1.05",IDC_STATIC,40,10,119,8,
+                    SS_NOPREFIX
+    LTEXT           "Copyright (C) 2002, Alexander Noé",IDC_STATIC,40,25,119,
+                    8
+    DEFPUSHBUTTON   "OK",IDOK,178,7,50,14,WS_GROUP
+END
+
+IDD_AVIMUX_GUI_DIALOG DIALOGEX 0, 0, 474, 298
+STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "AVIMux_GUI"
+FONT 8, "MS Sans Serif"
+BEGIN
+    PUSHBUTTON      "Beenden",IDCANCEL,349,173,38,14
+    PUSHBUTTON      "Datei hinzufügen",IDC_BUTTON1,14,7,66,14
+    LISTBOX         IDC_AVAILABLEAUDIOSTREAMS,14,126,235,61,
+                    LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_VSCROLL | 
+                    WS_HSCROLL | WS_TABSTOP
+    LTEXT           "zur Verfügung stehende Streams:",IDC_STATIC,14,76,106,8
+    LISTBOX         IDC_AVAILABLEVIDEOSTREAMS,14,94,235,20,LBS_SORT | 
+                    LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_HSCROLL | 
+                    WS_TABSTOP
+    LTEXT           "Video",IDC_STATIC,14,85,19,8
+    LTEXT           "Audio",IDC_STATIC,14,117,24,8
+    CONTROL         "rec-Listen erzeugen",IDC_RECLISTS,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,275,86,78,10
+    LTEXT           "Audio-interleave:",IDC_STATIC,275,100,58,8
+    GROUPBOX        "weitere Optionen",IDC_STATIC,265,76,184,90,WS_GROUP,
+                    WS_EX_TRANSPARENT
+    EDITTEXT        IDC_AUDIOINTERLEAVE,346,98,40,12,ES_AUTOHSCROLL | 
+                    ES_NUMBER,WS_EX_CLIENTEDGE | WS_EX_RIGHT
+    LTEXT           "Preload (ms):",IDC_STATIC,276,126,54,8
+    EDITTEXT        IDC_PRELOAD,346,123,40,12,ES_AUTOHSCROLL,WS_EX_RIGHT
+    LTEXT           "maximale Dateigröße:",IDC_STATIC,275,112,68,8
+    EDITTEXT        IDC_MAXFILESIZE,346,110,40,12,ES_AUTOHSCROLL,WS_EX_RIGHT
+    PUSHBUTTON      "Start",IDC_START,265,173,38,14,0,WS_EX_TRANSPARENT
+    PUSHBUTTON      "Stop",IDC_STOP,307,173,38,14,WS_DISABLED
+    GROUPBOX        "Fortschritt",IDC_STATIC,14,192,452,99,0,
+                    WS_EX_TRANSPARENT
+    LTEXT           "Numerierung:",IDC_STATIC,275,138,44,8
+    EDITTEXT        IDC_FORMAT,322,136,64,12,ES_AUTOHSCROLL
+    LTEXT           "Zieldatei:",IDC_STATIC,207,207,30,8
+    EDITTEXT        IDC_DESTFILE,249,205,208,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Frames:",IDC_STATIC,207,219,26,8
+    EDITTEXT        IDC_FRAMES,249,218,73,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Datenmenge (kByte):",IDC_STATIC,24,204,68,8
+    LTEXT           "akt. Datei",IDC_STATIC,105,205,32,8
+    LTEXT           "gesamt",IDC_STATIC,163,204,24,8
+    LTEXT           "Video",IDC_STATIC,45,217,19,8
+    LTEXT           "Audio",IDC_STATIC,46,230,19,8
+    LTEXT           "Overhead",IDC_STATIC,45,243,32,8
+    EDITTEXT        IDC_CURR_VIDEO,98,215,46,12,ES_RIGHT | ES_AUTOHSCROLL | 
+                    ES_READONLY
+    EDITTEXT        IDC_CURR_AUDIO,98,228,46,12,ES_RIGHT | ES_AUTOHSCROLL | 
+                    ES_READONLY
+    LTEXT           "gesamt",IDC_STATIC,46,256,24,8
+    EDITTEXT        IDC_CURR_OVERHEAD,98,241,46,12,ES_RIGHT | ES_AUTOHSCROLL | 
+                    ES_READONLY
+    EDITTEXT        IDC_CURR_TOTAL,98,254,46,12,ES_RIGHT | ES_AUTOHSCROLL | 
+                    ES_READONLY
+    EDITTEXT        IDC_TOTAL_VIDEO,154,215,46,12,ES_RIGHT | ES_AUTOHSCROLL | 
+                    ES_READONLY
+    EDITTEXT        IDC_TOTAL_AUDIO,154,228,46,12,ES_RIGHT | ES_AUTOHSCROLL | 
+                    ES_READONLY
+    EDITTEXT        IDC_TOTAL_OVERHEAD,154,241,46,12,ES_RIGHT | 
+                    ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_TOTAL_TOTAL,154,254,46,12,ES_RIGHT | ES_AUTOHSCROLL | 
+                    ES_READONLY
+    LTEXT           "Frames:",IDC_STATIC,275,150,26,8
+    EDITTEXT        IDC_MAXFRAMES,322,148,64,12,ES_AUTOHSCROLL
+    PUSHBUTTON      "Videoquelle hinzufügen",IDC_ADDAVILIST,14,62,452,13
+    LISTBOX         IDC_SOURCEFILELIST,14,22,452,39,LBS_NOINTEGRALHEIGHT | 
+                    LBS_EXTENDEDSEL | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Progress1",IDC_PROGBAR,"msctls_progress32",PBS_SMOOTH | 
+                    WS_BORDER,24,272,433,12
+    CONTROL         "Open-DML - Output",IDC_OPENDML,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,358,86,78,10
+    LTEXT           "Transferrate:",IDC_STATIC,207,232,41,8
+    EDITTEXT        IDC_TRANSFERRATE,249,231,73,12,ES_AUTOHSCROLL | 
+                    ES_READONLY
+    PUSHBUTTON      "erweitert",IDC_MAXSIZE_EXTENDED,390,110,36,12
+    CONTROL         "",IDC_USESPLITPOINTLIST,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,429,112,16,8
+    CONTROL         "unnötige Seekoperationen vermeiden",IDC_AVOIDSEEKOPS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,316,7,150,12
+    PUSHBUTTON      "Alle löschen",IDC_CLEAR,85,7,50,14
+END
+
+IDD_SPLITPOINTS DIALOG DISCARDABLE  0, 0, 142, 106
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Split-Punkt manuell eingeben"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,7,85,50,14
+    PUSHBUTTON      "Abbrechen",IDCANCEL,68,85,50,14
+    LISTBOX         IDC_SPLITPOINTLIST,7,7,127,70,LBS_NOINTEGRALHEIGHT | 
+                    WS_VSCROLL | WS_TABSTOP
+END
+
+IDD_ADDSPLITPOINTDLG DIALOG DISCARDABLE  0, 0, 154, 82
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Dialog"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,19,61,50,14
+    PUSHBUTTON      "Abbrechen",IDCANCEL,79,61,50,14
+    EDITTEXT        IDC_NEWSPLITPOINT,69,19,69,13,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "neuer Teil ab:",IDC_STATIC,7,21,44,8
+    CONTROL         "Deltaframes zulassen",IDC_ALLOWDELTA,"Button",
+                    BS_AUTOCHECKBOX | WS_DISABLED | WS_TABSTOP,7,38,83,10
+END
+
+
+#ifndef _MAC
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,4,0
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040704b0"
+        BEGIN
+            VALUE "Comments", "\0"
+            VALUE "CompanyName", "\0"
+            VALUE "FileDescription", "MFC-Anwendung AVIMux_GUI\0"
+            VALUE "FileVersion", "1, 0, 4, 0\0"
+            VALUE "InternalName", "AVIMux_GUI\0"
+            VALUE "LegalCopyright", "Copyright (C) 2002\0"
+            VALUE "LegalTrademarks", "\0"
+            VALUE "OriginalFilename", "AVIMux_GUI.EXE\0"
+            VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "Anwendung AVIMux_GUI\0"
+            VALUE "ProductVersion", "1, 0, 0, 1\0"
+            VALUE "SpecialBuild", "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x407, 1200
+    END
+END
+
+#endif    // !_MAC
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 228
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 48
+    END
+
+    IDD_AVIMUX_GUI_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 14
+        RIGHTMARGIN, 466
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 291
+    END
+
+    IDD_SPLITPOINTS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 135
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 99
+    END
+
+    IDD_ADDSPLITPOINTDLG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 147
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 75
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_SOURCEFILEMENU MENU DISCARDABLE 
+BEGIN
+    MENUITEM "Informationen",               ID_INFORMATIONEN
+    MENUITEM "Test",                        ID_TEST
+END
+
+IDR_SPLITPOINTLISTMENU MENU DISCARDABLE 
+BEGIN
+    MENUITEM "hinzufügen",                  IDC_ADDSPLITPOINT
+    MENUITEM "entfernen",                   IDC_REMOVESPLITPOINT
+    MENUITEM "ändern",                      IDC_CHANGESPLITPOINT
+END
+
+IDR_AUDIOSTREAMSMENU MENU DISCARDABLE 
+BEGIN
+    MENUITEM "WAV extrahieren",             IDC_EXTRACTWAV
+    MENUITEM "MP3 extrahieren",             IDC_EXTRACTMP3
+    MENUITEM "AC3 extrahieren",             IDC_EXTRACTAC3
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_ABOUTBOX            "Inf&o über AVIMux_GUI..."
+    IDS_FILEISMP3CBR        "Diese MP3-Datei ist CBR"
+    IDS_FILEISMP3VBR        "Diese MP3-Datei ist VBR"
+    IDS_INFORMATION         "Hinweis"
+    IDS_WARNING             "Warnung"
+    IDS_ERROR               "Fehler"
+    IDS_COULDBECBR          "Die Datei könnte MP3-CBR sein. Soll dies überprüft werden?"
+    IDS_CONFIRMATION        "Frage"
+    IDS_NOVIDEOSOURCE       "Keine Videoquelle vorhanden!"
+    IDS_OVER2GBONLYODML     "AVI-Dateien über 2000 MB können nur im OpenDML-Format erzeugt werden!"
+    IDS_NOVIDEOSOURCECHOSEN "Keine Videoquelle ausgewählt!"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_FILETYPENOTSUPPORTED "Es werden nur AVI- und MP3-Dateien akzeptiert!"
+    IDS_COULDNOTAPPENDFILE  "Datei konnte nicht angefügt werden: %c%c%s"
+    IDS_THISISNOAVI         "Datei ist keine AVI-Datei: %c%c%s"
+    IDS_COULDNOTOPENOUTPUTFILE "Zieldatei konnte nicht geöffnet werden!"
+    IDS_REALLYCLEARALL      "Wirklich alles löschen?"
+    IDS_OVER4GBONLYNTFS     "Es wurde für die einzelnen Teile eine maximale Größe von mehr als 4 GB angegeben.%c%cDer Zieldatenträger %s verwendet %s als Dateisystem, jedoch ist NTFS erforderlich."
+END
+
+#endif    // Deutsch (Deutschland) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_DEU)
+#ifdef _WIN32
+LANGUAGE 7, 1
+#pragma code_page(1252)
+#endif //_WIN32
+#include "res\AVIMux_GUI.rc2"  // Nicht mit Microsoft Visual C++ bearbeitete Ressourcen
+#include "l.deu\afxres.rc"          // Standardkomponenten
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

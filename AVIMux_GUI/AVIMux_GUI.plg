@@ -1,0 +1,238 @@
+<html>
+<body>
+<pre>
+<h1>Erstellungsprotokoll</h1>
+<h3>
+--------------------Konfiguration: AVIMux_GUI - Win32 Debug--------------------
+</h3>
+<h3>Befehlszeilen</h3>
+Creating command line "rc.exe /l 0x407 /fo"Debug/AVIMux_GUI.res" /d "_DEBUG" "H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AVIMux_GUI.rc"" 
+Erstellen der temporären Datei  "G:\DOKUME~1\ALEXAN~1\LOKALE~1\Temp\RSP191.tmp" mit Inhalten
+[
+/nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /FR"Debug/" /Fp"Debug/AVIMux_GUI.pch" /Yu"stdafx.h" /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AudioSource.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AudioSource_AC3.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AudioSource_AVI.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AudioSource_binary.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AudioSource_DTS.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AudioSource_generic.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AudioSource_List.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AudioSource_Matroska.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AudioSource_MP3.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\VideoSource.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\VideoSource_AVI.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\VideoSource_generic.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\VideoSource_List.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\VideoSource_Matroska.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AudioSourceTree.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AVIFile.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AVIIndices.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AVIMux_GUI.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\AVIMux_GUIDlg.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\basestreams.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\basestreams_wrovlp.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\ChapterDlg.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\ChapterDlgTree.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\Chapters.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\ConfigScripts.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\EBMLTree.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\EBMLTreeDlg.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\FillASIs.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\FormatText.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\Languages.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\MessageLists.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\Mode2Form2Reader.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\Muxing.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\RIFFChunkTreeDlg.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\RIFFFile.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\SetFramerateDlg.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\SetMainAVIHeaderFlagsDlg.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\SetStoreFileOptionsDlg.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\Silence.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\SourceFileListBox.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\SplitPointList.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\SplitPointsDlg.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\streams.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\SubTitles.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\SubtitlesListBox.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\TextFiles.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\VideoInformationDlg.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\VideoInformationDlgListbox.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\VideoSourceListBox.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\WAVFile.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\EBML.CPP"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\EBML_matroska.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\Matroska.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\Matroska_Block.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\Matroska_Clusters.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\Matroska_Segment.cpp"
+"H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\Matroska_Writing.cpp"
+]
+Creating command line "cl.exe @G:\DOKUME~1\ALEXAN~1\LOKALE~1\Temp\RSP191.tmp" 
+Erstellen der temporären Datei  "G:\DOKUME~1\ALEXAN~1\LOKALE~1\Temp\RSP192.tmp" mit Inhalten
+[
+vfw32.lib msacm32.lib /nologo /subsystem:windows /incremental:yes /pdb:"Debug/AVIMux_GUI.pdb" /debug /machine:I386 /out:"Debug/AVIMux_GUI.exe" /pdbtype:sept 
+".\Debug\AudioSource.obj"
+".\Debug\AudioSource_AC3.obj"
+".\Debug\AudioSource_AVI.obj"
+".\Debug\AudioSource_binary.obj"
+".\Debug\AudioSource_DTS.obj"
+".\Debug\AudioSource_generic.obj"
+".\Debug\AudioSource_List.obj"
+".\Debug\AudioSource_Matroska.obj"
+".\Debug\AudioSource_MP3.obj"
+".\Debug\AddSplitPointDlg.obj"
+".\Debug\VideoSource.obj"
+".\Debug\VideoSource_AVI.obj"
+".\Debug\VideoSource_generic.obj"
+".\Debug\VideoSource_List.obj"
+".\Debug\VideoSource_Matroska.obj"
+".\Debug\AC3FrameCountEdit.obj"
+".\Debug\ClusterTimeEdit.obj"
+".\Debug\MKVAC3FrameCountEdit.obj"
+".\Debug\UserDrawEdit.obj"
+".\Debug\AudioSourceTree.obj"
+".\Debug\AVIFile.obj"
+".\Debug\AVIIndices.obj"
+".\Debug\AVIMux_GUI.obj"
+".\Debug\AVIMux_GUIDlg.obj"
+".\Debug\basestreams.obj"
+".\Debug\basestreams_wrovlp.obj"
+".\Debug\Buffers.obj"
+".\Debug\Cache.obj"
+".\Debug\ChapterDlg.obj"
+".\Debug\ChapterDlgTree.obj"
+".\Debug\Chapters.obj"
+".\Debug\ConfigScripts.obj"
+".\Debug\Debug.obj"
+".\Debug\DynArray.obj"
+".\Debug\EBMLTree.obj"
+".\Debug\EBMLTreeDlg.obj"
+".\Debug\edc_ecc.obj"
+".\Debug\EnhancedListBox.obj"
+".\Debug\FillASIs.obj"
+".\Debug\FormatText.obj"
+".\Debug\Languages.obj"
+".\Debug\MessageLists.obj"
+".\Debug\Mode2Form2Reader.obj"
+".\Debug\multimedia_source.obj"
+".\Debug\Muxing.obj"
+".\Debug\ProgressList.obj"
+".\Debug\ProtocolListCtrl.obj"
+".\Debug\RIFFChunkTreeDlg.obj"
+".\Debug\RIFFFile.obj"
+".\Debug\SetFramerateDlg.obj"
+".\Debug\SetMainAVIHeaderFlagsDlg.obj"
+".\Debug\SetStoreFileOptionsDlg.obj"
+".\Debug\Silence.obj"
+".\Debug\SourceFileListBox.obj"
+".\Debug\SplitPointList.obj"
+".\Debug\SplitPointsDlg.obj"
+".\Debug\StdAfx.obj"
+".\Debug\streams.obj"
+".\Debug\Strings.obj"
+".\Debug\SubTitles.obj"
+".\Debug\SubtitlesListBox.obj"
+".\Debug\TextFiles.obj"
+".\Debug\TransformFilter.obj"
+".\Debug\Trees.obj"
+".\Debug\VideoInformationDlg.obj"
+".\Debug\VideoInformationDlgListbox.obj"
+".\Debug\VideoSourceListBox.obj"
+".\Debug\WAVFile.obj"
+".\Debug\EBML.OBJ"
+".\Debug\EBML_matroska.obj"
+".\Debug\Integers.obj"
+".\Debug\Matroska.obj"
+".\Debug\Matroska_Block.obj"
+".\Debug\Matroska_Clusters.obj"
+".\Debug\Matroska_Segment.obj"
+".\Debug\Matroska_Writing.obj"
+".\Debug\Queue.obj"
+".\Debug\utf-8.obj"
+".\Debug\Warnings.obj"
+".\Debug\AVIMux_GUI.res"
+".\fastintops.obj"
+]
+Erstellen der Befehlzeile "link.exe @G:\DOKUME~1\ALEXAN~1\LOKALE~1\Temp\RSP192.tmp"
+<h3>Ausgabefenster</h3>
+Ressourcen werden kompiliert...
+Kompilierung läuft...
+AudioSourceTree.cpp
+AVIMux_GUIDlg.cpp
+basestreams.cpp
+basestreams_wrovlp.cpp
+ChapterDlgTree.cpp
+ConfigScripts.cpp
+FormatText.cpp
+Languages.cpp
+Muxing.cpp
+SetStoreFileOptionsDlg.cpp
+SourceFileListBox.cpp
+SubtitlesListBox.cpp
+Generieren von Code...
+Kompilieren...
+EBML.CPP
+Matroska.cpp
+Matroska_Block.cpp
+Matroska_Segment.cpp
+Matroska_Writing.cpp
+Generieren von Code...
+Kompilieren...
+AudioSource.cpp
+AudioSource_AC3.cpp
+AudioSource_AVI.cpp
+AudioSource_binary.cpp
+AudioSource_DTS.cpp
+AudioSource_generic.cpp
+AudioSource_List.cpp
+AudioSource_Matroska.cpp
+AudioSource_MP3.cpp
+VideoSource.cpp
+VideoSource_AVI.cpp
+VideoSource_generic.cpp
+Generieren von Code...
+Kompilieren...
+VideoSource_List.cpp
+VideoSource_Matroska.cpp
+H:\Windows2000\Microsoft Visual Studio\MyProjects\Video-Tools\AVIMux_GUI\Upload\Source\AVIMux_GUI\VideoSource_Matroska.cpp(106) : warning C4244: 'argument' : Konvertierung von 'int' in 'float', moeglicher Datenverlust
+AVIFile.cpp
+AVIIndices.cpp
+AVIMux_GUI.cpp
+ChapterDlg.cpp
+Chapters.cpp
+EBMLTree.cpp
+EBMLTreeDlg.cpp
+FillASIs.cpp
+MessageLists.cpp
+Mode2Form2Reader.cpp
+Generieren von Code...
+Kompilieren...
+RIFFChunkTreeDlg.cpp
+RIFFFile.cpp
+SetFramerateDlg.cpp
+SetMainAVIHeaderFlagsDlg.cpp
+Silence.cpp
+SplitPointList.cpp
+SplitPointsDlg.cpp
+streams.cpp
+SubTitles.cpp
+TextFiles.cpp
+VideoInformationDlg.cpp
+VideoInformationDlgListbox.cpp
+Generieren von Code...
+Kompilieren...
+VideoSourceListBox.cpp
+WAVFile.cpp
+EBML_matroska.cpp
+Matroska_Clusters.cpp
+Generieren von Code...
+Linker-Vorgang läuft...
+
+
+
+<h3>Ergebnisse</h3>
+AVIMux_GUI.exe - 0 Fehler, 1 Warnung(en)
+</pre>
+</body>
+</html>
