@@ -17,11 +17,18 @@ class MP3FRAMEHEADER
 		int			GetFrameSize(int*,float* fSize = NULL);
 		int			GetMPEGVersion(void);
 		int			GetMPEGVersionIndex(void);
+		int			GetMode(void);
+		int			GetModeEx(void);
 		int			GetLayerIndex(void);
 		int			GetLayerVersion(void);
 		int			GetBitrate(void);
 		int			GetFrequencyIndex(void);
 		int			GetFrequency(void);
+		int			IsOriginal(void);
+		int			IsCopyright(void);
+		int			IsPrivate(void);
+		int			GetEmphasis(void);
+		int			HasCRC();
 		int			GetPadding(void);
 		bool		SyncOK(void);
 };
@@ -36,9 +43,16 @@ class MP3SOURCE: public AUDIOSOURCEFROMBINARY
 		DWORD			dwBitrate;			// nur bei MP3-CBR sinnvoll
 		DWORD			dwFrameSize;		// auch nur CBR
 		DWORD			dwMPEGVersion;		// MPEG1 oder MPEG2
+		DWORD			dwMode;
+		DWORD			dwModeEx;
 		DWORD			dwRingBuffer[1024];
 		DWORD			dwRingBufferPos;
 		DWORD			dwChannels;
+		DWORD			dwHasCRC;
+		DWORD			dwOriginal;
+		DWORD			dwEmphasis;
+		DWORD			dwPrivate;
+		DWORD			dwCopyright;
 		__int64			iFrameDuration;
 		DWORD			dwLayer;
 		bool			bCBR;
@@ -59,6 +73,14 @@ class MP3SOURCE: public AUDIOSOURCEFROMBINARY
 		int		virtual GetLayerVersion(void) { return dwLayer; }
 		int		virtual	GetMicroSecPerFrame(void);
 		int		virtual GetMPEGVersion(void);
+		int		virtual GetMode(void);
+		int		virtual GetModeEx(void);
+		int		virtual HasCRC(void);
+		int		virtual	IsCopyrighted(void);
+		int		virtual IsOriginal(void);
+		int		virtual	IsPrivate(void);
+		int		virtual GetEmphasis(void);
+
 		__int64	virtual	GetNanoSecPerFrame(void);
 		int		virtual GetAvgBytesPerSec(void);
 	//	__int64 virtual GetUnstretchedDuration(void);
@@ -68,6 +90,9 @@ class MP3SOURCE: public AUDIOSOURCEFROMBINARY
 		bool	virtual ScanForCBR(DWORD dwNbrOfFrames);
 		bool	virtual IsAVIOutputPossible();
 		void	virtual AssumeCBR(void);
+		void	virtual AssumeVBR(void);
+		int		virtual IsCompatible(AUDIOSOURCE* a);
+		int		virtual GetStrippableHeaderBytes(void* pBuffer, int max);
 };
 
 

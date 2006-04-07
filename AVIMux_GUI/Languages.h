@@ -5,22 +5,30 @@ typedef struct
 {
 	char*	lpcName;
 	char**	lplpStrings;
+	char**  lplpStringsUTF8;
 	DWORD*	lpdwIndices;
 	DWORD	dwEntries;
 } LANGUAGE_DESCRIPTOR;
 
+const int LOADSTRING_ANSI = 0x01;
+const int LOADSTRING_UTF8 = 0x02;
+
 void				 SetCurrentLanguage(LANGUAGE_DESCRIPTOR* lpNewLanuage);
 LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName);
-char*				 LoadString(DWORD dwID);
+char*				 LoadString(DWORD dwID, int charset = LOADSTRING_ANSI);
 void				 UnloadLanguageFile(LANGUAGE_DESCRIPTOR* lpLD);
 LANGUAGE_DESCRIPTOR* GetCurrentLanguage(void);
 
+
+
+/*
 static char* languages [][2] = {
 	{"English",""},
 	{"German", "ger"}, 
 	{"English", "eng"},
 	{"Finnish", "fin"},
 	{"French", "fre"},
+	{"Italien", "ita"},
 	{"Japanese", "jpn"},
 	{"Polish", "pol"},
 	{"Portuguese", "por"},
@@ -29,6 +37,7 @@ static char* languages [][2] = {
 	{"Spanish", "spa"},
 	{"undefined", "und" }
 };
+*/
 //char* languages;
 
 // general strings
@@ -40,6 +49,9 @@ const int STR_GEN_ERROR			= 106;
 const int STR_GEN_WARNING		= 105;
 const int STR_GEN_INFORMATION	= 104;
 const int STR_SAVEAS			= 175;
+const int STR_OVERWRITE         = 218;
+const int STR_TOTAL_FILE_SIZE   = 219;
+const int STR_CONTINUE_YESNO    = 220;
 
 const int STR_BYTES				= 195;
 const int STR_KBYTE				= 208;
@@ -62,6 +74,11 @@ const int STR_VILB_STREAMSIZE_INDEX	= 302;
 #define STR_FILELIST_MEDIATYPE		402
 #define STR_FILELIST_FORMAT			403
 #define STR_FILELIST_SIZE			404
+const int STR_FILELIST_REMOVE_FILES  = 405;
+const int STR_FILELIST_REMOVE_STREAMS = 406;
+const int STR_FILELIST_REMOVE_CONTINUE = 407;
+
+
 #define STR_MEDIATYPE_VIDEO			410
 #define STR_MEDIATYPE_AUDIO			411
 #define STR_MEDIATYPE_SUBTITLE		412
@@ -147,6 +164,8 @@ const int STR_OFO_CH_IMPORT				= 833;
 const int STR_OFO_CH_FROMFILENAMES		= 834;
 const int STR_OFO_MKV_LABEL             = 835;
 
+const int STR_SFO_I_OVERLAPPED          = 836;
+
 // store file options
 
 #define STR_SFO_TITLE					900
@@ -173,6 +192,7 @@ const int STR_SFO_OAS_AC3CPF			= 916;
 #define STR_SFO_OSP_S_FRAMES			934
 #define STR_SFO_OSP_CB_USEMAXNBROFFILES	935
 #define STR_SFO_OAS_CB_MP3CBRFRAMEMODE  936
+const int STR_SFO_O_AVI_ADDJUNK		=   937;
 
 const int STR_SFO_O_AVOIDSEEKOPS	=   503;
 const int STR_SFO_O_MKVSTRUCTURE	=   940;
@@ -185,7 +205,7 @@ const int STR_SFO_O_MKV_PREVSIZE    =   944;
 const int STR_SFO_O_MKV_POSITION    =   945;
 const int STR_SFO_O_MKV_LIMIT1STCL  =   946;
 const int STR_SFO_O_MKV_DISPWH      =   947;
-const int STR_SFO_O_MKV_FORCE10		=   948;
+const int STR_SFO_O_MKV_FORCEV1		=   948;
 const int STR_SFO_O_MKV_WRITECUES   =   955;
 const int STR_SFO_O_MKV_CUES_OAO    =   956;
 const int STR_SFO_O_MKV_2TRACKS	    =   957;
@@ -193,7 +213,19 @@ const int STR_SFO_O_MKV_INDEXCLUSTERS =   958;
 const int STR_SFO_O_MKV_FLOATWIDTH  =   959;
 const int STR_SFO_O_MKV_RNDELEMORDER=   960;
 const int STR_SFO_O_MKV_OTHERS      =   961;
-
+const int STR_SFO_O_MKV_HEADERSIZE  =   962;
+const int STR_SFO_O_MKV_NONCLUSTERIM=   963;
+const int STR_SFO_O_MKVSTRUCTURE3	=   964;
+const int STR_SFO_O_MKV_CUE_INTERVAL_LABEL = 965;
+const int STR_SFO_O_MKV_CUE_MINIMUM_LABEL = 966;
+const int STR_SFO_O_MKV_CUE_AUTOSIZE = 967;
+const int STR_SFO_O_MKV_CUE_DATARATE = 968;
+const int STR_SFO_O_MKV_CUE_TARGET_RATIO = 969;
+const int STR_SFO_O_MKV_HARDLINKING = 970;
+const int STR_SFO_O_MKV_CUE_WRITEBLOCKNBR = 971;
+const int STR_SFO_O_MKV_HEADERSTRIPPING = 972;
+const int STR_SFO_O_MKV_FORCEV2		=   973;
+const int STR_SFO_O_MKV_CREATE_AAAC =   974;
 
 
 const int STR_SFO_O_GENERAL			=   950;
@@ -240,10 +272,10 @@ const int STR_MUXLOG_STREAM				= 1514;
 const int STR_MUXLOG_MAXEXCEED			= 1515;
 const int STR_MUXLOG_KEYFRAMEPASSED		= 1516;
 const int STR_MUXLOG_MAXFILESIZE		= 1517;
-const int STR_MUXLOG_ESTOVERHEAD		= 1518;
-const int STR_MUXLOG_ESTTOTAL			= 1519;
+const int STR_MUXLOG_ESTIMATEDOVERHEAD	= 1518;
+const int STR_MUXLOG_ESTIMATEDTOTALSIZE = 1519;
 const int STR_MUXLOG_DFRATBEGINNING		= 1520;
-const int STR_MUXLOG_ESTRAW				= 1521;
+const int STR_MUXLOG_ESTIMATEDRAWSIZE	= 1521;
 const int STR_MUXLOG_OVERHEADWRITTEN	= 1522;
 const int STR_MUXLOG_SPLITPOINTAT		= 1523;
 const int STR_MUXLOG_SPLITPOINTB0RKED	= 1524;
@@ -255,6 +287,7 @@ const int STR_MUXLOG_CUES_VIDEO_ON		= 1529;
 const int STR_MUXLOG_CUES_VIDEO_OFF		= 1530;
 const int STR_MUXLOG_CUES_AUDIO_ON		= 1531;
 const int STR_MUXLOG_CUES_AUDIO_OFF		= 1532;
+
 const int STR_MUXLOG_VIDEOLACERATE      = 1533;
 const int STR_MUXLOG_VIDEOLACINGOFF     = 1534;
 const int STR_MUXLOG_TRACKLACINGOFF     = 1535;
@@ -285,6 +318,32 @@ const int STR_MUXLOG_SUBTITLE_FORMAT    = 1559;
 const int STR_MUXLOG_COMPRESSION_TYPE   = 1560;
 const int STR_MUXLOG_LOWOVHDAVI_ON      = 1561;
 const int STR_MUXLOG_LOWOVHDAVI_OFF     = 1562;
+const int STR_MUXLOG_ADDINGJUNK_ON      = 1563;
+const int STR_MUXLOG_ADDINGJUNK_OFF     = 1564;
+
+const int STR_MUXLOG_CUES_SUBS_ON		= 1565;
+const int STR_MUXLOG_CUES_SUBS_OFF		= 1566;
+const int STR_MUXLOG_HEADERSIZE         = 1567;
+const int STR_MUXLOG_CUETARGETSIZERATIO = 1568;
+const int STR_MUXLOG_RANDOMIZE_ON		= 1569;
+const int STR_MUXLOG_RANDOMIZE_OFF      = 1570;
+const int STR_MUXLOG_CUES_WRBLOCKNBR_ON	= 1571;
+const int STR_MUXLOG_CUES_WRBLOCKNBR_OFF= 1572;
+
+const int STR_MUXLOG_FREESTYLE_ON       = 1573;
+const int STR_MUXLOG_FREESTYLE_OFF      = 1574;
+
+const int STR_MUXLOG_MATROSKAVERSION    = 1575;
+const int STR_MUXLOG_FLOATWIDTH         = 1576;
+const int STR_MUXLOG_OVERWRITEABLE      = 1577;
+const int STR_MUXLOG_FREEDISKSPACE      = 1578;
+
+const int STR_MUXLOG_CACHE_ON           = 1579;
+const int STR_MUXLOG_CACHE_OFF          = 1580;
+const int STR_MUXLOG_CACHE_INFO         = 1581;
+
+const int STR_MUXLOG_NODISCSPACEATALL   = 1582;
+const int STR_MUXLOG_NODISCSPACE        = 1583;
 
 
 
@@ -303,6 +362,21 @@ const int STR_ERR_CODECIDDIFFERS_S		= 1707;
 const int STR_ERR_AUDIOINCOMPATIBLE     = 1705;
 const int STR_ERR_SUBSINCOMPATIBLE		= 1706;
 const int STR_ERR_FILEINUSE				=  177;
+const int STR_ERR_IMPCHAP_NONUNIQUEUID  = 1708;
+const int STR_ERR_NOENDINORDEREDEDITION = 1709;
+const int STR_WRN_CHAPTERSANDMAXSIZE    = 1710;
+const int STR_WRN_NONUNIQUEFILENAMES    = 1711;
+const int STR_ERR_OMG                   = 1712;
+const int STR_ERR_SUBCOMPRESSIONINCOMPATIBLE=1713;
+const int STR_ERR_OPENAVIERROR          = 1714;
+const int STR_ERR_NOSEGMENTUID			= 1715;
+const int STR_ERR_SAMPLERATESBAD        = 1716;
+const int STR_ERR_CHANNELCOUNTBAD       = 1717;
+const int STR_ERR_BADLAYERVERSIONS      = 1718;
+const int STR_ERR_BADMPEGVERSIONS       = 1719;
+const int STR_ERR_BADAACPROFILES        = 1720;
+
+//const int STR_ERR_IMPCHAP_
 
 // hints
 
@@ -313,6 +387,34 @@ const int STR_HINT_VFR					= 1801;
 const int STR_CHPDLG_TITLE				= 1900;
 const int STR_CHPDLG_SUBCHAPTER			= 1901;
 const int STR_CHPDLG_SAVEAS				= 1902;
+const int STR_CHPDLG_USAGE_LABEL		= 1903;
+const int STR_CHPDLG_DISP_LANGUAGE      = 1904;
+const int STR_CHPDLG_DISP_TITLE         = 1905;
+
+// RIFF Tree
+const int STR_RIFFDLG_WAIT		        = 1920;
+
+// popup menu
+
+const int STR_CHPDLG_POPUP_EDITIONORDERD	= 2000;
+const int STR_CHPDLG_POPUP_EDITIONHIDDEN	= 2001;
+const int STR_CHPDLG_POPUP_EDITIONDEFAULT	= 2002;
+const int STR_CHPDLG_POPUP_CHAPTERHIDDEN	= 2003;
+const int STR_CHPDLG_POPUP_CHAPTERENABLED	= 2004;
+const int STR_CHPDLG_POPUP_COPY             = 2005;
+const int STR_CHPDLG_POPUP_COPYALL          = 2006;
+const int STR_CHPDLG_POPUP_PASTEONSAME      = 2007;
+const int STR_CHPDLG_POPUP_PASTEASSUBSCHAPS = 2008;
+const int STR_CHPDLG_POPUP_PASTEALLINTOONEEDITION= 2009;
+const int STR_CHPDLG_POPUP_PASTEEACHINTOONEEDITION= 2010;
+const int STR_CHPDLG_POPUP_DELETECLIPBOARD  = 2011;
+const int STR_CHPDLG_POPUP_REINITUIDS       = 2012;
+const int STR_CHPDLG_POPUP_REINITALLUIDS    = 2013;
+const int STR_CHPDLG_POPUP_COPYCHILDREN     = 2014;
+const int STR_CHPDLG_POPUP_COPYALLCHILDREN  = 2015;
+const int STR_CHPDLG_POPUP_NUMERATE         = 2016;
+
+
 
 
 #endif

@@ -9,6 +9,7 @@
 #include "matroska_writing.h"
 #include "Queue.h"
 #include "Chapters.h"
+#include <vector>
 
 const int		MMODE_READ	= 1;
 const int		MMODE_WRITE = 2;
@@ -18,10 +19,23 @@ const int		MMODE_SEGINFO_ONLY = 8;
 const int       MOPEN_OK	= 0x00;
 const int		MOPEN_ERR	= 0x01;
 
+
+/* note: these 2 must be handled by the app only, those
+   are nothing but #defines here
+*/
+
+const int LINKTYPE_MEDIUM = 0x00;
+const int LINKTYPE_HARD = 0x01;
+
+char* MKV_LINKTYPE_NAMES[];
+
+#define uint unsigned int
+
 static const char* MSTRT_names[] = { "", "video", "audio", "complex", "", "", "", "", "",
-									 "", "", "", "", "", "", "", "logo", "subs", "", "",
+									 "", "", "", "", "", "", "", "logo", "subs", "button", "",
 									 "", "", "", "", "", "", "", "", "", "", "", "", "control"
 									};
+
 
 
 static const char* MDISPU_names[] = { "pixel", "centimeters", "inches" };
@@ -37,24 +51,25 @@ typedef struct
 } MATROSKA_INFO;
 
 
-typedef struct
+class READ_INFO
 {
+public:
+	READ_INFO();
+
 	int				iTrack; // index
 	__int64			qwTimecode;
 	__int64			qwDuration;
 	int				iFlags;
 	int				iLength;
-	int				iReferences;
-	int				iReferencedFrames[3];
-	// laces
-	int				iFrameCount;
-	int*			iFrameSizes;
-
+	int				reference_types;
+	std::vector<__int64>	references;
+	std::vector<int>		frame_sizes;
 	CBuffer*		pData;
-} READ_INFO;
+};
 
 const int CUE_VIDEO = 1;
 const int CUE_AUDIO = 2;
+const int CUE_SUBS  = 4;
 
 typedef struct
 {
@@ -65,15 +80,19 @@ typedef struct
 
 typedef struct
 {
+		int						iAVImode;
 		bool					bDeb0rkReferences;
+
 		__int64					bClusterIndex;
 		__int64					bRandomizeElementOrder;
+		
 		__int64					iBlocksInCluster;
+
 		__int64					bClusterPosition;
 		__int64					bPrevClusterSize;
 		__int64					bCueBlockNumber;
 
-		__int64					bWriteCues; // 1 video, 2 audio
+		__int64					bWriteCues; // 1 video, 2 audio, 4 subs
 		__int64					bWriteFlagDefault;
 		__int64					bWriteFlagLacing;
 		__int64					bWriteFlagEnabled;
@@ -84,12 +103,17 @@ typedef struct
 		__int64					iAccumulatedOverhead;
 		__int64					iClusterOverhead;
 		__int64					iClusterCount;
-		__int64					iCuePoints;
+		__int64					iCuePointsWritten;
+		__int64					iCuePointsCreated;
+
 		__int64*				iLastCuePointTimecode;
 		__int64					iMaxClusterSize;
 		__int64					iMaxClusterTime;
 		__int64					iLimit1stCluster;
-		__int64					iMinimumCuePointInterval;
+
+		__int64					min_cue_point_interval;
+		__int64					max_cue_point_interval;
+		
 		__int64					iPosInSegment;
 		__int64                 iPosOfReservedSpace;
 		__int64					iSizeOfReservedSpace;
@@ -98,12 +122,26 @@ typedef struct
 		__int64					iSegInfoPosInFile;
 		__int64					iSegPosInFile;
 		__int64					iSegClientDataBegin;
+
 		__int64					iTimecodeScale;
 		__int64					iTracksPosInFile;
 		__int64					iLatestTimecode;
+		__int64					iEarliestTimecode;
 		__int64					iTracksCopies;
+		__int64					iTargetSeekhead;
 		__int64					iLaceStyle;
+		__int64					iCueAutosize;
+		double					iCueTargetSizeRatio;
+
+		__int64					matroska_version;
+
 		DURATION_DEFAULTS		duration_default;
+
+
+		bool					bUIDs[4];
+		char					cUIDs[4][16];
+
+		std::vector<CUE_POINT>	cues;
 } WRITE_STATE;
 
 const int LACESTYLE_XIPH		= 0x01;
@@ -126,6 +164,8 @@ const int SAT_ALL = 0x00;
 const int SAT_VIDEO = MSTRT_VIDEO;
 const int SAT_AUDIO = MSTRT_AUDIO;
 const int SAT_SUBTITLE = MSTRT_SUBT;
+
+const int ATTACHMENTINDEX_INVALID = -1;
 
 typedef struct 
 {
@@ -150,9 +190,21 @@ typedef struct
 
 char* matroska_GetCompileTimestamp();
 
+const int UIDTYPE_SEGMENTUID = 0x00;
+const int UIDTYPE_PREVUID    = 0x01;
+const int UIDTYPE_NEXTUID    = 0x02;
+const int UIDTYPE_SEGMENTFAMILY = 0x03;
+char* MKV_UID_NAMES[];
+
 class MATROSKA
 {
 	private:
+	// access
+		bool				CanRead();
+		bool				CanWrite();
+	// read and parse EBML header
+		bool				ParseEBMLHeader(EBML_INFO& ebml_info, EBMLElement* parent);
+
 	// reading
 		EBMLELEMENTLIST*	e_EBML;
 		EBMLELEMENTLIST*	e_Segments;
@@ -176,7 +228,6 @@ class MATROSKA
 		int					StreamListLen(int*	piList);
 	// writing
 		int							iTrackCount;
-		int							iAVImode;
 		EBMLMSegmentInfo_Writer*	e_SegInfo;
 		TRACK_DESCRIPTOR**			tracks;
 		EBMLHeader_Writer*			e_Header;
@@ -217,6 +268,9 @@ class MATROSKA
 		int				CopyAddBlock(int i, ADDBLOCK* a);
 		int				GetTracksCopiesCount();
 		int				FillQueue(int i);
+
+		void			RenderChapterSegmentUIDTags(EBMLElement_Writer* pParent, CChapters* c);
+		void*			GetTrackCompressionPrivate(int iTrack, int index);
 	public:
 		STREAM*			GetSource();
 	// blocks (read)
@@ -228,7 +282,7 @@ class MATROSKA
 		int				IsStreamQueued(int i);
 		
 		MATROSKA();
-		~MATROSKA();
+		virtual ~MATROSKA();
 		int		virtual Open(STREAM* s,int iMode);
 		int				Close();
 	// if bAllow => do not assume logical file structure; allow obfuscated ordering of elements
@@ -250,6 +304,8 @@ class MATROSKA
 		char*			GetSegmentWritingApp(int iSegment = -1);
 		__int64			GetSegmentDuration();
 		__int64			GetSegmentSize();
+		__int64			GetSegmentFilePos();
+
 		int				GetMaxBlockGapFactor();
 		void			SetMaxBlockGapFactor(int iFactor);
 	// segment info (write)
@@ -260,24 +316,27 @@ class MATROSKA
 		void			EnableDisplayWidth_Height(int bEnable);
 		void			EnableCueBlockNumber(int bEnable);
 		void			EnableCues(int iStreamType, int bEnable);
+		void			EnableCueAutosize(int enabled);
 		void			EnableWriteFlagEnabled(int bEnable);
 		void			EnableWriteFlagDefault(int bEnable);
 		void			EnableWriteFlagLacing(int bEnable);
 		void			EnableShiftFirstClusterTimecode2Zero(int bEnable = true);
 		void			EnableRandomizeElementOrder(int bEnable = true);
 
+
 		int				GetLaceStyle();
 		__int64			GetMaxClusterSize();
 		__int64			GetMaxClusterTime();
 		__int64			GetOverhead();
 		void			GetClusterStats(CLUSTER_STATS* lpInfo);
-		int				GetCueCount();
+		int				GetCueCount(int flag = 2); // 1 = created, 2 = written
 		__int64			GetSeekheadSize();
 		bool			Is1stClusterLimited();
 		bool			IsClusterPositionEnabled();
 		bool			IsDisplayWidth_HeightEnabled();
 		bool			IsPrevClusterSizeEnabled();
 		bool			IsCuesEnabled(int iStreamType);
+		bool			IsCueAutoSizeEnabled(void);
 		int				IsClusterIndexEnabled();
 		int 			IsEnabled_WriteFlagEnabled();
 		int 			IsEnabled_WriteFlagDefault();
@@ -286,6 +345,8 @@ class MATROSKA
 		void			SetLaceStyle(int iStyle);
 		void			SetMaxClusterSize(__int64 iSize); // kByte
 		void			SetMaxClusterTime(__int64 iSize, int bLimit1stCluster); // millisec
+		void			SetNonclusterIndexMode(int mode);
+		void			SetInitialHeaderSize(int size);
 		void			SetSegmentDuration(float fDuration);
 		void			SetSegmentTitle(char* cTitle);
 		void			SetTrackCount(int iCount);
@@ -293,11 +354,20 @@ class MATROSKA
 		void			SetChapters(CChapters* c, __int64 iDuration = -1);
 		void			SetTimecodeScale(__int64 iScale);
 		void			SetTracksCopiesCount(int iCount);
+		void			SetMinimumCueInterval(__int64 interval_ns); // set interval in nanoseconds
+		void			SetCueTargetSizeRatio(double ratio);
+		double			GetCueTargetSizeRatio(void);
+		void			SetUID(int uid_type, char* cUID);
+		void			SetMatroskaVersion(int version);
+		int				GetMatroskaVersion();
+
 	// segment control
 		void			Seek(__int64 iTimecode);
+		bool			VerifyCuePoint(int index);
+
 	// segment info (read/write)
 		__int64			GetTimecodeScale();
-		int				GetTrackCount(int iType = GTC_ALL);
+		int				GetTrackCount(int segment = -1, int iType = GTC_ALL);
 	// track info (read)
 		int				GetAspectRatioType(int iTrack = -1);
 		int				GetBitDepth(int iTrack = -1);
@@ -320,22 +390,36 @@ class MATROSKA
 		int				GetMinCache(int iTrack = -1);
 		__int64			GetNextTimecode(int iTrack = -1);
 		int				GetResolution(int* iPX,int* iPY,int* iDX,int* iDY, int* iDU);
+		int				GetCropping(RECT* cropping);
 		float			GetSamplingFrequency(int iTrack = -1);
 		float			GetOutputSamplingFrequency(int iTrack = -1);
+		char*			GetUID(int uid_type);
 		char*			GetSegmentUID();
-		int				GetTrackCompression(int iTrack = -1);
+		TAG_INDEX_LIST& GetGlobalTags();
+		int				GetTag(uint iIndex, char* cTagName, char* cTagValue, char* cTagLng);
+
+		int				GetTrackCompressionDescriptorCount(int iTrack = -1);
+		int				GetTrackCompression(int iTrack, int index);
+		int				GetTrackCompressionPrivate(int iTrack, int index, void* pDest);
+		int				GetTrackCompressionPrivate(int iTrack, int index, void** pDest);
+		int				GetTrackCompressionPrivateSize(int iTrack, int index);
+		int				GetTrackCompression(int iTrack, TRACK_COMPRESSION& target);
+		int				GetTrackCompressionOrder(int iTrack, std::vector<int>& order);
+
 		__int64			GetTrackDuration(int iTrack = -1);
 		char*			GetTrackName(int iTrack = -1);
 		int				GetTrackNumber(int iTrack = -1);
 		int				GetTrackType(int iTrack = -1);
-		int				GetTrackUID(int iTrack = -1);
+		__int64			GetTrackUID(int iTrack = -1);
 		float			GetTrackBitrate(int iTrack = -1);
 		__int64			GetTrackSize(int iTrack = -1);
+		TAG_INDEX_LIST& GetTrackTags(int iTrack = -1);
 		int				IsBitrateIndicated(int iTrack = -1);
 		int				IsDefault(int iTrack = -1);
 		int				IsEnabled(int iTrack = -1);
 		int				IsLaced(int iTrack = -1);
 		int				IsSparse(int iTrack = -1);
+		int				IsForced(int iTrack = -1);
 		int				IsCueBlockNumberEnabled();
 		void			SelectSingleStream(int iStream);
 		void			SelectStreams(int* iStreams); // -1 - terminated!!
@@ -347,20 +431,33 @@ class MATROSKA
 		void			SetChannelCount(int iTrack, int iCount);
 		void			SetCodecID(int iTrack, char* cID);
 		void			SetCodecPrivate(int iTrack,void* pData,int iSize);
+		void			SetCropping(int iTrack, RECT* r);
 		void			SetDefaultDuration(int iTrack, __int64 iDuration);
 		void			SetFlags(int iTrack,int iEnabled, int iLacing, int iDefault);
 		void			SetResolution(int iTrack, int X, int Y, int X2 = -1, int Y2 = -1);
 		void			SetSamplingFrequency(int iTrack, float iFreq, float iOutFreq);
-		void			SetTrackCompression(int iTrack, int iCompression);
+//		void			SetTrackCompression(int iTrack, int iCompression, void* compression_private, int compression_private_size);
+		void			AddTrackCompression(int iTrack, int iCompression, void* compression_private,
+							size_t compression_private_size);
+
 		void			SetTrackInfo(int iTrack, MATROSKA* m = NULL, int iSourceTrack = NULL);
 		void			SetTrackLanguageCode(int iTrack,char* cName);
 		void			SetTrackName(int iTrack,char* cName);
 		void			SetTrackNumber(int iTrack, int iNbr);
 		void			SetTrackType(int iTrack, int iType);
 
-
+	// attachment functions
+		__int64			GetAttachmentFlags(int index);
+		int				GetAttachmentCount();
+		int				GetAttachmentIndex(__int64 uid);
+		int				GetAttachmentMimeType(int index, char* pDest, int max_len = 65535);
+		int				GetAttachmentFilename(int index, char* pDest, int max_len = 65535);
+		int				GetAttachmentFileDescription(int index, char* pDest, int max_len = 65535);
+		__int64			GetAttachmentUID(int index);
+		__int64			GetAttachmentFileSize(int index);
+		__int64			GetAttachmentFilePosition(int index);
+		int				GetAttachmentBinaryData(int index, char* pDest, int max_len);
 };
-
 char* matroska_GetCompileDate();
 
 const int MGOF_CLUSTERS_BYSIZE	=	0x00000001;
@@ -368,6 +465,7 @@ const int MGOF_CLUSTERS_BYTIME	=	0x00000002;
 const int MGOF_CLUSTERS_PREVSIZE=   0x00000004;
 const int MGOF_CLUSTERS_POSITION=   0x00000008;
 const int MGOF_CLUSTERS_NOINDEX =   0x00000010;
+const int MGOF_NOCUEOVERHEAD    =   0x00000020;
 
 const int MGOSF_LACE			=	0x00000001;
 const int MGOSF_LACEDUR_IND		=	0x00000010;
@@ -399,6 +497,7 @@ typedef struct
 	int		iClusterSize;        // size of clusters in kilobytes
 	int		iClusterTime;        // time of clusters in milliseconds
 	int		iKeyframeInterval;   // keyframe interval; needed for cue size estimation
+	int		iMatroskaVersion;
 
 	int                 iStreamCount; // number of streams
 	MGO_STREAMDESCR*    pStreams;     // descriptor for each stream

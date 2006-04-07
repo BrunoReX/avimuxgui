@@ -52,8 +52,8 @@ class EBMLElement_Writer: public EBMLElement
 		EBMLElement_Writer*		pCRC32;
 	public:
 		EBMLElement_Writer();
-		EBMLElement_Writer(STREAM* stream,char* ID = NULL,CBuffer* cBuffer = NULL);
-		~EBMLElement_Writer();
+		EBMLElement_Writer(STREAM* stream, char* ID = NULL, CBuffer* cBuffer = NULL);
+		virtual ~EBMLElement_Writer();
 		void					SetID(char* ID);
 		void					SetChild(EBMLElement_Writer* pChild);
 		void					SetNext(EBMLElement_Writer* pNext);
@@ -115,7 +115,7 @@ class EBMLFloat_Writer: public EBMLElement_Writer
 {
 	public: 
 		EBMLFloat_Writer();
-		void					Delete();
+//		void	virtual			Delete();
 		void					SetFData(long double ldData);
 		void					Define(STREAM* pStream,char* ID,long double fData, EBMLElement_Writer* pNext);
 };
@@ -124,7 +124,7 @@ class EBMLString_Writer: public EBMLElement_Writer
 {
 	public: 
 		EBMLString_Writer();
-		void					Delete();
+//		void	virtual			Delete();
 		void					SetSData(char* cData);
 		void					Define(STREAM* pStream,char* ID,char* cData, EBMLElement_Writer* pNext);
 		__int64			virtual	GetSize();
@@ -142,7 +142,15 @@ typedef struct {
 
 typedef struct {
 	__int64		iTimecodeScale;
-	CBuffer*	cSegmentUID;
+	char		cSegmentUID[16];
+	char		cSegmentFamily[16];
+	char		cNextUID[16];
+	char		cPrevUID[16];
+	bool		bSegmentUID;
+	bool		bSegmentFamily;
+	bool		bNextUID;
+	bool		bPrevUID;
+	bool		bWriteNextUID;
 	CBuffer*	cTitle;
 	CBuffer*	cMuxingApp;
 	CBuffer*	cWritingApp;
@@ -163,7 +171,9 @@ class EBMLHeader_Writer: public EBMLElement_Writer
 		EBMLHeader_Writer();
 		EBMLHeader_Writer(STREAM* pStream);
 
-		~EBMLHeader_Writer();
+		void		SetDocTypeVersion(int version);
+
+		virtual ~EBMLHeader_Writer();
 		void					virtual Delete();
 };
 
@@ -172,22 +182,30 @@ class EBMLMSegmentInfo_Writer: public EBMLElement_Writer
 	private:
 		SEGMENTHEADER_INFO		info;
 	protected:
+		void					SetSegmentUID(char* cSUID);
+		void					SetNextSegmentUID(char* cNUID);
+		void					SetPrevSegmentUID(char* cPUID);
+		void					SetSegmentFamily(char* cUID);
 	public:
 		EBMLMSegmentInfo_Writer();
 		EBMLMSegmentInfo_Writer(STREAM* pStream);
 		void					Build();
-		void					Delete();
+		void virtual			Delete();
 
 		void					SetWritingApp(CBuffer* cApp);
 		void					SetMuxingApp(CBuffer* cApp);
 		void					SetTitle(CBuffer* cTitle);
+		void					SetUID(int uidtype, char* cUID);
+		void					EnableNextUID(bool bEnabled);
 		void					SetDuration(float fDuration);
 		void					SetTimecodeScale(__int64 iScale);
+		char*					GetTitle();
 };
 
 typedef struct
 {
-	int		iX1, iY1, iX2, iY2, iDU;
+	int		iX1, iY1, iX2, iY2, iDU; // pixel<blah>, display<blah>, displayunit
+	RECT	rCrop;
 	int		iAspectRatioType;
 	int		iColorSpace;
 	float   fGamma;
@@ -213,7 +231,7 @@ typedef struct
 	int				iEnabled;
 	int				iDefault;
 	int				iTrackNbr;
-	int				iTrackUID;
+	__int64			iTrackUID;
 	int				iTrackType;
 	int				iMinCache;
 	int				iMaxCache;
@@ -232,7 +250,14 @@ typedef struct
 	CStringBuffer*	cName;
 	CStringBuffer*	cLngCode;
 	int				i;
-	int				iCompression;
+	
+/*	int				compression;
+	int				compression_private_size;
+	void*			compression_private;
+*/
+
+	TRACK_COMPRESSION track_compression;
+
 	VIDEOTRACK_SPECIFIC	video;
 	AUDIOTRACK_SPECIFIC audio;
 } TRACK_DESCRIPTOR;
@@ -297,7 +322,16 @@ const int ABTC_MASK         = 0x02;
 
 const int ABTC_GAP          = 0x04;
 
+const int BLOCKTYPE_BLOCK		= 0x01;
+const int BLOCKTYPE_SIMPLEBLOCK	= 0x02;
+
 typedef struct {
+	//input by ClusterWrite
+	int		key_frame;
+	int		discardable;
+	int		block_type;
+	
+	//output
 	int		iLaceStyle;
 	int		iLaceOverhead;
 } BLOCK_INFO;
@@ -337,6 +371,7 @@ class EBMLMCue_Writer: public EBMLElement_Writer
 		EBMLMCue_Writer();
 		EBMLMCue_Writer(STREAM* pStream);
 		int		AddCuePoint(int iTrack, __int64 iTimecode, __int64 iClusterPosition, __int64 iBlock = 0);
+		int		AddCuePoint(CUE_POINT& cue_point);
 };
 
 class EBMLMChapter_Writer: public EBMLElement_Writer {
@@ -345,8 +380,10 @@ class EBMLMChapter_Writer: public EBMLElement_Writer {
 		__int64	   iMaxEnd;
 	public:
 		EBMLMChapter_Writer();
-		int RenderChapters(EBMLElement_Writer* pParent, CChapters* c, CChapters* cParent, int parent_index);
-		EBMLMChapter_Writer(STREAM* pStream, CChapters* c, __int64 iMax);
+		EBMLMChapter_Writer(STREAM* pStream, CChapters* c, __int64 iMax, int bSetEnd);
+		virtual ~EBMLMChapter_Writer();
+		void UpdateChapterTimes(CChapters* c, int parent_index);
+		int RenderChapters(EBMLElement_Writer* pParent, CChapters* c, CChapters* cParent, int parent_index, int bSetEnd, __int64 iMax);
 
 };
 

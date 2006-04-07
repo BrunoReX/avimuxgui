@@ -326,20 +326,11 @@ void CHUNK::SetData(void* lpNewData, DWORD dwFlags, DWORD dwOffset)
 
 		if (dwSize)
 		{
-/*			if (dwFlags & CHUNKSD_DONTCOPY)
-			{
-				realloc(*lplpNewData,dwSize);
-				lpData=(CHUNK*)(*lplpNewData);
-				(*lplpNewData)=NULL;
+			if (b) {
+				lpData=(CHUNK*)malloc(dwSize + dwSize % 2);
 			}
-			else
-			{*/
-				if (b) {
-					lpData=(CHUNK*)malloc(dwSize + dwSize % 2);
-				}
-				BYTE*  lpbData = (BYTE*)lpData;
-				memcpy(lpbData + dwOffset,lpNewData,dwNextSize);
-//			}
+			BYTE*  lpbData = (BYTE*)lpData;
+			memcpy(lpbData + dwOffset,lpNewData,dwNextSize);
 		}
 	}
 }

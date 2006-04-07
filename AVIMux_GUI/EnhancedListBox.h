@@ -7,10 +7,12 @@
 // EnhancedListBox.h : Header-Datei
 //
 
+#include "UnicodeBase.h"
+
 /////////////////////////////////////////////////////////////////////////////
 // Fenster CEnhancedListBox 
 
-class CEnhancedListBox : public CListBox
+class CEnhancedListBox : public CListBox, public CUnicodeBase
 {
 // Konstruktion
 public:
@@ -25,8 +27,9 @@ public:
 
 // Operationen
 public:
-	void	ItemDown(void);
-	void	ItemUp(void);
+	void virtual ItemDown(void);
+	void virtual ItemUp(void);
+	void virtual RedoNumbering();
 	void	AllowMoving(bool bAllowMoving);
 // Überschreibungen
 	// Vom Klassen-Assistenten generierte virtuelle Funktionsüberschreibungen

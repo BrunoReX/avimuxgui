@@ -14,17 +14,22 @@
 #include "..\ebml.h"
 #include "..\matroska.h"
 #include "EBMLTree.h"
+#include "ResizeableDialog.h"
 
 void AddChildren(CTreeCtrl* tree, HTREEITEM hParent, EBMLElement* eParent); 
 
-class CEBMLTreeDlg : public CDialog
+class CEBMLTreeDlg : public CResizeableDialog
 {
 private:
 	STREAM*		source;
 	bool		bDoClose;
 	HANDLE		hSem_close;
+	int			font_size;
 	EBML_Matroska* e_matroska;
 	void CleanChildren(HTREEITEM hParent);
+	void RecreateTreeFont();
+
+	int			fThreadsafe;
 // Konstruktion
 public:
 	CEBMLTreeDlg(CWnd* pParent = NULL);   // Standardkonstruktor
@@ -34,6 +39,7 @@ public:
 // Dialogfelddaten
 	//{{AFX_DATA(CEBMLTreeDlg)
 	enum { IDD = IDD_EBMLTREE_DLG };
+	CButton	m_OK;
 	CEBMLTree	m_EBMLTree;
 	CButton	    m_Absolute;
 	CButton     m_Relative;
@@ -68,6 +74,12 @@ protected:
 	//}}AFX_DISPATCH
 	DECLARE_DISPATCH_MAP()
 	DECLARE_INTERFACE_MAP()
+public:
+	afx_msg void OnBnClickedFontLarger();
+	afx_msg void OnBnClickedFontSmaller();
+//	afx_msg void OnBnClickedOk();
+	afx_msg void OnBnClickedOk();
+	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 };
 
 //{{AFX_INSERT_LOCATION}}

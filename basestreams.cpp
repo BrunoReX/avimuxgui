@@ -2,6 +2,20 @@
 #include "basestreams.h"
 #include "memory.h"
 #include "math.h"
+#include "utf-8.h"
+#include "unicodecalls.h"
+#include "stdlib.h"
+#include "stdio.h"
+#include "crtdbg.h"
+#include "Filenames.h"
+
+#ifdef DEBUG_NEW
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+#endif
 
 
 int STREAM::GetOffset()
@@ -22,17 +36,56 @@ int STREAM::TruncateAt(__int64 iPosition)
 	return 1;
 }
 
-int STREAM::ReadAsync(READ_ASYNC_STRUCT* pRAS, DWORD dwBytes)
+bool STREAM::IsEnabled(int flag)
 {
-	char c[10]; c[9] = 0; for (int i=0;i<9;c[i++]=97+rand()%26);
-	pRAS->hSemaphore = CreateSemaphore(NULL, 1, 1, c);
-	pRAS->pOverlapped = new OVERLAPPED;
-	pRAS->pOverlapped->Internal = 0;
-	pRAS->pOverlapped->InternalHigh = 0;
-	pRAS->pOverlapped->Offset = Read(pRAS->lpDest, dwBytes); 
-	pRAS->pOverlapped->OffsetHigh = 0;
-	
-	return pRAS->pOverlapped->Offset;
+	return _Enable(flag, false, false);
+}
+
+bool STREAM::Enable(int flag)
+{
+	return _Enable(flag, true, true);
+}
+
+bool STREAM::Disable(int flag)
+{
+	return _Enable(flag, true, false);
+}
+
+bool STREAM::SetFlag(int flag, int value)
+{
+	return _Enable(flag, true, !!value);
+}
+
+STREAM_FILTER::STREAM_FILTER()
+{
+	source = NULL;
+}
+
+STREAM_FILTER::~STREAM_FILTER()
+{
+	if (GetSource())
+		Close();
+}
+
+void STREAM_FILTER::SetSource(STREAM* s)
+{
+	source = s;
+}
+
+STREAM* STREAM_FILTER::GetSource()
+{
+	return source;
+}
+
+int STREAM_FILTER::Close()
+{
+	if (GetSource() && IsSourceAttached()) {
+		GetSource()->Close();
+		delete GetSource();
+		SetSource(NULL);
+	}
+
+	return 1;
 }
 
 // für vernünftigen Zugriff auf Dateien > 4 GB)  
@@ -42,13 +95,6 @@ struct QWORD
 	long	lLo;
 	long    lHi;
 } *LPQWORD;
-
-typedef struct
-{
-	HANDLE hSemaphore;
-	void*  lpData;
-
-} OVERLAPPED_ADDITIONAL;
 
 __int64 round(double x)
 {
@@ -79,6 +125,10 @@ bool GetFileSize64 (HANDLE hFile,__int64* qwSize)
 {
 	*qwSize=0;
 	((QWORD*)qwSize)->lLo=GetFileSize(hFile,(DWORD*)&(((QWORD*)qwSize)->lHi));
+
+    if (((QWORD*)qwSize)->lLo == INVALID_FILE_SIZE)
+		*qwSize = 0;
+
 	return true;
 }
 
@@ -86,107 +136,64 @@ FILESTREAM::FILESTREAM(void)
 {
 	hFile=NULL;
 	iCurrentSize = 0;
-	cOutCache = NULL;
-	iOutCachePos = 0;
 	iFilesize = 0;
 	bBuffered = 1;
-	pAlignedInputBuffer = 0;
-	pAlignedInputBufferAllocated = 0;
-	iAlignedBufferSize = 0;
 	iPossibleAlignedReadCount = 0;
 	bDenyUnbufferedRead = 1;
 	bOverlapped = 0;
+	cFilename = NULL;
 }
 
-bool _filestreamAllowBufferedRead = true;
+/*bool _filestreamAllowUnbufferedRead = true;
 
-void  filestreamAllowBufferedRead(bool bAllow)
+void  filestreamAllowUnbufferedRead(bool bAllow)
 {
-	_filestreamAllowBufferedRead = bAllow;
+	_filestreamAllowUnbufferedRead = bAllow;
 }
-
-
-const int MAXWRITEJOBS = 8;
-
-VOID CALLBACK WriteCompletionRoutine(
-  DWORD dwErrorCode,                // completion code
-  DWORD dwNumberOfBytesTransfered,  // number of bytes transferred
-  LPOVERLAPPED lpOverlapped         // pointer to structure with I/O 
-                                    // information
-									) 
-{
-
-	OVERLAPPED_ADDITIONAL* over_add = ((OVERLAPPED_ADDITIONAL*)lpOverlapped->hEvent);
-	HANDLE h = (HANDLE)over_add->hSemaphore;
-	
-	ReleaseSemaphore(h, 1, NULL);
-
-	delete over_add->lpData;
-	delete over_add;
-	delete lpOverlapped;
-
-	return;
-
-}
- 
-VOID CALLBACK ReadCompletionRoutine(
-  DWORD dwErrorCode,                // completion code
-  DWORD dwNumberOfBytesTransfered,  // number of bytes transferred
-  LPOVERLAPPED lpOverlapped         // pointer to structure with I/O 
-                                    // information
-									) 
-{
-
-	HANDLE h = lpOverlapped->hEvent;
-	lpOverlapped->Offset = dwNumberOfBytesTransfered;
-	ReleaseSemaphore(h, 1, NULL);
-
-	return;
-
-}
-
-
+*/
 FILESTREAM::~FILESTREAM(void)
 {
-	if (hFile) Close();
+	if (hFile) 
+		Close();
+
+	free(cFilename);
 }
 
 const int iOutCacheSize = 1<<21;
 
-int FILESTREAM::Open(char* lpFilename,DWORD _dwMode)
+int FILESTREAM::Open(char* _lpFilename,DWORD _dwMode)
 {
 	int open_mode = 0;
 	bCanRead = false;
 	bCanWrite = false;
 	bOverlapped = false;
+	char* lpFilename = _lpFilename;
+	int dealloc_lpfilename = 0;
+
+	unsigned short* lpwFilename = (unsigned short*)calloc(1, 32768);
 
 	if ((_dwMode & STREAM_WRITE) == STREAM_WRITE) {
-		open_mode = CREATE_ALWAYS;
+
+		if ((_dwMode & STREAM_READ) == STREAM_READ) {
+			open_mode = OPEN_ALWAYS;
+		} else {
+			open_mode = CREATE_ALWAYS;
+		}
 		bCanWrite = true;
 	}
 
 	if ((_dwMode & STREAM_OVERLAPPED) == STREAM_OVERLAPPED) {
-//		if ((_dwMode & STREAM_WRITE) == STREAM_WRITE) {
-			bOverlapped = 1;
-			if (bCanWrite) {
-				cWriteSemaphoreName[9] = 0; for (int i=0;i<9;cWriteSemaphoreName[i++] = 97+rand()%26);
-				hWriteSemaphore = CreateSemaphore(NULL, MAXWRITEJOBS, MAXWRITEJOBS, cWriteSemaphoreName);
-				if (!hWriteSemaphore) {
-					bOverlapped = 0;
-				}
-			}
-//			ASSERT(hWriteSemaphore);
-//		}
+		bOverlapped = 1;
 	}
 
 	if ((_dwMode & STREAM_UNBUFFERED) == STREAM_UNBUFFERED) {
 		bBuffered = 0;
-		_dwMode = STREAM_WRITE;
 	}
 
 	if (_dwMode & STREAM_WRITE_OPEN_EXISTING) {
-		_dwMode = STREAM_WRITE;
 		open_mode = OPEN_EXISTING;
+		_dwMode &=~ STREAM_WRITE_OPEN_EXISTING;
+		_dwMode |= STREAM_WRITE;
 	}
 
 	DWORD	dwNoBuffering = ((bBuffered)?0:FILE_FLAG_NO_BUFFERING);
@@ -195,87 +202,91 @@ int FILESTREAM::Open(char* lpFilename,DWORD _dwMode)
 	if (hFile) Close();
 	hFile=NULL;
 	STREAM::Open(_dwMode);
-	align = 65536;
-	pAlignedInputBuffer = 0;
-	pAlignedInputBufferAllocated = 0;
-	iAlignedBufferSize = 0;
 
-	if (GetMode() & STREAM_READ)
-	{
-		 
-		hFile=CreateFile(lpFilename,GENERIC_READ,FILE_SHARE_READ,
+/*	if (utf8_IsUnicodeEnabled()) {
+		fromUTF8("\\\\?\\", lpwFilename);
+		fromUTF8(lpFilename, lpwFilename + 4);
+	} else*/
+
+	char cLongFN[65536];
+	Filename2LongFilename(lpFilename, (char*)cLongFN, 32768);
+
+	fromUTF8(cLongFN, lpwFilename);
+	
+	if (GetMode() & STREAM_READ && !(GetMode() & STREAM_WRITE)) {
+		hFile=(*UCreateFile())(lpwFilename,GENERIC_READ,FILE_SHARE_READ,
 			NULL,OPEN_EXISTING,dwNoBuffering | dwOverlapped,NULL);
-
-		bDenyUnbufferedRead = !_filestreamAllowBufferedRead;
+//		bDenyUnbufferedRead = !_filestreamAllowUnbufferedRead;
 		bCanRead = 1;
 	}
 
-	if (GetMode() & STREAM_WRITE)
-	{
-		hFile=CreateFile(lpFilename,GENERIC_WRITE | GENERIC_READ,0,
-			NULL,open_mode,dwNoBuffering | dwOverlapped,NULL);
-		if (bBuffered) {
-			cOutCache = new char[iOutCacheSize];
-			cOutCacheCurr = cOutCache;
-		} else {
-			cOutCache = NULL;
-			cOutCacheCurr = NULL;
+	if (GetMode() & STREAM_WRITE) {
+		DWORD new_mode = dwNoBuffering | dwOverlapped;
+		if (dwNoBuffering)
+			new_mode |= FILE_FLAG_WRITE_THROUGH;
+		hFile=(*UCreateFile())(lpwFilename,GENERIC_WRITE | GENERIC_READ,0,
+			NULL,open_mode, new_mode,NULL);
+
+		if (hFile == INVALID_HANDLE_VALUE || !hFile) {
+			hFile=(*UCreateFile())(lpwFilename,GENERIC_WRITE | GENERIC_READ,0,
+				NULL,open_mode,dwNoBuffering | dwOverlapped,NULL);
 		}
 	}
-	iOutCachePos = 0;
+
+	if (hFile == INVALID_HANDLE_VALUE) {
+		STREAM::Close();
+		free(lpwFilename);
+		return STREAM_ERR;
+	}
+
 	cFilename = new char[1+strlen(lpFilename)];
 	strcpy(cFilename, lpFilename);
 	iCurrPos = 0;
-	iFilesize = 0;
+	iFilesize = GetSize();
+
+	if (dealloc_lpfilename)
+		free(lpFilename);
+
+	free(lpwFilename);
+
 	return ((hFile!=INVALID_HANDLE_VALUE)?STREAM_OK:STREAM_ERR);
 }
 
 int FILESTREAM::Close(void)
 {
-	Flush();
-	if (bOverlapped) {
-		if (bCanWrite) {
-			for (int i=MAXWRITEJOBS;i;i--) {
-				while (WAIT_IO_COMPLETION == WaitForSingleObjectEx(hWriteSemaphore, INFINITE, true));
-			}
-			CloseHandle(hWriteSemaphore);
-			hWriteSemaphore = NULL;
-		}
-	}
+	if (hFile) 
+		CloseHandle(hFile);
+	hFile = NULL;
 
-	if (hFile) CloseHandle(hFile);
-	if (cOutCache) delete cOutCache;
-	if (pAlignedInputBufferAllocated) delete pAlignedInputBufferAllocated;
-	pAlignedInputBufferAllocated = NULL;
-	iAlignedBufferSize = 0;
-	hFile=NULL;
 	return STREAM_OK;
 }
 
 int FILESTREAM::Seek(__int64 qwPos)
 {
-	if (qwPos & alignment_mask) {
+	_ASSERT(qwPos >= 0);
+
+/*	if (qwPos & alignment_mask) {
 		iPossibleAlignedReadCount = 0;
 	}
-	if (qwPos < 0) {
-		MessageBox(0,"Fatal seek error: qwPos < 0 !","Error",MB_OK | MB_ICONERROR);
+*/	if (qwPos < 0) {
+		MessageBoxA(0,"Fatal seek error: qwPos < 0 !","Error",MB_OK | MB_ICONERROR);
 	}
-	if (bCanWrite) {
-		if (qwPos > iCurrentSize) {
-//			MessageBox(0,"Error: Seeking behind end of file","Error",MB_OK | MB_ICONERROR);
-//			return STREAM_ERR;
-//			Sleep(1);
-		}
-		Flush();
+
+	if (!(GetMode() && STREAM_WRITE) && qwPos + GetOffset() >= GetSize() && (GetMode() & STREAM_READ))
+		qwPos = GetSize() - GetOffset();
+
+	if (GetPos()!=qwPos) {
+		SetFilePointer64(hFile,qwPos+GetOffset());
 	}
-	if (GetPos()!=qwPos) SetFilePointer64(hFile,qwPos+GetOffset());
+	
 	iCurrPos = qwPos + GetOffset();
+	
 	return STREAM_OK;
 }
 
 __int64 FILESTREAM::GetPos(void)
 {
-	return iCurrPos + iOutCachePos - GetOffset();
+	return iCurrPos - GetOffset();
 }
 
 __int64 FILESTREAM::GetSize(void)
@@ -297,280 +308,172 @@ int ispowof2(DWORD x)
 	return !!(x==1);
 }
 
-
-/*int FILESTREAM::Read(void* p, DWORD dwBytes, DWORD dwFlag)
+int FILESTREAM::ReadAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped)
 {
-
-	if ((dwFlag & READF_ASYNC) == READF_ASYNC) {
-		READ_ASYNC_STRUCT* pRAS = (READ_ASYNC_STRUCT*)p;
-		return read(pRAS, dwBytes);
-	} else {
-		return read(p, dwBytes);
-
-	}
-
-	
-}
-*/
-/*int FILESTREAM::Read(READ_ASYNC_STRUCT** pRAS, DWORD dwBytes)
-{
-	if (*pRAS) {
-		delete *pRAS;
-	}
-	*pRAS = new READ_ASYNC_STRUCT;
-	ZeroMemory(*pRAS, sizeof(READ_ASYNC_STRUCT));
-
-	return Read(*pRAS, dwBytes);
-}
-*/
-
-int FILESTREAM::ReadAsync(READ_ASYNC_STRUCT* pRAS, DWORD dwBytes)
-{
-	char cSemName[10]; cSemName[9] = 0;
-	for (int i=0;i<9;cSemName[i++]=97+rand()%26);
-
-	// if file is not overlapped -> do synchronous i/o
-	if (!bOverlapped || bBuffered) {
-		__int64 j = GetPos(); DWORD* dwPos = (DWORD*)&j;
-		dwBytes = Read(pRAS->lpDest, dwBytes);
-		pRAS->hSemaphore = CreateSemaphore(NULL, 1, 1, cSemName);
-
-		OVERLAPPED* pOver = new OVERLAPPED;
-		pRAS->pOverlapped = pOver;
-
-		pOver->Offset = dwBytes;
-		pOver->OffsetHigh = dwPos[1];
-		pOver->Internal = 0;
-		pOver->InternalHigh = 0;
-		pOver->hEvent = pRAS->hSemaphore;
-
-		return dwBytes;
-	}
-
-	pRAS->hSemaphore = CreateSemaphore(NULL, 0, 1, cSemName);
-
-	OVERLAPPED* pOver = new OVERLAPPED;
-	pRAS->pOverlapped = pOver;
-
 	__int64 j = GetPos(); DWORD* dwPos = (DWORD*)&j;
-	pOver->Offset = dwPos[0];
-	pOver->OffsetHigh = dwPos[1];
-	pOver->Internal = 0;
-	pOver->InternalHigh = 0;
-	pOver->hEvent = pRAS->hSemaphore;
+	overlapped->Offset = dwPos[0];
+	overlapped->OffsetHigh = dwPos[1];
+	overlapped->Internal = 0;
+	overlapped->InternalHigh = 0;
+	overlapped->hEvent = CreateEventA(NULL, true, false, "");
+	
+	int res = ReadFile(hFile, pDest, dwBytes, NULL, overlapped);
 
-	int rfe_res = ReadFileEx(hFile, pRAS->lpDest, dwBytes, pOver, ReadCompletionRoutine);
 	iCurrPos += dwBytes;
 
-	return rfe_res;
+	if (!res) {
+		DWORD last_error = GetLastError();
+		if (last_error == ERROR_IO_PENDING)
+			return FILESTREAM_ASYNCH_IO_INITIATED;
+	}
+
+    if (res)
+		return FILESTREAM_ASYNCH_IO_FINISHED;
+
+	return FILESTREAM_ASYNCH_IO_FAILED;
 }
 
-int FILESTREAM::WaitForCompletion(READ_ASYNC_STRUCT* pRAS)
+VOID CALLBACK FileIOCompletionRoutine(
+  DWORD dwErrorCode,
+  DWORD dwNumberOfBytesTransfered,
+  LPOVERLAPPED lpOverlapped
+  )
 {
-	while (WAIT_IO_COMPLETION == WaitForSingleObjectEx(pRAS->hSemaphore, INFINITE, true));
+	SetEvent(lpOverlapped->hEvent);
+}
+
+
+
+int FILESTREAM::WriteAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped)
+{
+	__int64 j = GetPos(); DWORD* dwPos = (DWORD*)&j;
+
+	overlapped->Offset = dwPos[0];
+	overlapped->OffsetHigh = dwPos[1];
+	overlapped->Internal = 0;
+	overlapped->InternalHigh = 0;
+	overlapped->hEvent = CreateEventA(NULL, true, false, "");
+
+	ResetEvent(overlapped->hEvent);
+	int res = WriteFileEx(hFile, pDest, dwBytes, overlapped, FileIOCompletionRoutine);
 	
-	return 1;
+//	int res = WriteFile(hFile, pDest, dwBytes, NULL, overlapped);
+	iCurrPos += dwBytes;
+
+	DWORD last_error = 0;
+	if (!res)
+		last_error = GetLastError(); 
+//	if (!res) {
+	
+	if (last_error == ERROR_IO_PENDING)
+//	if (res) 
+		return FILESTREAM_ASYNCH_IO_INITIATED;
+//	}
+
+	if (res) {
+		return FILESTREAM_ASYNCH_IO_INITIATED;
+//		return FILESTREAM_ASYNCH_IO_FINISHED;
+	}
+
+	return FILESTREAM_ASYNCH_IO_FAILED;
+}
+
+int FILESTREAM::WaitForAsyncIOCompletion(OVERLAPPED* overlapped, DWORD* pdwBytesTransferred)
+{
+	DWORD r;
+
+	BOOL b = GetOverlappedResult(hFile, overlapped, &r, true);
+
+	if (pdwBytesTransferred)
+		*pdwBytesTransferred = r;
+
+	return b;
+}
+
+int FILESTREAM::IsOverlappedIOComplete(OVERLAPPED* overlapped)
+{
+	DWORD r;
+	BOOL b = (S_OK == GetOverlappedResult(hFile, overlapped, &r, false));
+	return b;
 }
 
 int FILESTREAM::Read(void* lpDest,DWORD dwBytes)
 {
-	DWORD	dwRead,dwTotal;
+	DWORD	dwRead;
 	BYTE*	lpbDest=(BYTE*)lpDest;
 
-//	if (!(GetMode() & STREAM_READ)) return STREAM_ERR;
-	dwTotal=0;
-	dwRead=1;
+	_ASSERT(GetMode() & STREAM_READ);
+	_ASSERT(hFile);
+	
+	dwRead = 0;
+	if (!ReadFile(hFile, lpDest, dwBytes, &dwRead, NULL)) {
+		DWORD dwError = GetLastError();
+		void* msg = NULL;
+		FormatMessage( 
+		    FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+		    FORMAT_MESSAGE_FROM_SYSTEM | 
+		    FORMAT_MESSAGE_IGNORE_INSERTS,
+		    NULL,
+			dwError,
+		    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+		    (LPTSTR) &msg,
+		    0,
+		    NULL);
 
-	if (!bBuffered) {
-		iPossibleAlignedReadCount = 0;
-		if (!ispowof2(dwBytes)) {
-			 bBuffered = 1;
-			 __int64 iPos = GetPos();
-			 Seek(0);
-			 Open(cFilename, STREAM_READ);
-			 Seek(iPos);
-	//		printf("changing to buffered read\n");
-			 return Read(lpDest, dwBytes);
-		} else {
-			if (iAlignedBufferSize-align < (int)dwBytes) {
-				if (pAlignedInputBufferAllocated) {
-					delete pAlignedInputBufferAllocated;
-				}
-				int s = dwBytes;
-				iAlignedBufferSize = s+align+16;
-				pAlignedInputBufferAllocated=calloc(1, iAlignedBufferSize);
-				pAlignedInputBuffer = (void*)( ((unsigned)(pAlignedInputBufferAllocated) & ~(align-1)) + align);
-			}
+		printf("%s\n", msg);
+		LocalFree(msg);
 
-			BYTE* lpbDest2 = (BYTE*)pAlignedInputBuffer;
-			__int64 k = GetPos();
-
-			if (!bOverlapped) {
-				while ((dwTotal<dwBytes)&&(dwRead))
-				{	
-					DWORD dwBytesToRead = dwBytes;
-					ReadFile(hFile,lpbDest2,dwBytesToRead,&dwRead,NULL);
-					if (dwRead) {
-						memcpy(&lpbDest[dwTotal], lpbDest2, dwRead);
-						dwTotal+=dwRead;
-						iCurrPos += dwRead;
-					}
-				} 
-			} else {
-				__int64 j = GetPos(); DWORD* dwPos = (DWORD*)&j;
-				OVERLAPPED* over = new OVERLAPPED;
-				HANDLE h;
-				DWORD dwBytesToRead = dwBytes;
-				over->Offset = dwPos[0];
-				over->OffsetHigh = dwPos[1];
-				over->Internal = 0;
-				over->InternalHigh = 0;
-				char cReadSemaphoreName[10]; cReadSemaphoreName[9] = 0;
-				for (int i=0;i<9;i++) {
-					cReadSemaphoreName[i] = 65+rand()%26;
-				}
-				over->hEvent = h = CreateSemaphore(NULL,0, 1, cReadSemaphoreName);
-				if (ReadFileEx(hFile, lpbDest2, dwBytesToRead, over, ReadCompletionRoutine)) {
-					while (WaitForSingleObjectEx(h, INFINITE, true) == WAIT_IO_COMPLETION);
-					CloseHandle(h);
-					dwTotal = over->Offset;
-					memcpy(lpbDest, lpbDest2, dwTotal);
-				} else {
-					dwTotal = 0;
-				}
-
-				iCurrPos += dwTotal;
-				delete over;
-			}
-		}
-	} else {
-		Flush();
-		if (!bOverlapped) {
-			while ((dwTotal<dwBytes)&&(dwRead))
-			{	
-				ReadFile(hFile,&(lpbDest[dwTotal]),min(dwBytes-dwTotal,131072),&dwRead,NULL);
-				dwTotal+=dwRead;
-				iCurrPos += dwRead;
-			}
-		} else {
-				__int64 j = GetPos(); DWORD* dwPos = (DWORD*)&j;
-				OVERLAPPED* over = new OVERLAPPED;
-				HANDLE h;
-				DWORD dwBytesToRead = dwBytes;
-				over->Offset = dwPos[0];
-				over->OffsetHigh = dwPos[1];
-				over->Internal = 0;
-				over->InternalHigh = 0;
-				char cReadSemaphoreName[10]; cReadSemaphoreName[9] = 0;
-				for (int i=0;i<9;i++) {
-					cReadSemaphoreName[i] = 65+rand()%26;
-				}
-
-				over->hEvent = h = CreateSemaphore(NULL,0, 1, cReadSemaphoreName);
-				if (ReadFileEx(hFile, lpbDest, dwBytesToRead, over, ReadCompletionRoutine)) {
-					while (WaitForSingleObjectEx(h, INFINITE, true) == WAIT_IO_COMPLETION);
-					CloseHandle(h);
-					dwTotal = over->Offset;
-				} else {
-					dwTotal = 0;
-				}
-
-
-				iCurrPos += dwTotal;
-				delete over;
-		}
-		if (!bDenyUnbufferedRead) {
-			if (!(GetPos() & alignment_mask) & !(dwBytes & alignment_mask)) {
-				if (iPossibleAlignedReadCount++ > 10) {
-					__int64 j = GetPos();
-					Close();
-					bBuffered = 0;
-					Seek(0);
-			//		printf("changing to unbuffered read\n");
-					Open(cFilename, STREAM_READ | ((bOverlapped)?STREAM_OVERLAPPED:0));
-					Seek(j);
-				}
-			} else {
-				iPossibleAlignedReadCount = 0;
-			}
-		}
+		return 0;
 	}
 
-//	iCurrPos += dwTotal;
-	return dwTotal;
+	iCurrPos += dwRead;
+
+	return dwRead;
 }
 
 void FILESTREAM::Flush()
 {
-	int iWritten;
 
-	if (bCanWrite && bBuffered) {
-		if (iOutCachePos) {
-			iWritten = Write2Disk(cOutCache, (int)iOutCachePos);
-			iOutCachePos = 0;
-			cOutCacheCurr = cOutCache;
-			iCurrPos += iWritten;
-		}
-	}
-}
-
-int FILESTREAM::Write2Disk(void* lpSource, DWORD dwBytes)
-{
-	DWORD	dwWritten;
-
-	if (!bOverlapped) {
-		WriteFile(hFile,lpSource,dwBytes,&dwWritten,NULL);
-		return dwWritten;
-	} else {
-		__int64 j = iCurrPos; DWORD* dwPos = (DWORD*)&j;
-		OVERLAPPED* over = new OVERLAPPED;
-		OVERLAPPED_ADDITIONAL* over_add = new OVERLAPPED_ADDITIONAL;
-			
-		over_add->hSemaphore = hWriteSemaphore;
-		over_add->lpData = new char[dwBytes + align];
-		void* pAlignedData = (void*)( ((unsigned)(over_add->lpData) & ~(align-1)) + align);
-
-		memcpy(pAlignedData, lpSource, dwBytes);
-
-		over->hEvent = (HANDLE)over_add;
-		over->Offset = dwPos[0];
-		over->OffsetHigh = dwPos[1];
-		over->Internal = 0;
-		over->InternalHigh = 0;
-			
-		while (WAIT_IO_COMPLETION == WaitForSingleObjectEx(hWriteSemaphore, INFINITE, true));
-		int wfe_res = WriteFileEx(hFile, pAlignedData , dwBytes, over, WriteCompletionRoutine);
-
-		return dwBytes;
-	}
 }
 
 int FILESTREAM::Write(void* lpSource,DWORD dwBytes)
 {
 	DWORD	dwWritten;
 
-	if (bBuffered) {
-		if (!bCanWrite) return STREAM_ERR;
-	
-		if (iOutCachePos + dwBytes > iOutCacheSize) {
-			Flush();
-		}
+	dwWritten = 0;
+	_ASSERT(hFile);
+	_ASSERT(GetMode() & STREAM_WRITE);
 
-		if (dwBytes >= iOutCacheSize) {
-			dwWritten = Write2Disk(lpSource, dwBytes);
-		} else {
-			memcpy(cOutCacheCurr,lpSource,dwBytes);
-			cOutCacheCurr += dwBytes;
-			iOutCachePos += dwBytes;
-		}
-		
-		iCurrentSize += dwBytes;
-	} else {
-		dwWritten = Write2Disk(lpSource, dwBytes);
-		iCurrentSize += dwBytes;
-		iCurrPos += dwBytes;
+	Seek(iCurrPos);
+
+	if (!WriteFile(hFile, lpSource, dwBytes, &dwWritten, 0)) {
+		DWORD dwError = GetLastError();
+		void* msg = NULL;
+		FormatMessage( 
+		    FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+		    FORMAT_MESSAGE_FROM_SYSTEM | 
+		    FORMAT_MESSAGE_IGNORE_INSERTS,
+		    NULL,
+			dwError,
+		    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+		    (LPTSTR) &msg,
+		    0,
+		    NULL);
+
+		printf("%s\n", msg);
+		LocalFree(msg);
+
+		return 0;
 	}
-	
+
+	_ASSERT(dwBytes == dwWritten);
+
+	iCurrPos += dwBytes;
+	if (iCurrPos > iCurrentSize) {
+		iCurrentSize = iCurrPos;
+		iFilesize = iCurrentSize;
+	}
+
 	return dwBytes;
 }
 
@@ -588,6 +491,7 @@ int FILESTREAM::SethFile(HANDLE _hFile)
 int FILESTREAM::TruncateAt(__int64 iPosition)
 {
 	if (bBuffered) {
+		Seek(iPosition-1);
 		Seek(iPosition);
 		SetEndOfFile(hFile);
 	} else {
@@ -600,6 +504,15 @@ int FILESTREAM::TruncateAt(__int64 iPosition)
 
 	return 1;
 }
+
+
+
+
+
+
+
+
+
 
 int BITSTREAM::Open(STREAM* lpStream)
 {
@@ -624,7 +537,12 @@ int BITSTREAM::ReadBit(int iFlag)
 
 int BITSTREAM::Seek(__int64 qwPos)
 {
-	if (!GetSource()) return 0;
+	_ASSERT(qwPos >= 0);
+	_ASSERT(GetSource());
+
+	if (!GetSource()) 
+		return 0;
+
 	if (GetSource()->Seek(qwPos>>3)==STREAM_OK)
 	{
 		GetSource()->Read(&wData,1);

@@ -6,6 +6,16 @@
 #include "integers.h"
 #include "math.h"
 #include "CRC.h"
+#include "generateuids.h"
+#include "Compression.h"
+
+#ifdef DEBUG_NEW
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+#endif
 
 // some global settings for the lib
 
@@ -176,6 +186,7 @@ __int64 EBMLElement_Writer::Write(char* pDest, int* iDest)
 			iRes += Put(info.cData->GetData(), (int)info.iSize, pDest, iDest);
 		} else {
 			void* lpBuffer = new char[(int)info.iSize];
+			memset(lpBuffer, 0, (int)info.iSize);
 			iRes += Put(lpBuffer, (int)info.iSize, pDest, iDest);
 			delete lpBuffer;
 		}
@@ -201,14 +212,14 @@ __int64 EBMLElement_Writer::Write(char* pDest, int* iDest)
 		}
 
 		if (IsCRCEnabled()) {
-				unsigned char* p = new unsigned char[(int)info.iSize];
-				int i = 0;
-				pChild->WriteList((char*)p, &i);
-				int crc = CRC32(p, i);
-				memcpy(pCRC32->GetData()->AsString(), &crc, 4);
-				iRes+=pCRC32->Write();
-				if (!pDest) IncWriteOverhead(6);
-				delete p;
+			unsigned char* p = new unsigned char[(int)info.iSize];
+			int i = 0;
+			pChild->WriteList((char*)p, &i);
+			int crc = CRC32(p, i);
+			memcpy(pCRC32->GetData()->AsString(), &crc, 4);
+			iRes+=pCRC32->Write(pDest, iDest);
+			if (!pDest) IncWriteOverhead(6);
+			delete p;
 		}
 
 		iRes += pChild->WriteList(pDest, iDest);
@@ -256,10 +267,11 @@ void EBMLElement_Writer::SetFixedSizeLen(int iSize)
 
 void EBMLElement_Writer::EnableCRC32(int bEnabled)
 {
-	bWriteCRC = bEnabled;
-	pCRC32 = new EBMLElement_Writer(GetDest(), (char*)MID_CRC32, new CBuffer(4, new char[4]));
-	pCRC32->SetNext(pChild);
-	
+	if (!bWriteCRC) {
+		bWriteCRC = bEnabled;
+		pCRC32 = new EBMLElement_Writer(GetDest(), (char*)MID_CRC32, new CBuffer(4, new char[4]));
+		pCRC32->SetNext(pChild);
+	} 	
 }
 
 void EBMLElement_Writer::SetDest(STREAM* pStream)
@@ -280,7 +292,9 @@ void EBMLElement_Writer::Delete()
 		SetChild(NULL);
 	}
 
-	if (info.cData) DecBufferRefCount(&info.cData);
+	if (info.cData)
+		DecBufferRefCount(&info.cData);
+
 	return;
 }
 
@@ -525,13 +539,13 @@ EBMLFloat_Writer::EBMLFloat_Writer()
 	SetData(cBuffer);
 	cBuffer->SetSize(ebmlfloatmode/8);
 }
-
+/*
 void EBMLFloat_Writer::Delete()
 {
 	CBuffer* cBuffer = GetData();
 	DecBufferRefCount(&cBuffer);
 }
-
+*/
 void EBMLFloat_Writer::SetFData(long double ldData)
 {
 	float  fData = (float)ldData;
@@ -576,12 +590,12 @@ __int64 EBMLString_Writer::GetSize()
 
 	return q + info.iIDLen + info.iSizeLen;
 }
-
+/*
 void EBMLString_Writer::Delete()
 {
 	CBuffer* cBuffer = GetData();
 	DecBufferRefCount(&cBuffer);
-}
+}*/
 
 void EBMLString_Writer::SetSData(char* cData)
 {
@@ -637,6 +651,12 @@ EBMLHeader_Writer::EBMLHeader_Writer(STREAM* pStream)
 	e_DocType->Define(GetDest(),(char*)EID_DocType,"matroska",NULL);
 }
 
+void EBMLHeader_Writer::SetDocTypeVersion(int version)
+{
+	e_DocTypeVersion->SetIData(version);
+	e_DocTypeReadVersion->SetIData(version);
+}
+
 void EBMLHeader_Writer::Delete()
 {
 	GetChild()->DeleteList();
@@ -670,34 +690,90 @@ EBMLMSegmentInfo_Writer::EBMLMSegmentInfo_Writer(STREAM* pStream)
 
 void EBMLMSegmentInfo_Writer::Build()
 {
-	int i;
-	char* c;
-
 	if (GetChild()) GetChild()->DeleteList();
-	if (!info.cSegmentUID) {
-		info.cSegmentUID = new CBuffer();
-		info.cSegmentUID->SetSize(16);
-		c = info.cSegmentUID->AsString();
-		
-//		srand(GetTickCount());
-		for (i=0;i<16;i++) {
-			c[i]=0;
-			while (!c[i]) c[i] = rand() & 0xFF;
-		}
-	}
-	if (info.cSegmentUID) {
-		EBMLString_Writer* e_SegUID = new EBMLString_Writer();
-		e_SegUID->Define(GetDest(),(char*)MID_SI_SEGMENTUID,info.cSegmentUID->AsString(),NULL);
-		AppendChild(e_SegUID);
-	}
 	
+	if (!info.bSegmentUID) {
+		generate_uid(info.cSegmentUID, 16);
+		info.bSegmentUID = true;
+	}
+
+	if (info.bSegmentUID)
+		AppendChild(new EBMLElement_Writer(GetDest(), (char*)MID_SI_SEGMENTUID, new CBuffer(16, info.cSegmentUID, CBN_REF1)));
+
+	if (info.bPrevUID)
+		AppendChild(new EBMLElement_Writer(GetDest(), (char*)MID_SI_PREVUID, new CBuffer(16, info.cPrevUID, CBN_REF1)));
+
+	if (info.bNextUID)
+		AppendChild(new EBMLElement_Writer(GetDest(), (char*)MID_SI_NEXTUID, new CBuffer(16, info.cNextUID, CBN_REF1)));
+	
+	if (info.bSegmentFamily)
+		AppendChild(new EBMLElement_Writer(GetDest(), (char*)MID_SI_SEGMENTFAMILY, new CBuffer(16, info.cSegmentFamily, CBN_REF1)));
+
 	AppendChild_Float((char*)MID_SI_DURATION,info.fDuration,-1);
-	
     AppendChild_String((char*)MID_SI_WRITINGAPP,info.cWritingApp);
 	AppendChild_String((char*)MID_SI_MUXINGAPP,info.cMuxingApp);
 	AppendChild_String((char*)MID_SI_TITLE,info.cTitle);
 	AppendChild_UInt((char*)MID_SI_TIMECODESCALE,info.iTimecodeScale,1000000);
 	return;
+}
+
+char* EBMLMSegmentInfo_Writer::GetTitle()
+{
+	if (info.cTitle)
+		return info.cTitle->AsString();
+	else
+		return ("");
+}
+
+void EBMLMSegmentInfo_Writer::SetSegmentUID(char* cSUID) 
+{
+	if (cSUID) {
+		memcpy(info.cSegmentUID, cSUID, 16);
+		info.bSegmentUID = true;
+	} else
+		info.bSegmentUID = false;
+}
+
+void EBMLMSegmentInfo_Writer::SetNextSegmentUID(char* cNUID) 
+{
+	if (cNUID) {
+		memcpy(info.cNextUID, cNUID, 16);
+		info.bNextUID = true;
+	} else
+		info.bNextUID = false;
+
+}
+void EBMLMSegmentInfo_Writer::SetPrevSegmentUID(char* cPUID) 
+{
+	if (cPUID) {
+		memcpy(info.cPrevUID, cPUID, 16);
+		info.bPrevUID = true;
+	} else
+		info.bPrevUID = false;
+}
+
+void EBMLMSegmentInfo_Writer::SetSegmentFamily(char* cUID)
+{
+	if (cUID) {
+		memcpy(info.cSegmentFamily, cUID, 16);
+		info.bSegmentFamily = true;
+	} else
+		info.bSegmentFamily = false;
+}
+
+void EBMLMSegmentInfo_Writer::SetUID(int uidtype, char* cUID)
+{
+	switch (uidtype) {
+		case UIDTYPE_NEXTUID: SetNextSegmentUID(cUID); break;
+		case UIDTYPE_PREVUID: SetPrevSegmentUID(cUID); break;
+		case UIDTYPE_SEGMENTFAMILY: SetSegmentFamily(cUID); break;
+		case UIDTYPE_SEGMENTUID: SetSegmentUID(cUID); break;
+	}
+}
+
+void EBMLMSegmentInfo_Writer::EnableNextUID(bool bEnabled)
+{
+	info.bWriteNextUID = true;
 }
 
 void EBMLMSegmentInfo_Writer::SetTimecodeScale(__int64 iScale)
@@ -707,9 +783,11 @@ void EBMLMSegmentInfo_Writer::SetTimecodeScale(__int64 iScale)
 
 void EBMLMSegmentInfo_Writer::Delete()
 {
-	if (GetChild()) GetChild()->DeleteList();
+//	if (GetChild()) 
+//		GetChild()->DeleteList();
+	EBMLElement_Writer::Delete();	
+
 	DecBufferRefCount(&info.cMuxingApp);
-	DecBufferRefCount(&info.cSegmentUID);
 	DecBufferRefCount(&info.cTitle);
 	DecBufferRefCount(&info.cWritingApp);
 }
@@ -756,7 +834,6 @@ EBMLMTrackInfo_Writer::EBMLMTrackInfo_Writer(STREAM* pStream, void* p)
 
 void EBMLMTrackInfo_Writer::SetTrackCount(int iCount)
 {
-//	srand(GetTickCount());
 	tracks = (TRACK_DESCRIPTOR**)calloc(iCount,sizeof(TRACK_DESCRIPTOR*));
 
 	if (iCount>iTrackCount) {
@@ -769,13 +846,12 @@ void EBMLMTrackInfo_Writer::SetTrackCount(int iCount)
 void EBMLMTrackInfo_Writer::SetTrackProperties(int iNbr,TRACK_DESCRIPTOR* track)
 {
 	// generate TrackUID if it is not present
-	if (!track->iTrackUID) {
-		track->iTrackUID = (rand() & 0xFFFF) | (rand() << 16);
-	}
-
-	if (iNbr<iTrackCount) {
+	if (!track->iTrackUID) 
+		generate_uid((char*)&track->iTrackUID, 4);
+	
+	if (iNbr<iTrackCount)
 		memcpy(tracks[iNbr],track,sizeof(TRACK_DESCRIPTOR));
-	}
+	
 }
 
 void EBMLMTrackInfo_Writer::Build()
@@ -795,24 +871,24 @@ void EBMLMTrackInfo_Writer::Build()
 		AppendChild(e_Track, APPEND_END | APPEND_DONT_RANDOMIZE);
 
 		e_Track->AppendChild_UInt((char*)MID_TR_TRACKNUMBER,tracks[i]->iTrackNbr);
-		
 		e_Track->AppendChild_UInt((char*)MID_TR_TRACKUID,tracks[i]->iTrackUID);
 
-		if (m->IsEnabled_WriteFlagDefault()) {
+		if (m->IsEnabled_WriteFlagDefault())
 			e_Track->AppendChild_UInt((char*)MID_TR_FLAGDEFAULT,!!tracks[i]->iDefault,-1);
-		}
-		if (m->IsEnabled_WriteFlagEnabled()) {
+		
+		if (m->IsEnabled_WriteFlagEnabled()) 
 			e_Track->AppendChild_UInt((char*)MID_TR_FLAGENABLED,!!tracks[i]->iEnabled,-1);
-		}
-		if (m->IsEnabled_WriteFlagLacing()) {
+		
+		if (m->IsEnabled_WriteFlagLacing()) 
 			e_Track->AppendChild_UInt((char*)MID_TR_FLAGLACING,!!tracks[i]->iLacing,-1);
-		}
 
 		e_Track->AppendChild_UInt((char*)MID_TR_TRACKTYPE,tracks[i]->iTrackType,0);
 		e_Track->AppendChild_UInt((char*)MID_TR_DEFAULTDURATION,tracks[i]->iDefaultDuration,0);
 		e_Track->AppendChild_UInt((char*)MID_TR_MINCACHE,tracks[i]->iMinCache,-1);
 		e_Track->AppendChild_UInt((char*)MID_TR_MAXCACHE,tracks[i]->iMaxCache,-1);
 		e_Track->AppendChild_String((char*)MID_TR_CODECID,tracks[i]->cCodecID);
+		if (tracks[i]->cCodecPrivate)
+			tracks[i]->cCodecPrivate->IncRefCount();
 		e_Track->AppendChild_Binary((char*)MID_TR_CODECPRIVATE,tracks[i]->cCodecPrivate);
 		e_Track->AppendChild_String((char*)MID_TR_NAME,tracks[i]->cName);
 		e_Track->AppendChild_String((char*)MID_TR_LANGUAGE,tracks[i]->cLngCode);
@@ -824,6 +900,12 @@ void EBMLMTrackInfo_Writer::Build()
 				e_video->SetDest(GetDest());
 				e_video->AppendChild_UInt((char*)MID_TRV_PIXELWIDTH,tracks[i]->video.iX1,-1);
 				e_video->AppendChild_UInt((char*)MID_TRV_PIXELHEIGHT,tracks[i]->video.iY1,-1);
+
+				e_video->AppendChild_UInt((char*)MID_TRV_PIXELCROPBOTTOM,tracks[i]->video.rCrop.bottom,-1);
+				e_video->AppendChild_UInt((char*)MID_TRV_PIXELCROPTOP,tracks[i]->video.rCrop.top,-1);
+				e_video->AppendChild_UInt((char*)MID_TRV_PIXELCROPLEFT,tracks[i]->video.rCrop.left,-1);
+				e_video->AppendChild_UInt((char*)MID_TRV_PIXELCROPRIGHT,tracks[i]->video.rCrop.right,-1);
+
 				e_video->AppendChild_UInt((char*)MID_TRV_DISPLAYWIDTH,tracks[i]->video.iX2,
 					m->IsDisplayWidth_HeightEnabled()?-1:tracks[i]->video.iX1);
 				e_video->AppendChild_UInt((char*)MID_TRV_DISPLAYHEIGHT,tracks[i]->video.iY2,
@@ -846,31 +928,47 @@ void EBMLMTrackInfo_Writer::Build()
 				e_audio->AppendChild_UInt((char*)MID_TRA_BITDEPTH,tracks[i]->audio.iBitDepth,0);
 				break;
 		}
-		if (tracks[i]->iCompression != COMP_NONE) {
+		if (!tracks[i]->track_compression.empty()) {
 			EBMLElement_Writer* e_CENCs = new EBMLElement_Writer;
 			e_CENCs->SetID((char*)MID_TR_CONTENTENCODINGS);
 			e_CENCs->SetDest(GetDest());
 			
-			EBMLElement_Writer* e_CENC = new EBMLElement_Writer;
-			e_CENC->SetID((char*)MID_TRCE_CONTENTENCODING);
-			e_CENC->SetDest(GetDest());
+			TRACK_COMPRESSION::iterator compression;
+			for (compression=tracks[i]->track_compression.begin();
+				compression != tracks[i]->track_compression.end(); compression++) {
+				
+				EBMLElement_Writer* e_CENC = new EBMLElement_Writer;
+				e_CENC->SetID((char*)MID_TRCE_CONTENTENCODING);
+				e_CENC->SetDest(GetDest());
 
-			e_CENC->AppendChild_UInt((char*)MID_TRCE_CONTENTENCODINGTYPE, 0, -1);
-			e_CENC->AppendChild_UInt((char*)MID_TRCE_CONTENTENCODINGSCOPE, 1, -1);
-			e_CENC->AppendChild_UInt((char*)MID_TRCE_CONTENTENCODINGORDER, 0, -1);
+				e_CENC->AppendChild_UInt((char*)MID_TRCE_CONTENTENCODINGTYPE, 0, -1);
+				e_CENC->AppendChild_UInt((char*)MID_TRCE_CONTENTENCODINGSCOPE, 1, -1);
+				e_CENC->AppendChild_UInt((char*)MID_TRCE_CONTENTENCODINGORDER, 
+					compression->order, -1);
 
-			EBMLElement_Writer* e_CCPR= new EBMLElement_Writer;
-			e_CCPR->SetID((char*)MID_TRCE_CONTENTCOMPRESSION);
-			e_CCPR->SetDest(GetDest());
+				EBMLElement_Writer* e_CCPR= new EBMLElement_Writer;
+				e_CCPR->SetID((char*)MID_TRCE_CONTENTCOMPRESSION);
+				e_CCPR->SetDest(GetDest());
 
-			if (tracks[i]->iCompression == COMP_ZLIB) {
-				e_CCPR->AppendChild_UInt((char*)MID_TRCE_CONTENTCOMPALGO, 0, -1);
-			}
+				if (compression->compression == COMPRESSION_ZLIB) {
+					e_CCPR->AppendChild_UInt((char*)MID_TRCE_CONTENTCOMPALGO, 0, -1);
+				}
 
-			e_CENC->AppendChild(e_CCPR);
-			e_CENCs->AppendChild(e_CENC);
+				if (compression->compression == COMPRESSION_HDRSTRIPING) {
+					e_CCPR->AppendChild_UInt((char*)MID_TRCE_CONTENTCOMPALGO, 3, -1);
+					e_CCPR->AppendChild_Binary((char*)MID_TRCE_CONTENTCOMPSETTINGS,
+						new CBuffer(compression->compression_private_size, 
+							compression->compression_private,
+							CBN_REF1));
+				}
+
+				e_CENC->AppendChild(e_CCPR);
+				e_CENCs->AppendChild(e_CENC);
+			}			
+			
 			e_Track->AppendChild(e_CENCs);
 		}
+		e_Track->EnableCRC32();
 	}
 }
 
@@ -881,14 +979,14 @@ void EBMLMTrackInfo_Writer::Build()
 
 EBMLMSeekhead_Writer::EBMLMSeekhead_Writer()
 {
-	SetID((char*)MID_MS_SEEKHEAD);
+	SetID((char*)MID_SEEKHEAD);
 	iSpaceLeft = 1<<30;
 }
 
 EBMLMSeekhead_Writer::EBMLMSeekhead_Writer(STREAM* pStream)
 {
 	SetDest(pStream);
-	SetID((char*)MID_MS_SEEKHEAD);
+	SetID((char*)MID_SEEKHEAD);
 	iSpaceLeft = 1<<30;
 }
 
@@ -986,12 +1084,17 @@ void EBMLMCluster_Writer::Init()
 
 int EBMLMCluster_Writer::AddBlock(ADDBLOCK* a, BLOCK_INFO* lpInfo)
 {
+	MATROSKA* m = (MATROSKA*)pParent;
+
 	int  i, iDiff;
 
 	iDiff = (int)(a->iTimecode-iTimecode);
-	if (iDiff > min(iMaxClusterTime,30000)) {
+	if (iDiff > min(iMaxClusterTime,32000)) {
 		return ABR_CLUSTERFULL;
 	}
+
+	if (iDiff < -32000)
+		return ABR_CLUSTERFULL;
 
 	if (iCurrentSize > 1024 && (iCurrentSize + a->cData->GetSize() > iMaxClusterSize)) {
 		return ABR_CLUSTERFULL;
@@ -999,17 +1102,33 @@ int EBMLMCluster_Writer::AddBlock(ADDBLOCK* a, BLOCK_INFO* lpInfo)
 
 	a->iTimecode -= iTimecode;
 	
-	EBMLElement_Writer*  e_BG = AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_CL_BLOCKGROUP),
-		APPEND_END | APPEND_DONT_RANDOMIZE);
-	e_BG->AppendChild_UInt((char*)MID_CL_BLOCKDURATION,a->iDuration,0);
+	if (m->GetMatroskaVersion() == 1 || a->iDuration) {
+		lpInfo->discardable = 0;
+		lpInfo->key_frame = 0;
+		lpInfo->block_type = BLOCKTYPE_BLOCK;
 
-	for (i=0;i<a->iRefCount;i++) {
-		e_BG->AppendChild_SInt((char*)MID_CL_REFERENCEBLOCK,a->iReferences[i],0);
+		EBMLElement_Writer*  e_BG = AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_CL_BLOCKGROUP),
+			APPEND_END | APPEND_DONT_RANDOMIZE);
+		e_BG->AppendChild_UInt((char*)MID_CL_BLOCKDURATION,a->iDuration,0);
+
+		for (i=0;i<a->iRefCount;i++) {
+			e_BG->AppendChild_SInt((char*)MID_CL_REFERENCEBLOCK,a->iReferences[i],0);
+		}
+
+		e_BG->AppendChild(new EBMLMBlock_Writer(GetDest(),a, pParent, lpInfo));
+
+		iCurrentSize += e_BG->GetSize();
+	} else {
+		lpInfo->discardable = 0;
+		lpInfo->key_frame = (!a->iRefCount);
+		lpInfo->block_type = BLOCKTYPE_SIMPLEBLOCK;
+
+		EBMLElement_Writer* e;
+
+		AppendChild(e=new EBMLMBlock_Writer(GetDest(),a, pParent, lpInfo), APPEND_END | APPEND_DONT_RANDOMIZE);
+
+		iCurrentSize += e->GetSize();
 	}
-
-	e_BG->AppendChild(new EBMLMBlock_Writer(GetDest(),a, pParent, lpInfo));
-
-	iCurrentSize += e_BG->GetSize();
 
 	return ABR_OK;
 }
@@ -1043,6 +1162,8 @@ EBMLMBlock_Writer::EBMLMBlock_Writer(STREAM* pStream,ADDBLOCK* a, void* p, BLOCK
 	MATROSKA* m = (MATROSKA*)p;
 	int		iLaceStyle = m->GetLaceStyle();
 
+	int		kf_flag = (lpInfo->key_frame && lpInfo->block_type == BLOCKTYPE_SIMPLEBLOCK)?BLKHDRF_KEYFRAME:0;
+
 	SetDest(pStream);
 	iHdrPos += Int2VSUInt(&iTrack,(char*)(cBlockHdr+iHdrPos));
 	iHdrPosNew += Int2VSUInt(&iTrack,(char*)(cBlockHdrNew+iHdrPosNew));
@@ -1059,12 +1180,12 @@ EBMLMBlock_Writer::EBMLMBlock_Writer(STREAM* pStream,ADDBLOCK* a, void* p, BLOCK
 
 	// laces of 1 frame are not allowed; only use lacing for 2 or more frames
 	if (a->iFrameCountInLace<2) {
-		cBlockHdr[iHdrPos++] = 0;
+		cBlockHdr[iHdrPos++] = kf_flag;
 		if (lpInfo) lpInfo->iLaceStyle = 0;
 	} else {
-		// LACESTYLE_XIPH
+		// xiph lacing or automatic
 		if (iLaceStyle == LACESTYLE_XIPH || iLaceStyle == 0 || iLaceStyle == LACESTYLE_AUTO) {
-			cBlockHdr[iHdrPos++] = 2;
+			cBlockHdr[iHdrPos++] = 2 | kf_flag;
 			cBlockHdr[iHdrPos++] = a->iFrameCountInLace-1;
 			for (int i=0;(i<a->iFrameCountInLace-1)&&(iHdrPos<2040);i++) {
 				int iSize = a->iFrameSizes[i];
@@ -1083,6 +1204,7 @@ EBMLMBlock_Writer::EBMLMBlock_Writer(STREAM* pStream,ADDBLOCK* a, void* p, BLOCK
 			}
 		}
 
+		// embl/fixed lacing or automatic
 		if (iLaceStyle == LACESTYLE_EBML || iLaceStyle == LACESTYLE_AUTO) {
 			int bEqual = true;
 			for (int i=1;i<a->iFrameCountInLace;i++) {
@@ -1090,12 +1212,12 @@ EBMLMBlock_Writer::EBMLMBlock_Writer(STREAM* pStream,ADDBLOCK* a, void* p, BLOCK
 			}
 
 			if (bEqual) {
-				cBlockHdrNew[iHdrPosNew++] = 4;
+				cBlockHdrNew[iHdrPosNew++] = 4 | kf_flag;
 				cBlockHdrNew[iHdrPosNew++] = a->iFrameCountInLace-1;
 				bFixed = true;
 			} else {
 
-				cBlockHdrNew[iHdrPosNew++] = 6;
+				cBlockHdrNew[iHdrPosNew++] = 6 | kf_flag;
 				cBlockHdrNew[iHdrPosNew++] = a->iFrameCountInLace-1;
 				__int64 f = 0;
 				for (int i=0;i<a->iFrameCountInLace-1;i++) {
@@ -1134,7 +1256,11 @@ EBMLMBlock_Writer::EBMLMBlock_Writer(STREAM* pStream,ADDBLOCK* a, void* p, BLOCK
 		memcpy(cData+iHdrPos,a->cData->AsString(),iSize);
 	}
 
-	SetID((char*)MID_CL_BLOCK);
+	if (lpInfo->block_type == BLOCKTYPE_BLOCK)
+		SetID((char*)MID_CL_BLOCK);
+	else 
+		SetID((char*)MID_CL_SIMPLEBLOCK);
+
 	SetData(cB);
 
 	if (iDontWriteBlockSizes) info.iWriteUnknownSize = 1;
@@ -1181,6 +1307,26 @@ int EBMLMCue_Writer::AddCuePoint(int iTrack, __int64 iTimecode, __int64 iCluster
 	return 1;
 }
 
+int EBMLMCue_Writer::AddCuePoint(CUE_POINT& cue_point)
+{
+	EBMLElement_Writer*	e_CuePoint;
+
+	e_CuePoint = AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_CU_CUEPOINT),
+		APPEND_END | APPEND_DONT_RANDOMIZE);
+	e_CuePoint->AppendChild_UInt((char*)MID_CU_CUETIME,cue_point.qwTimecode,-1);
+
+	for (size_t i=0;i<cue_point.tracks.size();i++) {
+		EBMLElement_Writer* e_CueTrackPosition = e_CuePoint->AppendChild(new EBMLElement_Writer(GetDest(),
+			(char*)MID_CU_CUETRACKPOSITIONS));
+		CUE_TRACKINFO& cti = cue_point.tracks[i];
+		e_CueTrackPosition->AppendChild_UInt((char*)MID_CU_CUECLUSTERPOSITION,cti.qwClusterPos,-1);
+		e_CueTrackPosition->AppendChild_UInt((char*)MID_CU_CUETRACK,cti.iTrack, -1);
+		e_CueTrackPosition->AppendChild_UInt((char*)MID_CU_CUEBLOCKNUMBER, cti.iBlockNbr, 0);
+	}
+
+	return 1;
+}
+
 	///////////////////////
 	// Matroska Chapters //
 	///////////////////////
@@ -1190,74 +1336,146 @@ EBMLMChapter_Writer::EBMLMChapter_Writer()
 	chapters = NULL;
 }
 
-int EBMLMChapter_Writer::RenderChapters(EBMLElement_Writer *pParent, CChapters* c, CChapters* cParent, int parent_index)
+EBMLMChapter_Writer::~EBMLMChapter_Writer()
+{
+	chapters->Delete();
+	delete chapters;
+}
+
+
+// if bSetEnd == 0  ->  end of chapters is not manipulated, chapter is always written
+
+int EBMLMChapter_Writer::RenderChapters(EBMLElement_Writer *pParent, CChapters* c, 
+										CChapters* cParent, int parent_index,
+										int bSetEnd, __int64 iMax)
 {
 	EBMLElement_Writer* e_ChapterAtom;
-	__int64 iBegin; __int64 iEnd; char cText[1024];
-	__int64 iOldEnd; int bHidden; int bEnabled;
+	__int64 iBegin; __int64 iEnd; 
+	int bHidden; int bEnabled; int bSegUID;
+	int last_chapter_found = 0;
+	int first_chapter_found = 0;
+	int drop_chapter = 0;
 
 	for (int i=0;i<c->GetChapterCount();i++) {
 		SINGLE_CHAPTER_DATA scd;
 		c->GetChapter(i,&scd);
-		iBegin = scd.iBegin; iEnd = scd.iEnd; strcpy(cText, scd.cText);
-		bHidden = scd.bHidden; bEnabled = scd.bEnabled;
-		if (!strlen(scd.cLng)) strcpy(scd.cLng, "und");
-		//c->GetChapter(i,&iBegin,&iEnd,cText);
-		iOldEnd = iEnd;
-	// end of chapter not indicated
-		if (iEnd == -1) {
-			if (c->GetChapterCount()==i+1) {
-				iEnd = cParent->GetChapterEnd(parent_index);
-			} else {
-				iEnd = c->GetChapterBegin(i+1);
-			}
+		iBegin = scd.iBegin; iEnd = scd.iEnd; 
+		bHidden = scd.bHidden; bEnabled = scd.bEnabled; bSegUID = scd.bSegmentUIDValid;
+
+		// chapters don't begin earlier than the segment
+	//	if (iBegin < -1) iBegin = 0;
+
+		if (bSegUID) {
+		//	if (i == 0 && i != c->GetChapterCount() - 1)
+//				drop_chapter = 1;
 		}
 
-		if (iBegin < -1) iBegin = 0;
-		if (iBegin < iMaxEnd && iEnd > 0) {
+		if (!drop_chapter) if (iBegin < iMaxEnd && iEnd > 0 || bSegUID || !bSetEnd) {
 			e_ChapterAtom = pParent->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_CH_CHAPTERATOM),
 				APPEND_END | APPEND_DONT_RANDOMIZE);
 			e_ChapterAtom->AppendChild_UInt((char*)MID_CH_CHAPTERUID,c->GetUID(i),0);
-			if (iEnd > iMaxEnd) {
-				iEnd = iMaxEnd;
-				c->SetChapterEnd(i,iEnd+c->GetBias(BIAS_UNSCALED));
-			} else {
-				c->SetChapterEnd(i,iEnd);
-			}
+			
 			e_ChapterAtom->AppendChild_UInt((char*)MID_CH_CHAPTERTIMESTART,iBegin,-1);
-			e_ChapterAtom->AppendChild_UInt((char*)MID_CH_CHAPTERTIMEEND,iEnd);
-			e_ChapterAtom->AppendChild_UInt((char*)MID_CH_CHAPTERFLAGENABLED, bEnabled, -1);
-			e_ChapterAtom->AppendChild_UInt((char*)MID_CH_CHAPTERFLAGHIDDEN, bHidden, -1);
+			e_ChapterAtom->AppendChild_UInt((char*)MID_CH_CHAPTERTIMEEND,iEnd,-1);
+			e_ChapterAtom->AppendChild_UInt((char*)MID_CH_CHAPTERFLAGENABLED, bEnabled, 1);
+			e_ChapterAtom->AppendChild_UInt((char*)MID_CH_CHAPTERFLAGHIDDEN, bHidden, 0);
+			e_ChapterAtom->AppendChild_UInt((char*)MID_CH_CHAPTERPHYSICALEQUIV, scd.iPhysicalEquiv, 0);
+			if (bSegUID)
+				e_ChapterAtom->AppendChild_Binary((char*)MID_CH_CHAPTERSEGMENTUID, 
+					new CBuffer(16, scd.cSegmentUID, CBN_REF1));
 			
 			int chdspcount = c->GetChapterDisplayCount(i);
 			for (int j=0;j<chdspcount;j++) {
-				char* s, *t;
 				EBMLElement_Writer* e_Display = new EBMLElement_Writer(GetDest(),(char*)MID_CH_CHAPTERDISPLAY);
 				e_ChapterAtom->AppendChild(e_Display, APPEND_END | APPEND_DONT_RANDOMIZE);
-				s = c->GetChapterText(i, j);
-				t = c->GetChapterLng(i, j);
-				e_Display->AppendChild_String((char*)MID_CH_CHAPSTRING,new CStringBuffer(s));
-				e_Display->AppendChild_String((char*)MID_CH_CHAPLANGUAGE,new CStringBuffer(t));
+				e_Display->AppendChild_String((char*)MID_CH_CHAPSTRING,new CStringBuffer(c->GetChapterText(i, j)));
+				e_Display->AppendChild_String((char*)MID_CH_CHAPLANGUAGE,new CStringBuffer(c->GetChapterLng(i, j)));
 			}
 
 			if (c->HasSubChapters(i)) {
-				RenderChapters(e_ChapterAtom,c->GetSubChapters(i),c,i);
+				RenderChapters(e_ChapterAtom,c->GetSubChapters(i),c,i, bSetEnd, iMax);
 			}
+
+			e_ChapterAtom->EnableCRC32();
 		}
-		c->SetChapterEnd(i,iOldEnd);
+		
 	}
 
 	return 0;
 }
 
-EBMLMChapter_Writer::EBMLMChapter_Writer(STREAM* p, CChapters* c, __int64 iMax)
+/* replaces <end> markers of chapters with the real timecode,
+   i.e. end of parent chapter / end of segment 
+*/
+void EBMLMChapter_Writer::UpdateChapterTimes(CChapters* c, int parent_index)
+{
+	int start = 0;
+	int end = c->GetChapterCount();
+
+	for (int j=start;j<end;j++) {
+
+		SINGLE_CHAPTER_DATA scd;
+		c->GetChapter(j, &scd);
+
+		if (!scd.bIsEdition) {
+			if (scd.iBegin < 0)
+				c->SetChapterBegin(j, - c->GetBias(BIAS_UNSCALED));
+
+			if (scd.iEnd == -1 && !scd.bSegmentUIDValid) {
+				__int64 next_chapter_begin = c->GetChapterBegin(j+1);
+	
+				if (next_chapter_begin != CHAP_INVALIDINDEX)
+					c->SetChapterEnd(j, next_chapter_begin);
+				else {
+					CChapters* P = c->GetParent(0);
+					if (P->IsEdition(0)) {
+						c->SetChapterEnd(j, iMaxEnd - c->GetBias(BIAS_UNSCALED));
+					} else {
+						c->SetChapterEnd(j, P->GetChapterEnd(parent_index));
+					}
+				}
+			}	
+
+			if (c->GetChapterEnd(j) > iMaxEnd && !scd.bSegmentUIDValid) {
+				c->SetChapterEnd(j, iMaxEnd - c->GetBias(BIAS_UNSCALED));
+			}
+
+			if (c->GetChapterBegin(j) > iMaxEnd && !scd.bSegmentUIDValid) {
+				c->DeleteChapter(j--);
+				end--;
+			}
+		}
+
+		if (c->HasSubChapters(j))
+			UpdateChapterTimes(c->GetSubChapters(j), j);
+	}
+}
+
+EBMLMChapter_Writer::EBMLMChapter_Writer(STREAM* p, CChapters* c, __int64 iMax, int bSetEnd)
 {
 	EBMLElement_Writer*	e_EditionEntry;
 	SetDest(p);
-	chapters = c;
+	chapters = new CChapters();
+	chapters->Import(c);
+
+
 	SetID((char*)MID_CHAPTERS);
 	if (iMax == -1) iMaxEnd = (_int64)(1<<30)*(1<<30); else	iMaxEnd = iMax;
-	e_EditionEntry = AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_CH_EDITIONENTRY));
-	RenderChapters(e_EditionEntry, c, NULL,0);
+	if (bSetEnd)
+		UpdateChapterTimes(chapters, 0);
+
+	c = chapters;
+
+	for (int j=0;j<c->GetChapterCount();j++) {
+		e_EditionEntry = AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_CH_EDITIONENTRY),
+			APPEND_DONT_RANDOMIZE | APPEND_END);
+		e_EditionEntry->AppendChild_UInt((char*)MID_CH_EDITIONFLAGDEFAULT, c->IsDefault(j), 0);
+		e_EditionEntry->AppendChild_UInt((char*)MID_CH_EDITIONFLAGHIDDEN, c->IsHidden(j), 0);
+		e_EditionEntry->AppendChild_UInt((char*)MID_CH_EDITIONFLAGORDERED, c->IsOrdered(j), 0);
+		e_EditionEntry->AppendChild_UInt((char*)MID_CH_EDITIONUID, c->GetUID(j), 0);
+		RenderChapters(e_EditionEntry, c->GetSubChapters(j), c, 0, bSetEnd, iMax);
+		e_EditionEntry->EnableCRC32();
+	}
+	EnableCRC32();
 }
 

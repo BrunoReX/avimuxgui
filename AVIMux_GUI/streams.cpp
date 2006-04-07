@@ -2,7 +2,7 @@
 #include "streams.h"
 #include "..\utf-8.h"
 // MEMORYSTREAM
-
+/*
 MEMORYSTREAM::MEMORYSTREAM(void)
 {
 	ZeroMemory(&status,sizeof(status));
@@ -147,4 +147,4 @@ bool MEMORYSTREAM::IsEndOfStream()
 	return (status.qwPosition>=qwSize);
 }
 
-
+*/

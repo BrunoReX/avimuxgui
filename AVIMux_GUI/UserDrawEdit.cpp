@@ -6,6 +6,8 @@
 #include "stdafx.h"
 #include "AVIMux_GUI.h"
 #include "UserDrawEdit.h"
+#include "..\utf-8.h"
+#include "..\UnicodeCalls.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -19,6 +21,22 @@ static char THIS_FILE[] = __FILE__;
 CUserDrawEdit::CUserDrawEdit()
 {
 	EnableAutomation();
+	bHasFocus = false;
+	iTextAlignment = TA_LEFT;
+	color = NULL;
+	clrDisabled = GetSysColor(COLOR_GRAYTEXT);
+
+	
+}
+
+void CUserDrawEdit::SetDisabledTextColor(COLORREF color)
+{
+	clrDisabled = color;
+}
+
+void CUserDrawEdit::SetTextAlign(int align)
+{
+	iTextAlignment = align;
 }
 
 CUserDrawEdit::~CUserDrawEdit()
@@ -40,6 +58,8 @@ BEGIN_MESSAGE_MAP(CUserDrawEdit, CEdit)
 	//{{AFX_MSG_MAP(CUserDrawEdit)
 	ON_WM_PAINT()
 	ON_WM_DRAWITEM()
+	ON_WM_KILLFOCUS()
+	ON_WM_SETFOCUS()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -66,7 +86,12 @@ END_INTERFACE_MAP()
 
 COLORREF CUserDrawEdit::GetTxtColor()
 {
-	return RGB(0,0,0);
+	return color;
+}
+
+void CUserDrawEdit::SetColor(COLORREF c)
+{
+	color = c;
 }
 
 void CUserDrawEdit::OnPaint() 
@@ -75,19 +100,34 @@ void CUserDrawEdit::OnPaint()
 	
 	// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen
 
-	CString c;
+	char c[4096]; memset(c, 0, sizeof(c));
+	char *u = NULL; //; u[0]=0;
 	RECT r;
 	CFont* font = GetFont();
-	GetWindowText(c);
-	GetClientRect(&r);
+	GetWindowText(c, 4096);
+	int j = fromUTF8(c, &u);
+	if (IsUnicode()) j/=2;
+	COLORREF backcolor, textcolor;
 
-	dc.SetTextColor(GetTxtColor());
-	dc.SetTextAlign(TA_CENTER);
-	dc.SetBkMode(TRANSPARENT);
+	if (IsWindowEnabled()) {
+		backcolor = GetSysColor(COLOR_WINDOW);
+		textcolor = GetTxtColor();
+	} else { 
+		backcolor = GetSysColor(COLOR_BTNFACE);
+		textcolor = clrDisabled;
+	}
+
+	GetClientRect(&r);
+	r.right++; r.bottom++;
+
+	dc.SetTextColor(textcolor);
+	dc.SetTextAlign(iTextAlignment);
+
+	dc.SetBkMode(OPAQUE);
 	dc.SelectObject(font);
 
 	LOGBRUSH b;
-	b.lbColor = GetSysColor(COLOR_BTNFACE);
+	b.lbColor = backcolor;
 	b.lbStyle = BS_SOLID;
 	HBRUSH brush = CreateBrushIndirect(&b);
 
@@ -100,14 +140,20 @@ void CUserDrawEdit::OnPaint()
 	dc.SelectObject(pen);
 	dc.Rectangle(&r);
 
-	TextOut(dc,(r.left+r.right)>>1,1,c,strlen(c));
+	dc.SetBkColor(backcolor);
+	
+	if (dc.GetTextAlign() == TA_CENTER)
+		(*UExtTextOut())(dc,(r.left+r.right)>>1,1,ETO_CLIPPED,&r,
+		u,j-1,NULL);
+	else
+		(*UExtTextOut())(dc,r.left,1,ETO_CLIPPED,&r,
+		u,j-1,NULL);
 
 	DeleteObject(brush);
 	DeleteObject(pen);
 	ReleaseDC(&dc);
 
-	
-	// Kein Aufruf von CEdit::OnPaint() für Zeichnungsnachrichten
+	free(u);
 }
 
 void CUserDrawEdit::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct) 
@@ -117,4 +163,24 @@ void CUserDrawEdit::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 	SetTextColor(lpDrawItemStruct->hDC,255);
 
 	CEdit::OnDrawItem(nIDCtl, lpDrawItemStruct);
+}
+
+void CUserDrawEdit::OnKillFocus(CWnd* pNewWnd) 
+{
+	bHasFocus = false;
+
+	CEdit::OnKillFocus(pNewWnd);
+
+	InvalidateRect(NULL);
+	UpdateWindow();
+}
+
+void CUserDrawEdit::OnSetFocus(CWnd* pOldWnd) 
+{
+	CEdit::OnSetFocus(pOldWnd);
+
+	// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen
+	bHasFocus = true;	
+	InvalidateRect(NULL);
+	UpdateWindow();
 }

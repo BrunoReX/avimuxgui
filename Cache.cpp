@@ -3,23 +3,26 @@
 #include "math.h"
 #include "stdlib.h"
 #include "windows.h"
-#include "integers.h"
+#include "crtdbg.h"
+#include "limits.h"
 
-extern "C" {
-	void _stdcall shr64(__int64* x, int y);
-	void _stdcall zerobits64 (void* i, int j);
-}
+#ifdef DEBUG_NEW
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+#endif
 
+/////////////////////
+/* new cache class */
+/////////////////////
 
-bool _cacheAllowReadAhead = false;
-
-void  cacheAllowReadAhead(bool bAllow)
-{
-	_cacheAllowReadAhead = bAllow;
-}
+#define MAX_CACHE_LINES 1024
 
 #define QUADWORD __int64
 
+/* this is only required for Vorbis audio source class */
 LINEARCACHE::LINEARCACHE(void)
 {
 	dwSize=0;
@@ -40,7 +43,7 @@ bool LINEARCACHE::SetSize(DWORD _dwSize,bool bCreate)
 	{
 		if (lpbAllocatedData) free (lpbAllocatedData);
 		lpbAllocatedData = new BYTE[dwSize + align + 16];
-		lpbData = (BYTE*)(((unsigned)lpbAllocatedData & ~(align - 1)) + align);
+		lpbData = (BYTE*)(((size_t)lpbAllocatedData & ~(align - 1)) + align);
 	}
 	return (lpbData)?true:false;
 }
@@ -113,525 +116,1450 @@ BYTE* LINEARCACHE::GetData(void)
 	return lpbData;
 }
 
-// CACHEDSTREAM
 
-CACHEDSTREAM::CACHEDSTREAM(DWORD dwBuffers,DWORD _dwBytesPerBuffer)
+#include <algorithm>
+
+operator <(CACHE_LINE& one, CACHE_LINE& other)
 {
-	lpSource=NULL;
-	qwPos=0;
-	stats.iHits = 0;
-	stats.iMisses = 0;
-	dwNbrOfBuffers=dwBuffers;
-	dwBytesPerBuffer=_dwBytesPerBuffer;
-	lpCacheInfo=new LINEARCACHEINFO[dwBuffers];
+	if (one.iSourceOffset < other.iSourceOffset) return true;
+	return false;
+}
+
+
+CACHE::CACHE()
+{
+	Init();
+}
+
+void CACHE::Init() 
+{
+	iNumberOfCacheLines = 0;
+	iAccessMode = -1;
+	sts.iLastAccessedCacheLineIndexRead = -1;
+	sts.iLastAccessedCacheLineIndexWrite = -1;
+	SetSource(NULL);
+	iStreamSize = -1;
+	sts.iBytesLeftInCurrentReadCacheLine = -1;
+	sts.iBytesLeftInCurrentWriteCacheLine = -1;
+	cache_lines = NULL;
+	bAsynchWrite = false;
 	bReadAhead = false;
-	lplpCache=new LINEARCACHE*[dwBuffers];
-	ZeroMemory(lpCacheInfo,sizeof(LINEARCACHEINFO)*dwBuffers);
-	ZeroMemory(lplpCache,4*dwBuffers);
-	iModVal=1;
-	DWORD _dwBuffers = dwBuffers;
-	while (! (_dwBuffers % 2)) {
-		_dwBuffers >>= 1; iModVal = (iModVal<<1); 
-	};
+	iLastPossibleWritePos = -1;
+	bCanGrow = false;
+	bSingleAsynchWrite = false;
+	bImmedWriteback = false;
+	bThreadsafe = false;
+	bLog = false;
+	fLog = stdout;
+
+	free_cache_lines.clear();
+}
+
+bool CACHE::AllocateCacheLine(CACHE_LINE** cache_line, int size, int alignment)
+{
+	BYTE* p = (BYTE*)malloc(size + alignment + 1);
 	
-	iBufferBits = -1;
-	
-	while (_dwBytesPerBuffer) {
-		_dwBytesPerBuffer >>= 1; iBufferBits++; }
+	if (!p)
+		return false;
 
-	for (DWORD i=0;i<dwBuffers;i++)
-	{
-		lplpCache[i]=new LINEARCACHE;
-		lplpCache[i]->SetSize(dwBytesPerBuffer);
-	}
-	iLastBufferInUse = 0;
-	iLastBufferBegin = 0;
-	iLastBufferEnd = -1;
+	*cache_line = new CACHE_LINE;
+	(*cache_line)->pAllocated = p;
+
+	p = (BYTE*)((size_t)p &~ (alignment-1));
+	p = (BYTE*)((size_t)p + alignment);
+	(*cache_line)->pData = p;
+
+	return true;	
 }
 
-CACHEDSTREAM::~CACHEDSTREAM()
+int CACHE::LockCacheLine(int iCacheLineIndex)
 {
-}
+	if (iCacheLineIndex < 0 || iCacheLineIndex >= iNumberOfCacheLines)
+		return 0;
 
-void CACHEDSTREAM::EnableReadAhead(bool bEnable)
-{
-	bReadAhead = bEnable;
-}
+	cache_lines[iCacheLineIndex]->locked++;
 
-STREAM* CACHEDSTREAM::GetSource()
-{
-	return lpSource;
-}
-
-int CACHEDSTREAM::GetCacheStats(CACHESTATS* lpstats)
-{
-	if (lpstats) memcpy(lpstats,&stats,sizeof(stats));
 	return 1;
 }
 
-int CACHEDSTREAM::Open(STREAM* _lpSource, int mode)
+int CACHE::LockCacheLine(CACHE_LINE* cache_line)
 {
-	lpSource=_lpSource;
-	qwPos=0;
-	iLastPosWritten = 0;
-	iAccess = mode;
-	LoadSegment(0,0);
+	cache_line->locked++;
 
-
-	return STREAM_OK;
+	return 1;
 }
 
-int CACHEDSTREAM::Close()
+int CACHE::UnlockCacheLine(CACHE_LINE* cache_line)
 {
-	for (DWORD i=0;i<dwNbrOfBuffers;i++)
-	{
-		if (lplpCache)
-		{
-			if (lplpCache[i]) 
-			{
-				WriteCachelineBack(i);
-				lplpCache[i]->Clear();
-				delete lplpCache[i];
-				lplpCache[i]=NULL;
-			}
-		}
-	}
-	if (lplpCache)
-	{
-		free(lplpCache);
-		lplpCache=NULL;
-	}
-	if (lpCacheInfo) free(lpCacheInfo);
-	if (!IsReading()) {
-		GetDest()->TruncateAt(iLastPosWritten);
-		GetDest()->Close();
-		delete GetDest();
-	}
-	lpCacheInfo=NULL;
-	return STREAM_OK;
+	cache_line->locked--;
+
+	return 1;
 }
 
-__int64 CACHEDSTREAM::GetSize()
+bool CACHE::CacheLineGetThreadSpecific(CACHE_LINE* cache_line)
 {
-	return GetSource()->GetSize()-GetOffset();
-}
+	EnterCritical();
 
-__int64 CACHEDSTREAM::GetPos()
-{
-	return qwPos-GetOffset();
-}
+	DWORD dwCurrentThread = GetCurrentThreadId();
 
-int CACHEDSTREAM::GetOffset()
-{
-	return GetSource()->GetOffset();
-}
-
-int CACHEDSTREAM::SetOffset(int iNewOffset)
-{
-	return GetSource()->SetOffset(iNewOffset);
-}
-
-int CACHEDSTREAM::Seek(QUADWORD _qwPos)
-{
-	qwPos=_qwPos+GetOffset();
-	if (IsEndOfStream() && IsReading()) qwPos=GetSize()+GetOffset();
-	return STREAM_OK;
-}
-
-bool CACHEDSTREAM::IsEndOfStream()
-{
-	return (GetSize()<=GetPos())?true:false;
-}
-
-// MUST NOT check for IsEndOfStream. That would break writing!
-int CACHEDSTREAM::Read(void* lpDest,DWORD dwBytes)
-{
-	DWORD	dwRead,dwCount,dwNbrOfBuffer,dwOffset,dwFree;
-	BYTE*	lpbDest=(BYTE*)lpDest;
-	__int64 qwLatestBlock;
-	__int64	q;
-
-	DWORD dwBytesToRead;
-	
-	dwBytesToRead = (IsReading()?(DWORD)(min(dwBytes,GetSize()-GetPos())):dwBytes);
-	if (!dwBytesToRead) return 0;
-
-	{
-		dwCount = 1;
-		if (FindBuffer(GetPos(),&dwNbrOfBuffer,(dwBytes>1)?&dwCount:NULL,&dwOffset))
-		{
-			stats.iHits++;
-			
-			if (dwCount>=dwBytes)
-			{
-				lplpCache[dwNbrOfBuffer]->Seek(dwOffset);
-				qwPos+=(dwRead=lplpCache[dwNbrOfBuffer]->Read(lpDest,dwBytes));
-				return dwRead;
-			}
-			else
-			{
-				lplpCache[dwNbrOfBuffer]->Seek(dwOffset);
-				qwPos+=lplpCache[dwNbrOfBuffer]->Read(lpDest,dwCount);
-				return dwCount+Read((lpDest?&(lpbDest[dwCount]):NULL),dwBytes-dwCount);
-			}
-		}
-		else
-		{
-			stats.iMisses++;
-			q = GetPos();
-			shr64(&q,iBufferBits);
-
-			qwLatestBlock=LastBlockRead();		
-
-			if ( ((int)(q-qwLatestBlock)<(GetNbrOfBuffers()>>1))&&(q>qwLatestBlock) )
-			{
-				for (DWORD i=1;i<(q-qwLatestBlock);i++)
-				{
-					dwFree = (int)(q % iModVal);
-					LoadSegment(dwFree,(qwLatestBlock+i)*GetBytesPerBuffer());
-				}
-			}
-
-			dwFree = (int)(q % iModVal);
-			__int64  qwPos2 = qwPos;
-			zerobits64(&qwPos2, iBufferBits);
-		
-			__int64 j = GetPos();
-			LoadSegment(dwFree,qwPos2);
-			j = GetPos();
-			dwRead=Read(lpDest,dwBytes);
-			j = GetPos();
-
-			return dwRead;
-
-
-/*			__int64 iTime = rdtsc();
-
-			stats.iMisses++;
-
-			dwBlockToRead=(DWORD)(GetPos()/GetBytesPerBuffer());
-			dwLatestBlock=LastBlockRead();		
-
-			if ( ((int)(dwBlockToRead-dwLatestBlock)<(GetNbrOfBuffers()>>1))&&(dwBlockToRead>dwLatestBlock) )
-			{
-				for (DWORD i=1;i<(dwBlockToRead-dwLatestBlock);i++)
-				{
-					dwFree = dwBlockToRead % iModVal;
-					LoadSegment(dwFree,(dwLatestBlock+i)*GetBytesPerBuffer());
-				}
-			}
-
-			dwFree = dwBlockToRead % iModVal;
-
-			qwPos2 = (qwPos/GetBytesPerBuffer()*GetBytesPerBuffer());
-			__int64 iTime2 = rdtsc()-iTime;
-			fprintf(stderr,"%10I64d",iTime2);
-			LoadSegment(dwFree,qwPos2);
-
-			dwRead=Read(lpDest,dwBytes);
-			return dwRead;
-*/		}
+	if (cache_line->dwLastThread == dwCurrentThread) {
+		LeaveCritical();
+		return true;
 	}
 
-	return dwRead;
-}
+	CACHE_LINE_THREAD_SPECIFIC_MAP::iterator iter = cache_line->thread_specific_map.find(dwCurrentThread);
 
-int CACHEDSTREAM::Write(void* lpSrc, DWORD dwBytes)
-{
-	BYTE*	lpbSrc = (BYTE*)(lpSrc);
-	DWORD	dwNbr, dwOffset, dwBytesInCacheline, dwWritten, dwTotal, dwLeft = dwBytes;
+//	_ASSERT(cache_line->thread_specific_map.size() <= 1);
 
-	dwTotal = 0;
-	while (dwLeft) {
-		PrepareForWriting(GetPos(), &dwNbr, &dwBytesInCacheline, &dwOffset);
-		lpCacheInfo[dwNbr].bDirty = 1;
-		lplpCache[dwNbr]->Seek(dwOffset);
-		dwWritten = lplpCache[dwNbr]->Write(lpbSrc+dwTotal, dwLeft);
-		lpCacheInfo[dwNbr].dwMaxUsedSize=max(dwOffset+dwWritten, lpCacheInfo[dwNbr].dwMaxUsedSize);
-		if (dwLeft -= dwWritten) {
-//			Sleep(1);
-		}
-		qwPos += dwWritten;
-		dwTotal += dwWritten;
-		if (qwPos > iLastPosWritten) {
-			iLastPosWritten = qwPos;
-		}
-	}
-
-	return dwTotal;
-}
-
-bool CACHEDSTREAM::IsBufferUsed(DWORD dwNbr)
-{
-	if (dwNbr>=(DWORD)GetNbrOfBuffers()) return false;
-	return (!!lpCacheInfo[dwNbr].dwSysTime);
-}
-
-DWORD CACHEDSTREAM::GetBytesPerBuffer()
-{
-	return dwBytesPerBuffer;
-}
-
-int CACHEDSTREAM::GetNbrOfBuffers()
-{
-	return dwNbrOfBuffers;
-}
-
-int CACHEDSTREAM::LoadSegment(DWORD dwNbr,QUADWORD qwStart)
-{
-	if (!bReadAhead || !_cacheAllowReadAhead) {
-		__int64 j = GetPos();
-		WriteCachelineBack(dwNbr);
-		j = GetPos();
-
-		if (dwNbr>=(DWORD)GetNbrOfBuffers()) return 0;
-	
-		if (IsReading() || qwStart < iLastPosWritten) {
-			if (GetSource()->GetPos()!=qwStart) GetSource()->Seek(qwStart);
-		}
-
-		if (IsReading()) {
-			lplpCache[dwNbr]->SetSize(
-				lpCacheInfo[dwNbr].dwMaxUsedSize=GetSource()->Read(lplpCache[dwNbr]->GetData(),GetBytesPerBuffer()),false);
-		} else {
-			if (qwStart < iLastPosWritten) {
-				lplpCache[dwNbr]->SetSize(GetBytesPerBuffer(), false);
-				lpCacheInfo[dwNbr].dwMaxUsedSize=GetSource()->Read(lplpCache[dwNbr]->GetData(),GetBytesPerBuffer());
-			} else {
-				lplpCache[dwNbr]->SetSize(GetBytesPerBuffer());
-				ZeroMemory(lplpCache[dwNbr]->GetData(), GetBytesPerBuffer());
-				lpCacheInfo[dwNbr].dwMaxUsedSize=0;
-			}
-		}
-
-		lpCacheInfo[dwNbr].dwSysTime=GetTickCount();
-		lpCacheInfo[dwNbr].qwStart=qwStart;
-		if (!lpCacheInfo[dwNbr].dwMaxUsedSize) {
-			lpCacheInfo[dwNbr].dwMaxUsedSize = (DWORD)lplpCache[dwNbr]->GetSize();
-		}
-		iLastBufferInUse = dwNbr;
-		iLastBufferBegin = qwStart;
-		iLastBufferEnd = qwStart + GetBytesPerBuffer() - 1;
-		lpCacheInfo[dwNbr].bDirty = 0;
-		return 0;
+	if (iter != cache_line->thread_specific_map.end()) {
+		cache_line->thread_specific = iter->second;
 	} else {
-		LINEARCACHEINFO* lci = &lpCacheInfo[dwNbr];
-		if (lci->bLoading && qwStart == lci->pRAS->iStart) {
-			lci->qwStart = qwStart;
-			iLastBufferInUse = dwNbr;
-			iLastBufferBegin = qwStart;
-			iLastBufferEnd = qwStart + GetBytesPerBuffer() - 1;
+		CACHE_LINE_THREAD_SPECIFIC* new_thread_specific = new CACHE_LINE_THREAD_SPECIFIC;
+		new_thread_specific->iCurrentReadPos = -1;
+		new_thread_specific->iCurrentWritePos = -1;
+		cache_line->thread_specific_map[dwCurrentThread] = new_thread_specific;
+		cache_line->thread_specific = new_thread_specific;
+	}
 
-			GetSource()->WaitForCompletion(lci->pRAS);
-			lci->bLoading = 0;
-			CloseHandle(lci->pRAS->hSemaphore);
-			lplpCache[dwNbr]->SetSize(lci->pRAS->pOverlapped->Offset, false);
-			lpCacheInfo[dwNbr].dwMaxUsedSize = lci->pRAS->pOverlapped->Offset;
-			delete lci->pRAS;
-			lci->dwSysTime = GetTickCount();
-			lci->pRAS = NULL;
-		} else {
-			if (lci->bLoading) {
-				GetSource()->WaitForCompletion(lci->pRAS);
-				lci->bLoading = 0;
-				CloseHandle(lci->pRAS->hSemaphore);
-				delete lci->pRAS;
-				lci->dwSysTime = GetTickCount();
-				lci->pRAS = NULL;
-			}
-			EnableReadAhead(false);
-			LoadSegment(dwNbr, qwStart);
-			EnableReadAhead();
-		}
+	cache_line->dwLastThread = dwCurrentThread;
+	LeaveCritical();
 
-		dwNbr++;
-		dwNbr%=iModVal;
-		WriteCachelineBack(dwNbr);
-		lci = &lpCacheInfo[dwNbr];
-	
-//		lci->qwStart = 
-		lci->qwStart = 0;
-		lci->pRAS = new READ_ASYNC_STRUCT;
-		lci->pRAS->lpDest = lplpCache[dwNbr]->GetData();
-		lci->pRAS->iStart = qwStart + GetBytesPerBuffer();
-		GetSource()->Seek(lci->pRAS->iStart);
-		if (!(lci->bLoading = GetSource()->ReadAsync(lci->pRAS, GetBytesPerBuffer()))) {
-			CloseHandle(lci->pRAS->hSemaphore);
-			delete lci->pRAS->pOverlapped;
-			delete lci->pRAS;
-			lci->pRAS = NULL;
-		}
+	return true;
+}
 
+bool CACHE::CacheLineDeleteThreadSpecificMap(CACHE_LINE* cache_line)
+{
+	if (bThreadsafe) {
+		_ASSERT(!IsCacheLineLocked(cache_line));
+
+		CACHE_LINE_THREAD_SPECIFIC_MAP::iterator iter = cache_line->thread_specific_map.begin();
+		for (; iter != cache_line->thread_specific_map.end(); iter++) 
+			delete iter->second;
+
+		cache_line->thread_specific_map.clear();
+		cache_line->dwLastThread = 0;
+	}
+	return true;
+}
+
+int CACHE::GetCacheLineCurrentReadPos(CACHE_LINE* cache_line)
+{
+	if (bThreadsafe) {
+		CacheLineGetThreadSpecific(cache_line);
+		return cache_line->thread_specific->iCurrentReadPos;
+	} else
+		return cache_line->sts.iCurrentReadPos;
+}
+
+int CACHE::SetCacheLineCurrentReadPos(CACHE_LINE* cache_line, int position)
+{
+	if (bThreadsafe) {
+		EnterCritical();
+		CacheLineGetThreadSpecific(cache_line);
+		cache_line->thread_specific->iCurrentReadPos = position;
+		LeaveCritical();
+	} else
+		cache_line->sts.iCurrentReadPos = position;
+
+	return 1;
+}
+
+int CACHE::IncCacheLineCurrentReadPos(CACHE_LINE* cache_line, int inc_val)
+{
+	if (bThreadsafe) {
+		EnterCritical();
+		CacheLineGetThreadSpecific(cache_line);
+		cache_line->thread_specific->iCurrentReadPos += inc_val;
+		LeaveCritical();
+	} else
+		cache_line->sts.iCurrentReadPos += inc_val;
+
+	return 1;
+}
+
+
+int CACHE::GetCacheLineCurrentWritePos(CACHE_LINE* cache_line)
+{
+	if (bThreadsafe) {
+		CacheLineGetThreadSpecific(cache_line);
+		return cache_line->thread_specific->iCurrentWritePos;
+	} else
+		return cache_line->sts.iCurrentWritePos;
+}
+
+int CACHE::SetCacheLineCurrentWritePos(CACHE_LINE* cache_line, int position)
+{
+	if (bThreadsafe) {
+		EnterCritical();
+		CacheLineGetThreadSpecific(cache_line);
+		cache_line->thread_specific->iCurrentWritePos = position;
+		LeaveCritical();
+	} else
+		cache_line->sts.iCurrentWritePos = position;
+
+	return 1;
+}
+
+int CACHE::IncCacheLineCurrentWritePos(CACHE_LINE* cache_line, int inc_val)
+{
+	if (bThreadsafe) {
+		EnterCritical();
+		CacheLineGetThreadSpecific(cache_line);
+		cache_line->thread_specific->iCurrentWritePos += inc_val;
+		LeaveCritical();
+	} else
+		cache_line->sts.iCurrentWritePos += inc_val;
+
+
+	return 1;
+}
+
+
+int CACHE::UnlockCacheLine(int iCacheLineIndex)
+{
+	if (iCacheLineIndex < 0 || iCacheLineIndex >= iNumberOfCacheLines)
 		return 0;
-				
+
+	cache_lines[iCacheLineIndex]->locked--;
+
+	return 1;
+}
+
+bool CACHE::IsCacheLineLocked(int iCacheLineIndex)
+{
+	if (iCacheLineIndex < 0 || iCacheLineIndex >= iNumberOfCacheLines)
+		return 0;
+
+	return !!cache_lines[iCacheLineIndex]->locked;
+}
+
+bool CACHE::IsCacheLineLocked(CACHE_LINE* cache_line)
+{
+	return !!cache_line->locked;
+}
+
+bool CACHE::InitCache(int iBuffers, int iBytesPerBuffer)
+{
+	if (iBuffers < 1 && iNumberOfCacheLines < 1)
+		return false;
+
+	if (iBuffers > MAX_CACHE_LINES)
+		iBuffers = MAX_CACHE_LINES;
+
+	if (iBytesPerBuffer == 0)
+		return false;
+
+	int j=iBytesPerBuffer;
+
+	if (iInitialNumberOfCacheLines == 0 && iBytesPerBuffer <= 0)
+		return false;
+
+	if (j != -1) {
+		int k=0;
+		while (j>0) {
+			k+=(j&1);
+			j>>=1;
+		}
+		if (k != 1)
+			return false;
+	}
+
+	int existing_cache_lines = iNumberOfCacheLines;
+
+	if (iBytesPerBuffer == -1) {
+		if (existing_cache_lines > 0)
+			iBytesPerBuffer = cache_lines[0]->iSize;
+		else 
+			iBytesPerBuffer = 1<<19;
+	} else {
+		if (existing_cache_lines > 0)
+			if (cache_lines[0]->iSize != iBytesPerBuffer) 
+				return false;
+	}
+
+	if (existing_cache_lines <= 0) {
+		cache_lines = (CACHE_LINE**)calloc(sizeof(CACHE_LINE*), MAX_CACHE_LINES/*iBuffers*/);
+		iInitialNumberOfCacheLines = iBuffers;
+	};/* else
+		if (iBuffers > iNumberOfCacheLines) 
+			cache_lines = (CACHE_LINE**)realloc(cache_lines, sizeof(CACHE_LINE*)*iBuffers);
+*/
+	if (!cache_lines)
+		return false;
+
+	for (int i=existing_cache_lines; i< iBuffers; i++) {
+		if (!AllocateCacheLine(&cache_lines[i], iBytesPerBuffer, 16384))
+			return false;
+
+		cache_lines[i]->bDirty = false;
+		cache_lines[i]->bValid = false;
+		cache_lines[i]->iSourceOffset = -1;
+		cache_lines[i]->iSize = iBytesPerBuffer;
+		cache_lines[i]->sts.iCurrentReadPos = -1;
+		cache_lines[i]->sts.iCurrentWritePos = -1;
+		cache_lines[i]->bBeingRead = false;
+		cache_lines[i]->bBeingWritten = false;
+		cache_lines[i]->iReadAccessCount = 0;
+		cache_lines[i]->iUsedSize = 0;
+		cache_lines[i]->overlapped.hEvent = NULL;
+		cache_lines[i]->overlapped.Offset = 0;
+		cache_lines[i]->overlapped.OffsetHigh = NULL;
+		cache_lines[i]->iLastAccessTime = 0;
+		cache_lines[i]->bWasGrown = false;
+		cache_lines[i]->locked = 0;
+		cache_lines[i]->dwLastThread = 0;
+		free_cache_lines.push_back(i);
+	}
+
+	if (existing_cache_lines > iBuffers) {
+		for (i = existing_cache_lines-1; i>=iBuffers; i--) {
+			free(cache_lines[i]->pAllocated);
+			cache_lines[i]->pAllocated = 0;
+			cache_lines[i]->iSize = 0;
+			cache_lines[i]->bValid = 0;
+			cache_lines[i]->iSourceOffset = -INT_MAX;
+		}
+	}
+
+/*	if (iBuffers < iNumberOfCacheLines) 
+		cache_lines = (CACHE_LINE**)realloc(cache_lines, sizeof(CACHE_LINE*)*iBuffers);
+*/
+	iNumberOfCacheLines = iBuffers;
+	iCacheLineSize = iBytesPerBuffer;
+
+	return true;
+}
+
+CACHE::CACHE(int iBuffers, int iBytesPerBuffer)
+{
+	Init();
+	InitCache(iBuffers, iBytesPerBuffer);
+}
+
+CACHE::~CACHE()
+{
+	Disable(CACHE_READ_AHEAD);
+
+	Close();
+
+	for (int i=0; i<iNumberOfCacheLines; i++) {
+		if (cache_lines[i]->bBeingRead)
+			WaitUntilReadyForRead(i);
+
+		if (cache_lines[i]->pAllocated)
+			free(cache_lines[i]->pAllocated);
+
+		cache_lines[i]->pAllocated = NULL;
+		cache_lines[i]->pData = NULL;
+		cache_lines[i]->bValid = 0;
+		delete cache_lines[i];
+	}
+
+	if (cache_lines)
+		free(cache_lines);
+
+	DeleteThreadSpecific();
+}
+
+bool CACHE::GetThreadSpecific()
+{
+	EnterCritical();
+
+	DWORD dwCurrentThread = GetCurrentThreadId();
+	if (dwCurrentThread == dwLastThread) {
+		LeaveCritical();
+		return true;
+	}
+
+	CACHE_THREAD_SPECIFIC_MAP::iterator iter = thread_specific_map.find(dwCurrentThread);
+	if (iter != thread_specific_map.end()) {
+		thread_specific = iter->second;
+	} else {
+		CACHE_THREAD_SPECIFIC* new_thread_specific = new CACHE_THREAD_SPECIFIC;
+		new_thread_specific->iBytesLeftInCurrentReadCacheLine = -1;
+		new_thread_specific->iBytesLeftInCurrentWriteCacheLine = -1;
+		new_thread_specific->iLastAccessedCacheLineIndexRead = -1;
+		new_thread_specific->iLastAccessedCacheLineIndexWrite = -1;
+		new_thread_specific->iReadPosition = -1;
+		new_thread_specific->iWritePosition = -1;
+		thread_specific_map[dwCurrentThread] = new_thread_specific;
+		thread_specific = new_thread_specific;
+	}
+
+	dwLastThread = dwCurrentThread;
+	LeaveCritical();
+
+	return true;
+}
+
+bool CACHE::DeleteThreadSpecific()
+{
+	CACHE_THREAD_SPECIFIC_MAP::iterator iter = thread_specific_map.begin();
+
+	for (; iter != thread_specific_map.end(); iter++) 
+		delete iter->second;
+
+	thread_specific_map.clear();
+	dwLastThread = 0;
+
+	return true;
+}
+
+int CACHE::GetLastAccessedCacheLineIndex(bool read) 
+{
+	if (!bThreadsafe)
+		return (read?sts.iLastAccessedCacheLineIndexRead:sts.iLastAccessedCacheLineIndexWrite);
+	else {
+		EnterCritical();
+		GetThreadSpecific();
+		int result = (read?thread_specific->iLastAccessedCacheLineIndexRead:thread_specific->iLastAccessedCacheLineIndexWrite);
+		LeaveCritical();
+		return result;
 	}
 }
 
-bool CACHEDSTREAM::IsInBuffer(DWORD dwNbr,QUADWORD _qwPos,DWORD* lpdwHowMany)
+__int64 CACHE::GetAccessPosition(bool read)
 {
-	if (!IsBufferUsed(dwNbr)) return false;
-	if (lpCacheInfo[dwNbr].bLoading) return false;
-	if (lpdwHowMany) *lpdwHowMany=0;
-	if (_qwPos<lpCacheInfo[dwNbr].qwStart)
-	{
-		return false;
+	if (!bThreadsafe)
+		return (read?sts.iReadPosition:sts.iWritePosition);
+	else {
+		EnterCritical();
+		GetThreadSpecific();
+		__int64 result = (read?thread_specific->iReadPosition:thread_specific->iWritePosition);
+		LeaveCritical();
+		return result;
 	}
-	else
-	{
-		if (lpCacheInfo[dwNbr].qwStart+GetBytesPerBuffer()<=_qwPos)
-		{
+}
+
+int CACHE::GetBytesLeftInCurrentCacheLine(bool read)
+{
+	if (!bThreadsafe)
+		return (read?sts.iBytesLeftInCurrentReadCacheLine:sts.iBytesLeftInCurrentWriteCacheLine);
+	else {
+		EnterCritical();
+		GetThreadSpecific();
+		int result = (read?thread_specific->iBytesLeftInCurrentReadCacheLine:thread_specific->iBytesLeftInCurrentWriteCacheLine);
+		LeaveCritical();
+		return result;
+	}
+}
+
+bool CACHE::SetBytesLeftInCurrentCacheLine(bool read, int bytes, bool relative)
+{
+	if (!bThreadsafe) {
+		int* i = (read?&sts.iBytesLeftInCurrentReadCacheLine:&sts.iBytesLeftInCurrentWriteCacheLine);
+		if (relative)
+			(*i) += bytes;
+		else
+			(*i) = bytes;
+	} else {
+		EnterCritical();
+		GetThreadSpecific();
+		int* i = (read?&thread_specific->iBytesLeftInCurrentReadCacheLine:&thread_specific->iBytesLeftInCurrentWriteCacheLine);
+		if (relative)
+			(*i) += bytes;
+		else
+			(*i) = bytes;
+
+		LeaveCritical();
+	}
+
+	return true;
+}
+
+bool CACHE::SetAccessPosition(bool read, __int64 position, bool relative)
+{
+	if (!bThreadsafe) {
+		__int64* i = (read?&sts.iReadPosition:&sts.iWritePosition);
+		if (relative)
+			(*i) += position;
+		else
+			(*i) = position;
+	} else {
+		EnterCritical();
+		GetThreadSpecific();
+		__int64* i = (read?&thread_specific->iReadPosition:&thread_specific->iWritePosition);
+		if (relative)
+			(*i) += position;
+		else
+			(*i) = position;
+
+		LeaveCritical();
+	}
+
+	return true;
+}
+
+bool CACHE::SetLastAccessedCacheLineIndex(bool read, int bytes, bool relative)
+{
+	if (!bThreadsafe) {
+		int* i=(read?&sts.iLastAccessedCacheLineIndexRead:&sts.iLastAccessedCacheLineIndexWrite);
+		if (relative)
+			(*i) += bytes;
+		else
+			(*i) = bytes;
+	} else {
+		EnterCritical();
+		GetThreadSpecific();
+		int* i=(read?&thread_specific->iLastAccessedCacheLineIndexRead:&thread_specific->iLastAccessedCacheLineIndexWrite);
+		if (relative)
+			(*i) += bytes;
+		else
+			(*i) = bytes;
+		LeaveCritical();
+	}
+
+	return true;
+}
+
+int CACHE::Open(STREAM* stream, int mode)
+{
+	if (iAccessMode != -1)
+		return CACHE_OPEN_ALREADY_OPEN;
+
+	bAsynchWrite = false;
+	bReadAhead = false;
+//	hWriteQueueSemaphore = NULL;
+	bImmedWriteback = false;
+
+	_ASSERT(stream);
+	if (!stream)
+		return CACHE_OPEN_INVALID_STREAM;
+
+	_ASSERT(stream->GetMode());
+	if (!stream->GetMode())
+		return CACHE_OPEN_INVALID_STREAM;
+
+	if (iNumberOfCacheLines < 1)
+		if (!InitCache(16, 1<<19))
+			return false;
+
+	bool bInvalidMode = ((mode & CACHE_OPEN_READ) || (mode & CACHE_OPEN_WRITE)) == false;
+	_ASSERT(!bInvalidMode);
+	if (bInvalidMode)
+		return CACHE_OPEN_INVALID_MODE;
+
+	bool bIncompatibleMode = (mode & CACHE_OPEN_READ) && !(stream->GetMode() & STREAM_READ) ||
+							 (mode & CACHE_OPEN_WRITE) && (!(stream->GetMode() & STREAM_WRITE));// || 
+//							 !(stream->GetMode() & STREAM_WRITE));
+	_ASSERT(!bIncompatibleMode);
+	if (bIncompatibleMode)
+		return CACHE_OPEN_INCOMPATIBLE_MODE;
+
+	if ((mode & CACHE_OPEN_ATTACH) == CACHE_OPEN_ATTACH)
+		AttachSource();
+
+	if (stream->GetMode() & STREAM_OVERLAPPED) {
+		if (mode & CACHE_OPEN_WRITE) {
+			Enable(CACHE_ASYNCH_WRITE); 	
+//			hWriteQueueSemaphore = CreateSemaphore(NULL, 1, 1, NULL);
+		}
+		if (mode & CACHE_OPEN_READ)
+			Enable(CACHE_READ_AHEAD);
+	}
+
+	SetSource(stream);
+	iAccessMode = mode;
+
+	iStreamSize = GetSource()->GetSize();
+	sts.iReadPosition = -1;
+	sts.iWritePosition = -1;
+	iLastPossibleWritePos = max(0,iStreamSize);
+	
+	//hAccessMutex = CreateMutex(NULL, false, NULL); 
+	InitializeCriticalSection(&critical_section);
+
+//	Enable(CACHE_THREADSAFE);
+	Enable(CACHE_CAN_GROW);
+
+	dwLastThread = 0;
+	GetThreadSpecific();
+
+	Seek(0);
+
+	return CACHE_OPEN_NO_ERROR;
+}
+
+bool CACHE::EnterCritical()
+{
+	if (bThreadsafe)
+		EnterCriticalSection(&critical_section);
+
+	return true;
+}
+
+bool CACHE::LeaveCritical()
+{
+	if (bThreadsafe) {
+		_ASSERT(critical_section.LockCount >= 0);
+		LeaveCriticalSection(&critical_section);
+	}
+
+	return true;
+}
+
+int CACHE::Close()
+{
+	if (iAccessMode == -1)
+		return true;
+
+	if (CanWrite()) {
+		for (int i=0; i<iNumberOfCacheLines; i++) {
+			WriteCacheLineToTargetStream(i);
+			WaitUntilReadyForWrite(i);
+		}
+
+		GetSource()->TruncateAt(iStreamSize);
+	}
+
+	iAccessMode = -1;
+	iStreamSize = 0;
+	sts.iReadPosition = -1;
+
+	STREAM_FILTER::Close();
+
+//	SetSource(NULL);
+	
+	DeleteCriticalSection(&critical_section);
+
+	return 0;
+}
+
+bool CACHE::IsPositionInCacheLine(__int64 iPosition, int iCacheLineIndex)
+{
+	if (iCacheLineIndex < 0 || iCacheLineIndex >= iNumberOfCacheLines)
+		return false;
+
+	CACHE_LINE* cl = cache_lines[iCacheLineIndex];
+
+	if (!cl->bValid)
+		return false;
+
+	if (cl->iSourceOffset > iPosition || cl->iSourceOffset + cl->iSize <= iPosition)
+		return false;
+
+	return true;
+}
+
+int CACHE::FindCacheLine(__int64 iPosition, int iFirstLook)
+{
+	if (iFirstLook >= 0 && iFirstLook < iNumberOfCacheLines) {
+		if (IsPositionInCacheLine(iPosition, iFirstLook))
+			return iFirstLook;
+	}
+
+	if (iPosition >= iStreamSize && !CanWrite()) 
+		return CACHE_FCL_NOT_FOUND;
+
+	if (iPosition >= iLastPossibleWritePos && CanWrite())
+		return CACHE_FCL_NOT_FOUND;
+
+	for (int j=0;j<iNumberOfCacheLines;j++)
+		if (IsPositionInCacheLine(iPosition, j))
+			return j;
+
+	return CACHE_FCL_NOT_FOUND;
+}
+
+bool CACHE::WriteCacheLineToTargetStream(int iCacheLineIndex)
+{
+	if (iCacheLineIndex < 0 || iCacheLineIndex >= iNumberOfCacheLines)
+		return false;
+
+	if (!cache_lines[iCacheLineIndex]->bDirty || cache_lines[iCacheLineIndex]->bBeingWritten)
+		return true;
+
+	if (!CanWrite())   // should not occur anyway
+		return false;
+
+	CACHE_LINE* cl = cache_lines[iCacheLineIndex];
+
+	bool unbuffered = !!(GetSource()->GetMode() & STREAM_UNBUFFERED);
+	bool overlapped = !!(GetSource()->GetMode() & STREAM_OVERLAPPED);
+	int size = (unbuffered)?cache_lines[iCacheLineIndex]->iSize:cache_lines[iCacheLineIndex]->iUsedSize;
+	
+	if (overlapped) {
+//		if (IsEnabled(CACHE_FORCE_SINGLE_ASYNCH_WRITE));
+//			WaitForSingleObject(hWriteQueueSemaphore, INFINITE);
+
+		cl->bBeingWritten = true;
+
+		if (IsEnabled(CACHE_CREATE_LOG)) {
+			char cTxt[256]; memset(cTxt, 0, sizeof(cTxt));
+			sprintf(cTxt, "asynchronous write: %d bytes @ %12I64d \n", 
+				size, cache_lines[iCacheLineIndex]->iSourceOffset);
+			fprintf(fLog, cTxt);
+		}
+
+		GetSource()->Seek(cl->iSourceOffset);
+
+		int write_result = GetSource()->WriteAsync(cl->pData, size,	&cl->overlapped);
+
+		if (write_result == FILESTREAM_ASYNCH_IO_FAILED) {
+			cl->bBeingWritten = false;
 			return false;
 		}
-		else
-		{
-			if (lpdwHowMany) *lpdwHowMany=(DWORD)(lpCacheInfo[dwNbr].qwStart+GetBytesPerBuffer()-_qwPos);
-			return true;
+
+		if (write_result == FILESTREAM_ASYNCH_IO_FINISHED) {
+			WaitUntilReadyForWrite(iCacheLineIndex);
 		}
+
+		if (!IsEnabled(CACHE_ASYNCH_WRITE)) {
+			int wait = WaitUntilReadyForWrite(iCacheLineIndex);
+			if (wait <= 0)
+				return false;
+		}
+
+	} else {
+		GetSource()->Seek(cache_lines[iCacheLineIndex]->iSourceOffset);
+		if (GetSource()->Write(cache_lines[iCacheLineIndex]->pData, size) != size)
+			return false;
+	}
+
+	cache_lines[iCacheLineIndex]->bDirty = false;
+
+	return true;
+}
+
+bool CACHE::CanRead()
+{
+	if (iAccessMode < 0)
+		return false;
+
+	return !!(iAccessMode & CACHE_OPEN_READ);
+}
+
+bool CACHE::CanWrite()
+{
+	if (iAccessMode < 0)
+		return false;
+
+	return !!(iAccessMode & CACHE_OPEN_WRITE);
+}
+
+int CACHE::LoadSegmentIntoCacheLine(__int64 iPosition, int iCacheLineIndex)
+{
+	if (iCacheLineIndex < 0 || iCacheLineIndex >= iNumberOfCacheLines)
+		return false;
+
+	if (!WriteCacheLineToTargetStream(iCacheLineIndex))
+		return CACHE_WRITEBACK_FAILURE;
+
+	CACHE_LINE* cl = cache_lines[iCacheLineIndex];
+
+	if (!cl->iSize) {
+		MessageBoxA(NULL, "Interal Error", "Fatal", MB_OK);
+	}
+
+	cl->iSourceOffset = (iPosition / cl->iSize) * cl->iSize;
+	GetSource()->Seek(cl->iSourceOffset);
+	
+	if (!bReadAhead) {
+		if (GetSource()->GetMode() & STREAM_OVERLAPPED) {
+			GetSource()->ReadAsync(cl->pData, cl->iSize, &cl->overlapped);
+			cl->bValid = true;
+			cl->bDirty = false;
+			cl->bBeingRead = true;
+			cl->bBeingWritten = false;
+			int wait = WaitUntilReadyForRead(iCacheLineIndex);
+
+			if (wait == CACHE_LOAD_FAILURE)
+				return wait;
+		} else {
+			cl->iUsedSize = GetSource()->Read(cl->pData, cl->iSize);
+			_ASSERT(cl->iUsedSize);
+		}
+
+		if (cl->iUsedSize <= 0)
+			return false;
+
+		cl->iLastAccessTime = GetTickCount();
+		cl->bBeingRead = false;
+		cl->bBeingWritten = false;
+		cl->bDirty = false;
+		cl->bValid = true;
+		cl->iReadAccessCount = 0;
+		cl->overlapped.hEvent = NULL;
+
+		SetCacheLineCurrentReadPos(cl, (int)(iPosition - cl->iSourceOffset));
+
+		return true;
+	} else {
+		DWORD dwWritten = 0;
+
+		if (cl->bBeingWritten) {
+			if (WaitUntilReadyForWrite(iCacheLineIndex) <= 0)
+				return false;
+		}
+
+		cl->bBeingRead = true;
+		cl->bValid = true;
+		cl->bDirty = false;
+		cl->bBeingWritten = false;
+		cl->iReadAccessCount = 0;
+		cl->iUsedSize = cl->iSize;
+		
+		if (GetSource()->ReadAsync(cl->pData, cl->iSize, &cl->overlapped) == FILESTREAM_ASYNCH_IO_FAILED)
+			return CACHE_LOAD_FAILURE;
+
+		cl->iLastAccessTime = GetTickCount();
+
+		return true;
 	}
 }
 
-
-// find oldest cache line
-// output: *lpdwFree: index of deleted cache line
-void CACHEDSTREAM::DeleteOldestBuffer(DWORD* lpdwFree)
+bool CACHE::PrepareCacheLineForOverwrite(int iCacheLineIndex)
 {
-	LINEARCACHEINFO*	lpOldest;
-	int					i,iOldest;
+	if (WriteCacheLineToTargetStream(iCacheLineIndex)) {
+		//cache_lines[iCacheLineIndex].iUsedSize = 0;
 
-	lpOldest=&(lpCacheInfo[0]);
-	iOldest=0;
+		/* is this necessary / does this make sense? */
+		SetCacheLineCurrentReadPos(cache_lines[iCacheLineIndex], 0);
 
-	for (i=1;i<GetNbrOfBuffers();i++)
-	{
-		if (IsBufferUsed(i))
-		{
-			if (lpCacheInfo[i].dwSysTime<lpOldest->dwSysTime)
-			{
-				lpOldest=&(lpCacheInfo[i]);
-				iOldest=i;
+		return true;
+	}
+
+	return false;
+}
+
+int CACHE::FindCacheLineIndexToOverwrite()
+{
+	EnterCritical();
+
+	int min_time = INT_MAX;
+	int min_index = -1;
+
+	/* find a cache line that is not being read, not being written, not locked,
+	   and has not been accessed for the longest time */
+	for (int j=0; j<iNumberOfCacheLines; j++) {
+		if (min_time > cache_lines[j]->iLastAccessTime && 
+			!cache_lines[j]->bBeingRead && 
+			!cache_lines[j]->bBeingWritten &&
+			!IsCacheLineLocked(j)) {
+			min_time = cache_lines[j]->iLastAccessTime;
+			min_index = j;
+		}
+	}
+
+	/* if the cache line that has been found is dirty, write it back and then find
+	   a cache line index to overwrite */
+	if (min_index > -1 && cache_lines[min_index]->bDirty) {
+		PrepareCacheLineForOverwrite(min_index);
+		return FindCacheLineIndexToOverwrite();
+	}
+
+	/* if cache has been grown */
+	if (iInitialNumberOfCacheLines < iNumberOfCacheLines) {
+		if (min_index == iNumberOfCacheLines - 1) {
+			if (IsEnabled(CACHE_CREATE_LOG))
+				fprintf(fLog, "shrinking cache...\n");
+			
+			InitCache(iNumberOfCacheLines - 1, -1);
+			return FindCacheLineIndexToOverwrite();
+		}
+	}
+
+	if (min_index < 0) {
+		/* when here, all cache lines are being read, being written or locked */
+		HANDLE	*h = (HANDLE*)malloc(sizeof(HANDLE)*iNumberOfCacheLines);
+		DWORD*  cli = (DWORD*)malloc(sizeof(DWORD)*iNumberOfCacheLines);
+		int handle_count = 0;
+
+		for (j=0; j<iNumberOfCacheLines; j++) if (cache_lines[j]->bBeingWritten) {
+			h[handle_count] = cache_lines[j]->overlapped.hEvent;
+			cli[handle_count++] = j;
+		}
+
+		/* when cache lines are being written, wait for one of the writebacks
+		   to complete */
+		if (handle_count > 0) {
+			int idx = -1;
+			while (idx < WAIT_OBJECT_0 || idx > WAIT_OBJECT_0 + handle_count - 1)
+				idx = WaitForMultipleObjectsEx(handle_count, h, false, INFINITE, true);
+
+			idx -= WAIT_OBJECT_0;
+			WaitUntilReadyForWrite(cli[idx]);
+			free(h);
+			free(cli);
+			return FindCacheLineIndexToOverwrite();
+		} else {
+			free(h);
+			free(cli);
+
+			/* when having arrived here, all cache lines are locked or being read,
+			   thus the cache must either grow, wait for a read to be competed,
+			   or report a fatal error */
+
+			if (IsEnabled(CACHE_CREATE_LOG)) {
+				fprintf(fLog, "Must grow cache...\n");
+/*#ifdef _T
+				if (IsEnabled(CACHE_CAN_GROW))
+					MessageBox(0, _T("Must grow cache"), _T("Cache:"), MB_OK);
+				else
+					MessageBox(0, _T("Must grow cache but can't"), _T("Cache:"), MB_OK | MB_ICONERROR);
+#endif			
+*/			}
+
+			/* now check if a cache line that is marked being read has actually been
+			   read completely and is only marked being read because WaitUntilReadyForRead
+			   has not been called because the CACHE has not yet tried to access it */
+			int cli = -1;
+			for (int j=0; j<iNumberOfCacheLines; j++) {
+				CACHE_LINE* cl = cache_lines[j];
+				if (cache_lines[j]->bBeingRead && !IsCacheLineLocked(cache_lines[j])) {
+					cli = j;
+					if (GetSource()->IsOverlappedIOComplete(&cache_lines[j]->overlapped)) {
+						WaitUntilReadyForRead(j);
+						return j;
+					}
+				}
+			}
+
+			/* all cache lines are either still really being read and/or locked */
+			if (IsEnabled(CACHE_CAN_GROW) && iNumberOfCacheLines < MAX_CACHE_LINES) {
+				InitCache(iNumberOfCacheLines + 1, -1);
+
+				/* InitCache push_backs the new cache_line, but EnsureFreeCacheline
+				   also does, thus remove the first one */
+				free_cache_lines.pop_back();
+				cache_lines[iNumberOfCacheLines-1]->bWasGrown = true;
+				return iNumberOfCacheLines - 1;
+			} else {
+				if (cli > -1) {
+					WaitUntilReadyForRead(cli);
+					return cli;
+				}
+
+//				Sleep(500);
+//				return FindCacheLineIndexToOverwrite();
+				_ASSERT(0);
+				return -1;
 			}
 		}
 	}
 
-	*lpdwFree=iOldest;
-	WriteCachelineBack(iOldest);
-	lpCacheInfo[iOldest].dwSysTime=0;
-	lpCacheInfo[iOldest].qwStart=0;
+	if (bThreadsafe) {
+		CacheLineDeleteThreadSpecificMap(cache_lines[min_index]);
+//		cache_lines[min_index]->dwLastThread = 0;
+	}
+
+	LeaveCritical();
+
+	return min_index;		
 }
 
-int CACHEDSTREAM::InvalidateCache()
+int CACHE::EnsureFreeCacheLine()
 {
-	for (DWORD i=0;i<(DWORD)GetNbrOfBuffers();i++)
-	{
-		if (IsBufferUsed(i))
-		{
-			WriteCachelineBack(i);
-			lpCacheInfo[i].dwSysTime=0;
-			lpCacheInfo[i].qwStart=0;
+	int cache_line_index;
+
+	if (!free_cache_lines.empty()) {
+		while (free_cache_lines[0] >= iNumberOfCacheLines) 
+			free_cache_lines.pop_front();
+	}
+
+	if (!free_cache_lines.empty())
+		return true;
+
+	cache_line_index = FindCacheLineIndexToOverwrite();
+	
+	if (cache_line_index < 0)
+		return false;
+
+//	PrepareCacheLineForOverwrite(cache_line_index);
+
+	free_cache_lines.push_back(cache_line_index);
+
+	/* if a last-accessed cache line was freeed, it cannot be reused, so
+	   the iLastAccessedCacheLinexxxx elements must be deleted */
+	if (IsEnabled(CACHE_THREADSAFE)) {
+		CACHE_THREAD_SPECIFIC_MAP::iterator iter;
+		CACHE_THREAD_SPECIFIC* thread_specific;
+
+		iter = thread_specific_map.begin();
+		for (; iter != thread_specific_map.end(); iter++) {
+			thread_specific = iter->second;
+			if (thread_specific->iLastAccessedCacheLineIndexRead == cache_line_index ||
+				thread_specific->iLastAccessedCacheLineIndexWrite == cache_line_index) {
+					thread_specific->iLastAccessedCacheLineIndexRead = -1;
+					thread_specific->iLastAccessedCacheLineIndexWrite = -1;
+					thread_specific->iBytesLeftInCurrentReadCacheLine = -1;
+					thread_specific->iBytesLeftInCurrentWriteCacheLine = -1;
+			}
 		}
+
 	}
-	return STREAM_OK;
+
+	return true;
 }
 
-int CACHEDSTREAM::LastBlockRead(void)
+int CACHE::UseFreeCacheLine()
 {
-	QUADWORD  qwPos=0;
+	EnsureFreeCacheLine();
 
-	for (int i=0;i<GetNbrOfBuffers();i++)
-	{
-		if (IsBufferUsed(i))
-		{
-			if (lpCacheInfo[i].qwStart>qwPos) qwPos=lpCacheInfo[i].qwStart;
+	if (free_cache_lines.empty())
+		return -1;
+
+	int index = free_cache_lines[0];
+	free_cache_lines.pop_front();
+	return index;
+}
+
+int CACHE::LoadSegment(__int64 iPosition)
+{
+	int result = LoadSegmentIntoCacheLine(iPosition, UseFreeCacheLine());
+
+	if (result == CACHE_WRITEBACK_FAILURE || result == CACHE_LOAD_FAILURE)
+		return result;
+
+	return true;
+}
+
+int CACHE::Read(void* pDest, DWORD dwBytes)
+{
+	BYTE*	pbDest = (BYTE*)pDest;
+
+	EnterCritical();
+
+	if (IsEndOfStream()) {
+		LeaveCritical();
+		return 0;
+	}
+
+	if (!dwBytes && GetBytesLeftInCurrentCacheLine(true)) {
+		LeaveCritical();
+		return 0;
+	}
+
+	if (dwBytes + GetAccessPosition(true) >= iStreamSize)
+		dwBytes = (DWORD)(iStreamSize - GetAccessPosition(true));
+
+	if (GetBytesLeftInCurrentCacheLine(true) > 0) {
+		int last_index = GetLastAccessedCacheLineIndex(true);
+		CACHE_LINE* cl = cache_lines[last_index];
+		
+		if (!WaitUntilReadyForRead(last_index)) {
+			LeaveCritical();
+			return -1;
 		}
+
+		/* this should actually not occur */
+		if (!cl->iUsedSize) {
+			LeaveCritical();
+			return 0;
+		}
+
+		if (GetBytesLeftInCurrentCacheLine(true) >= (int)dwBytes) {
+
+			LockCacheLine(cl);
+
+			memcpy(pDest, cl->pData + GetCacheLineCurrentReadPos(cl), dwBytes);
+			IncCacheLineCurrentReadPos(cl, dwBytes);
+			SetBytesLeftInCurrentCacheLine(true, -(int)dwBytes, true);
+			SetAccessPosition(true, dwBytes, true); 
+
+			UnlockCacheLine(cl);
+
+			LeaveCritical();
+			return dwBytes;
+		} else {
+			int read = 0;
+			DWORD total_read = 0;
+		
+			do {
+				read = Read(&pbDest[total_read], 
+					min((int)(dwBytes - total_read), GetBytesLeftInCurrentCacheLine(true)));
+
+				if (read == CACHE_WRITEBACK_FAILURE || read == CACHE_LOAD_FAILURE) {
+					LeaveCritical();
+					return read;
+				}
+
+				total_read += read;
+
+				if (read < 0) {
+					LeaveCritical();
+					return -1;
+				}
+
+				Read(NULL, 0);
+			
+			} while (total_read < dwBytes && read > 0);
+			
+			LeaveCritical();
+			return total_read;
+		}
+
+	} else {
+		CACHE_LINE* cl;
+		int last_index = GetLastAccessedCacheLineIndex(true);
+		int index = FindCacheLine(GetAccessPosition(true), last_index);
+		
+		if (index < 0) {
+			int load = LoadSegment(GetAccessPosition(true));
+
+			if (load <= 0) {
+				LeaveCritical();
+				return load;
+			}
+
+			index = FindCacheLine(GetAccessPosition(true), 
+						GetLastAccessedCacheLineIndex(true));
+
+			/* index == -1 here mains a fatal bug in this class */
+			_ASSERT(index > -1);
+		} 
+	
+		cl = cache_lines[index];
+		SetCacheLineCurrentReadPos(cl, (int)(GetAccessPosition(true) - cl->iSourceOffset));
+		
+		/* must lock cache line for the following reason: When CACHE_READ_AHEAD is enabled
+		   and the cache is accessed rather randomly, it can happen that all cache lines
+		   but one are marked being read because only WaitUntilReadyForRead can mark such a
+		   cache line as being completely read, which may not be called for some cache lines
+		   when access is too random. When, in this situation, CACHE_READ_AHEAD is enabled,
+		   the section in WaitUntilReadyForRead which prereads the next cache line could
+		   select the cache line it is supposed to wait for as target for the prefetch operation. 
+		*/
+		LockCacheLine(index);
+		int wait = WaitUntilReadyForRead(index);
+		UnlockCacheLine(index);
+
+		if (wait == CACHE_WRITEBACK_FAILURE || wait == CACHE_LOAD_FAILURE) {
+			LeaveCritical();
+			return wait;
+		}
+
+		SetBytesLeftInCurrentCacheLine(true, 
+			cl->iUsedSize - GetCacheLineCurrentReadPos(cl), false);
+		SetLastAccessedCacheLineIndex(true, index, false);
+		//iLastAccessedCacheLineIndexRead = index;
+
+		int r = Read(pDest, dwBytes);
+
+		LeaveCritical();
+		return r;
 	}
-	return (DWORD)(qwPos/GetBytesPerBuffer());
+
+	return -1; // alibi return, this is never executed
 }
 
-// output: return   : no buffer free for new cache line <=> return true
-//         *lpdwFree: index of free cache line 
-bool CACHEDSTREAM::AllBuffersUsed(DWORD* lpdwFree)
+int CACHE::Write(void* pSrc, DWORD dwBytes)
 {
-	bool	bRes=true;
+	BYTE* pbSrc = (BYTE*)pSrc;
 
-	for (int i=0;(i<GetNbrOfBuffers())&&(bRes);i++)
-	{
-		if (!IsBufferUsed(i)) if (lpdwFree) *lpdwFree=i;
-		bRes&=IsBufferUsed(i);
-	}
-	return bRes;
-}
+	_ASSERT(CanWrite());
+	if (!CanWrite())
+		return 0;
 
-// input:  _qwPos       : absolute position within stream
-// output: *lpdwNbr     : index of cache line
-//         *lpdwHowMany : bytes from desired position to end of cache line
-//         *lpdwPOffset : offset of _qwPos within cache line 
-bool CACHEDSTREAM::FindBuffer(QUADWORD _qwPos,DWORD* lpdwNbr,DWORD* lpdwHowMany,DWORD* lpdwOffset)
-{
-	__int64 i;
-	int		j;
-	bool	bRes=false;
-	i = _qwPos + GetOffset(); 
-	int iBuffer;
+	if (!dwBytes && GetBytesLeftInCurrentCacheLine(false))
+		return 0;
 
-	if (i>=iLastBufferBegin && i<=iLastBufferEnd) {
-		if (lpdwNbr) *lpdwNbr=iLastBufferInUse;
-		if (lpdwOffset) *lpdwOffset=(DWORD)(i-lpCacheInfo[iLastBufferInUse].qwStart);
-		if (lpdwHowMany) *lpdwHowMany=(DWORD)(iLastBufferEnd-i+1);
-		bRes=true;
-		return bRes;
-	}
+	if (GetBytesLeftInCurrentCacheLine(false) > 0) {
 
-	j = iBufferBits; 
-	shr64(&i,j);
-	iBuffer = (int)i % iModVal;
+		int last_index = GetLastAccessedCacheLineIndex(false);
+		CACHE_LINE* cl = cache_lines[last_index];
+		WaitUntilReadyForWrite(last_index);
 
-	if (IsInBuffer(j=iBuffer,_qwPos,lpdwHowMany)) {
-		iLastBufferInUse = j;
-		iLastBufferBegin = lpCacheInfo[j].qwStart;
-		iLastBufferEnd = lpCacheInfo[j].qwStart + GetBytesPerBuffer()-1;
+		if (GetBytesLeftInCurrentCacheLine(false) >= (int)dwBytes) {
 
-		if (lpdwNbr) *lpdwNbr=j;
-		if (lpdwOffset) *lpdwOffset=(DWORD)(_qwPos-lpCacheInfo[j].qwStart);
-		bRes=true;
-	}
-	return bRes;
-}
+			/* if this assertion fails, the CACHE class is broken somewhere */
+			_ASSERT(GetCacheLineCurrentWritePos(cl) + dwBytes <= iCacheLineSize);
 
-int CACHEDSTREAM::WriteCachelineBack(DWORD dwNbr)
-{
-	if (GetDest() && lpCacheInfo[dwNbr].bDirty) {
-		GetDest()->Seek(lpCacheInfo[dwNbr].qwStart);
-		GetDest()->Write(lplpCache[dwNbr]->GetData(), lpCacheInfo[dwNbr].dwMaxUsedSize);
-		int last_byte = (int)(lpCacheInfo[dwNbr].qwStart + GetBytesPerBuffer() - 1);
-		lpCacheInfo[dwNbr].bDirty = 0;
+			memcpy(cl->pData + GetCacheLineCurrentWritePos(cl), pSrc, dwBytes);
+			SetAccessPosition(false, dwBytes, true);
+			IncCacheLineCurrentWritePos(cl, dwBytes);
+			SetBytesLeftInCurrentCacheLine(false, -(int)dwBytes, true);
+	
+			if (GetAccessPosition(false) > iStreamSize)
+				iStreamSize = cl->iSourceOffset + GetCacheLineCurrentWritePos(cl);
+
+			if (GetCacheLineCurrentWritePos(cl) > cl->iUsedSize)
+				cl->iUsedSize = GetCacheLineCurrentWritePos(cl);
+
+			cl->bDirty = true;
+
+			if (!GetBytesLeftInCurrentCacheLine(false) && IsEnabled(CACHE_IMMED_WRITEBACK))
+				if (!WriteCacheLineToTargetStream(GetLastAccessedCacheLineIndex(false)))
+					return CACHE_WRITEBACK_FAILURE;
+
+			return dwBytes;
+		} else {
+			int written = 0;
+			DWORD total_written = 0;
+
+			do {
+				written = Write(pbSrc + total_written, 
+					min(GetBytesLeftInCurrentCacheLine(false), (int)(dwBytes - total_written)));
+
+				if (written == CACHE_WRITEBACK_FAILURE)
+					return CACHE_WRITEBACK_FAILURE;
+
+				total_written += written;
+
+				Write(NULL, 0);
+			} while (total_written < dwBytes && written);
+
+			return total_written;
+		}
+	} else {
+		CACHE_LINE* cl = NULL;
+		int index = -1;
+
+		int last_index = GetLastAccessedCacheLineIndex(false);
+		if (GetAccessPosition(false) < iLastPossibleWritePos) {
+			index = FindCacheLine(GetAccessPosition(false), last_index);
+			if (index < 0) {
+				int load = LoadSegment(GetAccessPosition(false));
+
+				if (load == CACHE_WRITEBACK_FAILURE || load == CACHE_LOAD_FAILURE)
+					return load;
+
+				if (load <= 0)
+					return 0;
+
+				index = FindCacheLine(GetAccessPosition(false),
+					GetLastAccessedCacheLineIndex(false));
+			}
+
+			cl = cache_lines[index];
+			SetCacheLineCurrentWritePos(cl, (int)(GetAccessPosition(false) - cl->iSourceOffset));
+
+			/* must lock cache line for same reason as in Read() */
+			LockCacheLine(cl);
+			WaitUntilReadyForWrite(index);
+			UnlockCacheLine(cl);
+			SetBytesLeftInCurrentCacheLine(false, cl->iSize - GetCacheLineCurrentWritePos(cl), false);
+			SetLastAccessedCacheLineIndex(false, index, false);
+			//iLastAccessedCacheLineIndexWrite = index;
+
+			return Write(pSrc, dwBytes);
+		} else {
+			index = UseFreeCacheLine();
+
+			cl = cache_lines[index];
+			cl->iSourceOffset = (GetAccessPosition(false) / cl->iSize) * cl->iSize;
+			SetCacheLineCurrentWritePos(cl, (int)(GetAccessPosition(false) - cl->iSourceOffset));
+			iLastPossibleWritePos = cl->iSourceOffset + cl->iSize - 1;
+			cl->bBeingWritten = false;
+			cl->bBeingRead = false;
+			cl->bDirty = false;
+			cl->bValid = true;
+			cl->iUsedSize = 0;
+
+			return Write(pSrc, dwBytes);
+		}
 	}
 
 	return 0;
 }
 
-STREAM* CACHEDSTREAM::GetDest()
+__int64 CACHE::GetPos()
 {
-	return (iAccess == CACHE_WRITE?lpDest:NULL);
+	if (CanWrite())
+		return GetAccessPosition(false);
+
+	return GetAccessPosition(true);
 }
 
-int CACHEDSTREAM::PrepareForWriting(__int64 qwPos, DWORD* lpdwNbr, DWORD* lpdwMaxBytes, DWORD *lpdwOffset)
+__int64 CACHE::GetSize()
 {
-	if (!FindBuffer(qwPos, lpdwNbr, lpdwMaxBytes, lpdwOffset)) {
-		if (qwPos < GetBytesPerBuffer()) {
-			Sleep(1);
-		}
-		Seek(qwPos);
-		Read(NULL, 1);
-		Seek(qwPos);
-		FindBuffer(qwPos, lpdwNbr, lpdwMaxBytes, lpdwOffset);
-	} else {
-		Seek(qwPos);
+	return iStreamSize;
+}
+
+int CACHE::Seek(__int64 iPosition)
+{
+	EnterCritical();
+
+	bool r = false;
+	bool w = false;
+
+	if (GetAccessPosition(true) == iPosition && !CanWrite()) {
+		LeaveCritical();
+		return true;
 	}
 
+	if (GetAccessPosition(false) == iPosition && !CanRead()) {
+		LeaveCritical();
+		return true;
+	}
+
+	if (IsPositionInCacheLine(iPosition, GetLastAccessedCacheLineIndex(true)) && CanRead()) {
+		CACHE_LINE* cl = cache_lines[GetLastAccessedCacheLineIndex(true)];
+		
+		SetAccessPosition(true, iPosition, false);
+		SetCacheLineCurrentReadPos(cl, (int)(GetAccessPosition(true) - cl->iSourceOffset));
+		SetBytesLeftInCurrentCacheLine(true, cl->iUsedSize - GetCacheLineCurrentReadPos(cl), false);
+
+		r = true;
+	}
+
+	if (IsPositionInCacheLine(iPosition, GetLastAccessedCacheLineIndex(false)) && CanWrite()) {
+		CACHE_LINE* cl = cache_lines[GetLastAccessedCacheLineIndex(false)];
+		
+		SetAccessPosition(false, iPosition, false);
+		SetCacheLineCurrentWritePos(cl, (int)(GetAccessPosition(false) - cl->iSourceOffset));
+		SetBytesLeftInCurrentCacheLine(false, cl->iSize - GetCacheLineCurrentWritePos(cl), false);
+
+		w = true;
+	}
+
+	if (CanRead() && !r) {
+		SetBytesLeftInCurrentCacheLine(true, -1, false);
+		SetAccessPosition(true, iPosition, false);
+	}
+
+	if (CanWrite() && !w) {
+		SetBytesLeftInCurrentCacheLine(false, -1, false);
+		SetAccessPosition(false, iPosition, false);
+	}
+
+	LeaveCritical();
+	
+	return true;
+}
+
+bool CACHE::IsEndOfStream()
+{
+/*	if (GetAccessPosition(true) + 5 >= iStreamSize) {
+		printf("Pos: %I64d / %I64d\n", GetAccessPosition(true), iStreamSize);
+//		MessageBox(0, "Test", "Test", MB_OK);
+	}
+	*/
+	if (GetAccessPosition(true) >= iStreamSize)
+		return true;
+
+	return false;
+}
+
+/* todo:
+      Check WaitUntilReadyForRead for correct behaviour when LoadSegment
+	  returns CACHE_WRITEBACK_FAILURE
+*/
+int CACHE::WaitUntilReadyForRead(int iCacheLineIndex)
+{
+	if (iCacheLineIndex < 0 || iCacheLineIndex >= iNumberOfCacheLines)
+		return false;
+
+	if (!CanRead())
+		return false;
+		
+	CACHE_LINE* cl = cache_lines[iCacheLineIndex];
+
+	if (!cl->bValid)
+		return false;
+
+	cl->iReadAccessCount++;
+	cl->iLastAccessTime = GetTickCount();
+
+	/* must not wait for operation to be completed from two different threads,
+	   thus, the check for bBeingRead must be mutexed*/
+	EnterCritical();
+
+	if (!cl->bBeingRead) {
+		LeaveCritical();
+		return true;
+	}
+
+	GetSource()->WaitForAsyncIOCompletion(&cl->overlapped, (DWORD*)&cl->iUsedSize);
+	CloseHandle(cl->overlapped.hEvent);
+	cl->bBeingRead = false;
+	
+	LeaveCritical();
+
+	if (!cl->iUsedSize)
+		return CACHE_LOAD_FAILURE;
+
+	/* read-ahead is mutexed */
+	EnterCritical();
+
+	if ((GetSource()->GetMode() & STREAM_OVERLAPPED) && !IsEnabled(CACHE_THREADSAFE)) {
+		if (bReadAhead && cl->iSourceOffset + cl->iSize < GetSize() && iNumberOfCacheLines > 3) {
+			int index = FindCacheLine(cl->iSourceOffset + cl->iSize, -1);
+			if (index < 0) 
+				LoadSegment(cl->iSourceOffset + cl->iSize);
+		}
+	}
+
+	LeaveCritical();
+
+	return true;
+}
+
+int CACHE::WaitUntilReadyForWrite(int iCacheLineIndex)
+{
+	// finish pending read operation, however, success is not necessary
+	WaitUntilReadyForRead(iCacheLineIndex);
+
+	CACHE_LINE* cl = cache_lines[iCacheLineIndex];
+
+	if (!CanWrite())
+		return false;
+
+	if (!cl->bBeingWritten)
+		return true;
+
+	DWORD dwWritten;
+	GetSource()->WaitForAsyncIOCompletion(&cl->overlapped, &dwWritten);
+	CloseHandle(cl->overlapped.hEvent);
+
+	bool bSuccess = (GetSource()->GetMode() & STREAM_UNBUFFERED) && dwWritten == cl->iSize || dwWritten == cl->iUsedSize; 
+	_ASSERT(bSuccess);
+
+	cl->bBeingWritten = false;
+
+	if (!bSuccess) {
+		cl->bDirty = true;
+		return CACHE_WRITEBACK_FAILURE;
+	}
+
+	return true;
+}
+
+int CACHE::GetGranularity()
+{
 	return 1;
 }
 
-bool CACHEDSTREAM::IsReading()
+bool CACHE::_Enable(int flag, bool set, bool enable)
 {
-	return iAccess == CACHE_READ;
+	bool* f;
+
+	switch (flag) {
+		case CACHE_READ_AHEAD: f = &bReadAhead; break;
+		case CACHE_ASYNCH_WRITE: f = &bAsynchWrite; break;
+		case CACHE_CAN_GROW: f = &bCanGrow; break;
+		case CACHE_IMMED_WRITEBACK: f = &bImmedWriteback; break;
+		case CACHE_CREATE_LOG: f = &bLog; break;
+		case CACHE_THREADSAFE: f = &bThreadsafe; break;
+		default: f=NULL;
+	}
+
+	_ASSERT(f);
+
+	if (!f)
+		return false;
+
+	bool b = *f;
+	
+	bool copy_status = false;
+	if (flag == CACHE_THREADSAFE && !b && enable && set) {
+		copy_status = true;
+	}
+
+	if (set)
+		*f = enable;
+
+	if (copy_status) {
+		GetThreadSpecific();
+		memcpy(thread_specific, &sts, sizeof(sts));
+		for (int j=0;j<iNumberOfCacheLines;j++) {
+			CACHE_LINE* cl = cache_lines[j];
+			CacheLineGetThreadSpecific(cl);
+			memcpy(cl->thread_specific, &cl->sts, sizeof(cl->sts));
+		}
+	}
+	
+
+	return b;
 }
+

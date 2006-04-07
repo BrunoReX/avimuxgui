@@ -1,5 +1,5 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Developer Studio generated include file.
+// Microsoft Visual C++ generated include file.
 // Used by AVIMux_GUI.rc
 //
 #define IDM_ABOUTBOX                    0x0010
@@ -204,8 +204,6 @@
 #define IDC_SUBNAME                     1129
 #define IDC_STDI_AUTO                   1130
 #define IDS_MAIN_OPENFILES              1131
-#define IDS_MAIN_AVAILABLESTREAMS       1132
-#define IDS_MAIN_VIDEO                  1133
 #define IDS_MAIN_AUDIO                  1134
 #define IDS_MAIN_SUBTITLES              1135
 #define IDS_MAIN_PROTOCOL               1136
@@ -246,16 +244,20 @@
 #define IDC_TITLE                       1188
 #define IDC_TITLELABEL                  1189
 #define IDC_SFO_O_MKVOPTIONS            1190
+#define IDC_SFO_O_MKVPAGE1              1190
 #define IDC_MKV_LACE                    1191
 #define IDC_ESPLITPOINT                 1192
 #define IDC_IAVI_Label                  1192
 #define IDC_ADD                         1193
 #define IDC_IMKV_Label                  1193
 #define IDC_SFO_O_MKVOPTIONS2           1194
+#define IDC_SFO_O_MKVPAGE2              1194
 #define IDC_SFO_I_GENERAL               1195
 #define IDC_GEN_CHAPTERS                1196
 #define IDC_SFO_O_GENERAL               1197
 #define IDC_MAKESUBCHAPTER              1198
+#define IDC_SFO_O_MKVOPTIONS3           1198
+#define IDC_SFO_O_MKVPAGE3              1198
 #define IDC_SAVEAS                      1199
 #define IDC_BUTTON3                     1200
 #define IDC_CH_FROMFILENAMES            1201
@@ -284,8 +286,11 @@
 #define IDC_MKV_POSITION                1230
 #define IDC_1STCL_30sec                 1231
 #define IDC_RADIO_AVI                   1233
+#define IDC_RADIO_OUTPUT_AVI            1233
 #define IDC_RADIO_GENERAL               1234
+#define IDC_RADIO_OUTPUT_GENERAL        1234
 #define IDC_RADIO_MKV                   1235
+#define IDC_RADIO_OUTPUT_MKV            1235
 #define IDC_DELETE                      1236
 #define IDC_RADIO_INPUT_AVIMP3          1236
 #define IDC_RADIO_INPUT_MKV             1237
@@ -308,6 +313,7 @@
 #define IDC_IMKV_CHAPTERS_LABEL         1254
 #define IDC_IMKV_CH_IMPORT              1255
 #define IDC_IMKV_CH_FROMFILENAMES       1256
+#define IDC_I_CH_FROMFILENAMES          1256
 #define IDC_OVERLAPPED                  1257
 #define IDC_STREAM_LNG                  1258
 #define IDC_RADIO_INPUT_GENERAL         1258
@@ -319,6 +325,7 @@
 #define IDC_LACEVIDEO_COUNT             1265
 #define IDC_LACEVIDEO_SPIN              1266
 #define IDC_FORCEMKV10                  1267
+#define IDC_FORCEMKV1                   1267
 #define IDC_WRITECUES                   1268
 #define IDC_WRITECUES_VIDEO             1269
 #define IDC_WRITECUES_AUDIO             1270
@@ -334,11 +341,14 @@
 #define IDC_TCS_MKA_LABEL               1280
 #define IDC_2ndCopieOfTracks            1281
 #define IDC_others                      1282
+#define IDC_OUTPUT_MKV3_OTHERS          1282
 #define IDC_TIMECODESCALE               1283
 #define IDC_INDEXINSEEKHEAD             1284
 #define IDC_LOGFILE                     1285
 #define IDC_ABSOLUTE                    1286
+#define IDC_MKV_PAGE3                   1286
 #define IDC_RELATIVE                    1287
+#define IDC_FORCEMKV2                   1287
 #define IDC_RIFFAVISIZE                 1288
 #define IDC_RIFFAVISIZE_LABEL           1289
 #define IDC_RIFFAVISIZE_UNIT            1290
@@ -358,11 +368,41 @@
 #define IDC_DTSFRAMECOUNT_LABEL         1310
 #define IDC_SAVE                        1311
 #define IDC_FULLEXPAND                  1312
+//#define IDC_WAIT                        1312
+#define IDC_WAIT_FOR_COMPLETE_TREE      1312
 #define IDC_RANDOMIZE_ELEMENT_ORDER     1313
 #define IDC_CHAPTER_DISPLAY             1315
 #define IDC_CHAPTERDISPLAY_EDIT         1316
 #define IDC_CHAPTERDISPLAY_LNG          1317
 #define IDC_HAALIMODE                   1319
+#define IDC_CHAPTERSEGMENTUID           1321
+#define IDC_MOVEHDRL                    1322
+#define IDC_NONCLUSTERTOFIRSTSEEKHEAD   1323
+#define IDC_MKV_HEADERSIZE_LABEL        1324
+#define IDC_MKV_HEADERSIZE              1325
+#define IDC_WRITECUES_SUBS              1326
+#define IDC_CUES_AUTOSIZE               1328
+#define IDC_CUE_MINIMUM_INTERVAL        1329
+#define IDC_CUE_MINIMUM_INTERVAL_LABEL  1332
+#define IDC_SIZE_PER_STREAM_AND_HOUR    1334
+#define IDC_SIZE_PER_STREAM_AND_HOUR_LABEL 1335
+#define IDC_CUE_INTERVAL_SETTINGS_LABEL 1336
+#define IDC_CUE_TARGET_SIZE_RATIO_LABEL 1338
+#define IDC_CUE_TARGET_SIZE_RATIO       1339
+#define IDC_CHAPTERUID                  1340
+#define IDC_MKV_HARD_LINKING            1343
+#define IDC_CHAPTERS_USAGE_LABEL        1344
+#define IDC_CHAPTER_EDITOR              1345
+#define IDC_CHAPTER_TITLE               1346
+#define IDC_CHAPTERUID_LABEL            1348
+#define IDC_CHAPTERSEGMENTUID_LABEL     1349
+#define IDC_WRITECUES_BLOCKNUMBER       1350
+#define IDC_INPUT_OVERLAPPED            1351
+#define IDC_HEADER_STRIPPING            1352
+#define IDC_MKV3_USE_A_AAC              1353
+#define IDC_FONT_LARGER                 1354
+#define IDC_FONT_SMALLER                1355
+#define ID_LEAVE                        1356
 #define ID_INFORMATIONEN                40001
 #define IDM_VIDEOINFORMATION            40001
 #define ID_TEST                         40002
@@ -455,15 +495,34 @@
 #define IDM_IMMED_ADD_AUDIO             40088
 #define IDM_ENABLECHAPTER               40089
 #define IDM_HIDECHAPTER                 40090
+#define IDM_ORDEREDEDITION              40091
+#define IDM_DEFAULTEDITION              40092
+#define IDM_CHAPTER_COPY                40093
+#define IDM_CHAPTER_PASTE_AS_CHILD      40094
+#define IDM_CHAPTER_PASTE_AFTER         40095
+#define IDM_CHAPTER_DELETE_CLIPBOARD    40096
+#define IDM_CHAPTER_PASTE_INTO_NEW_EDITION 40097
+#define IDM_CHAPTER_PASTE_EACH_INTO_EDITION 40098
+#define IDM_CHAPTER_REINIT_UID_32       40100
+#define IDM_CHAPTER_REINIT_UID_64       40101
+#define IDM_CHAPTER_COPY_CHILDREN       40102
+#define IDM_CHAPTER_NUMERATE            40103
+#define IDM_EDITION_TO_CHAPTER          40104
+#define ID_Menu                         40105
+#define IDM_EBMLTREE                    40106
+#define IDM_SELVIDEO                    40108
+#define IDM_DESELVIDEO                  40109
+#define IDM_WAITFORLOAD                 40110
+#define IDM_RIFFTREE                    40111
 #define IDM_EXTRACTSRT                  65535
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        167
-#define _APS_NEXT_COMMAND_VALUE         40091
-#define _APS_NEXT_CONTROL_VALUE         1320
+#define _APS_NEXT_RESOURCE_VALUE        170
+#define _APS_NEXT_COMMAND_VALUE         40112
+#define _APS_NEXT_CONTROL_VALUE         1357
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

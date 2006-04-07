@@ -7,19 +7,29 @@
 // UserDrawEdit.h : Header-Datei
 //
 
+#include "UnicodeBase.h"
+
 /////////////////////////////////////////////////////////////////////////////
 // Fenster CUserDrawEdit 
 
-class CUserDrawEdit : public CEdit
+class CUserDrawEdit : public CEdit, public CUnicodeBase
 {
+private:
+	COLORREF	clrDisabled;
 // Konstruktion
 public:
+	COLORREF color;
+	int		iTextAlignment;
+	bool	bHasFocus;
 	CUserDrawEdit();
 
 // Attribute
 public:
 	COLORREF virtual GetTxtColor();
+	void	SetTextAlign(int align);
+	void	SetColor(COLORREF color);
 
+	void	SetDisabledTextColor(COLORREF color);
 // Operationen
 public:
 
@@ -39,6 +49,8 @@ protected:
 	//{{AFX_MSG(CUserDrawEdit)
 	afx_msg void OnPaint();
 	afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct);
+	afx_msg void OnKillFocus(CWnd* pNewWnd);
+	afx_msg void OnSetFocus(CWnd* pOldWnd);
 	//}}AFX_MSG
 
 	DECLARE_MESSAGE_MAP()

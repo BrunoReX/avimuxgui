@@ -5,6 +5,8 @@
 #include "textfiles.h"
 #include "global.h"
 
+
+
 LANGUAGE_DESCRIPTOR*	lpCurrLang;
 
 void SetCurrentLanguage(LANGUAGE_DESCRIPTOR* lpNewLanguage)
@@ -17,7 +19,7 @@ LANGUAGE_DESCRIPTOR* GetCurrentLanguage(void)
 	return lpCurrLang;
 }
 
-char*	LoadString(DWORD dwID)
+char*	LoadString(DWORD dwID, int charset)
 {
 	int		iMin,iMax,iMid;
 	LANGUAGE_DESCRIPTOR* lpLD=lpCurrLang;
@@ -34,28 +36,28 @@ char*	LoadString(DWORD dwID)
 			iMin=iMid;
 		}
 		else
-		if (lpLD->lpdwIndices[iMid]>dwID)
-		{
+		if (lpLD->lpdwIndices[iMid]>dwID) {
 			iMax=iMid;
-		}
-		else
-		{
+		} else {
 			iMin=iMid;
 			iMax=iMid;
 		}
 	}
 
-	if (lpLD->lpdwIndices[iMin]==dwID)
-	{
-		return (lpLD->lplpStrings[iMin]);
+	if (lpLD->lpdwIndices[iMin]==dwID)	{
+		if (charset == LOADSTRING_ANSI)
+			return (lpLD->lplpStrings[iMin]);
+		else
+			return (lpLD->lplpStringsUTF8[iMin]);
 	}
 	else
 	if (lpLD->lpdwIndices[iMax]==dwID)
 	{
-		return (lpLD->lplpStrings[iMax]);
-	}
-	else
-	{
+		if (charset == LOADSTRING_ANSI)
+			return (lpLD->lplpStrings[iMax]);
+		else
+			return (lpLD->lplpStringsUTF8[iMax]);
+	} else {
 		c = (char*)calloc(1,20);
 		sprintf(c, "<%d> not found", dwID);
 		return (c);
@@ -68,6 +70,7 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 
 	DWORD*	lpdwIndices,i,dwLen;
 	char**	lplpStrings;
+	char**  lplpStringsUTF8;
 	bool	bBackslash;
 
 	LANGUAGE_DESCRIPTOR*		lpLD;
@@ -76,8 +79,8 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 	s->Open(lpcName,STREAM_READ);
 	CTEXTFILE* f = new CTEXTFILE;
 	f->Open(STREAM_READ,s);
-	f->SelectOutputFormat(CM_ANSI);
-
+	f->SelectOutputFormat(CM_UTF8);
+	
 	ZeroMemory(cBuffer,sizeof(cBuffer));
 	
 	f->ReadLine(cBuffer);
@@ -107,17 +110,15 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 		
 	f->ReadLine(cBuffer);
 
-	//lpLD->lpcName=(char*)malloc(lstrlen(cBuffer)+1);
 	newz(char,1+strlen(cBuffer), lpLD->lpcName);
 
-	lstrcpy(lpLD->lpcName,cBuffer);
+	UTF82Str(cBuffer, lpLD->lpcName);
 	
 	f->ReadLine(cBuffer);
 
-	//lpdwIndices=(DWORD*)calloc(sizeof(DWORD),4096);
-	//lplpStrings=(char**)calloc(sizeof(char*),4096);
 	newz(DWORD, 4096, lpdwIndices);
 	newz(char*, 4096, lplpStrings);
+	newz(char*, 4096, lplpStringsUTF8);
 
 	while (f->ReadLine(cBuffer)>-1)
 	{
@@ -127,10 +128,8 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 		bBackslash=false;
 		if (lstrlen(cBuffer)>=2)
 		{
-			//lplpStrings[lpLD->dwEntries]=(char*)malloc(lstrlen(cBuffer)+1);
-			newz(char,1+lstrlen(cBuffer),lplpStrings[lpLD->dwEntries]);
+			newz(char,1+lstrlen(cBuffer),lplpStringsUTF8[lpLD->dwEntries]);
 			dwLen=lstrlen(cBuffer);
-			ZeroMemory(lplpStrings[lpLD->dwEntries],dwLen+1);
 			
 			for (i=0;i<dwLen;i++)
 			{
@@ -142,7 +141,7 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 					}
 					else
 					{
-						lplpStrings[lpLD->dwEntries][i]=cBuffer[i];
+						lplpStringsUTF8[lpLD->dwEntries][i]=cBuffer[i];
 						bBackslash=false;
 					}
 				}
@@ -150,25 +149,28 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 				{
 					if (cBuffer[i]='n') 
 					{
-						lplpStrings[lpLD->dwEntries][i-1]=13;
-						lplpStrings[lpLD->dwEntries][i]=10;
+						lplpStringsUTF8[lpLD->dwEntries][i-1]=13;
+						lplpStringsUTF8[lpLD->dwEntries][i]=10;
 					}
 					bBackslash=false;
 				}
 			}
+
+			UTF82Str(lplpStringsUTF8[lpLD->dwEntries], &lplpStrings[lpLD->dwEntries]);
 
 			lpLD->dwEntries++;
 			f->ReadLine(cBuffer);
 		}
 	}
 
-	//lpLD->lpdwIndices=(DWORD*)malloc(4*lpLD->dwEntries);
 	newz(DWORD, lpLD->dwEntries, lpLD->lpdwIndices);
 	memcpy(lpLD->lpdwIndices,lpdwIndices,4*lpLD->dwEntries);
 
-	//lpLD->lplpStrings=(char**)malloc(4*lpLD->dwEntries);
 	newz(char*, lpLD->dwEntries, lpLD->lplpStrings);
+	newz(char*, lpLD->dwEntries, lpLD->lplpStringsUTF8);
 	memcpy(lpLD->lplpStrings,lplpStrings,4*lpLD->dwEntries);
+	memcpy(lpLD->lplpStringsUTF8,lplpStringsUTF8,4*lpLD->dwEntries);
+
 
 	f->Close();
 	delete f;
@@ -176,6 +178,8 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 	delete s;
 
 	delete lplpStrings;
+	lplpStrings = NULL;
+	delete lplpStringsUTF8;
 	lplpStrings = NULL;
 	delete lpdwIndices;
 	lpdwIndices = NULL;
@@ -185,9 +189,13 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 
 void UnloadLanguageFile(LANGUAGE_DESCRIPTOR* lpLD)
 {
-	for (int i=0;i<(int)lpLD->dwEntries;delete lpLD->lplpStrings[i++]);
+	for (int i=0;i<(int)lpLD->dwEntries;i++) {
+		delete lpLD->lplpStrings[i];
+		delete lpLD->lplpStringsUTF8[i];
+	}
 	delete lpLD->lpcName;
 	delete lpLD->lpdwIndices;
 	delete lpLD->lplpStrings;
+	delete lpLD->lplpStringsUTF8;
 	delete lpLD;
 }

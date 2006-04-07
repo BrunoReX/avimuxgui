@@ -24,9 +24,10 @@ DTSSOURCE: handles DTS-CBR
 #include "audiosource_aac.h"
 #include "audiosource_list.h"
 #include "audiosource_vorbis.h"
+#include "audiosource_wav.h"
 
 #include "..\basestreams.h"
-#include "multimedia_source.h"
+#include "..\multimedia_source.h"
 
 
 /*

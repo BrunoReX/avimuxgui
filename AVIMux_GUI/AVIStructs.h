@@ -112,6 +112,35 @@ typedef struct mpeglayer3waveformat_tag {
   WORD          nCodecDelay;
 } MPEGLAYER3WAVEFORMAT;
 
+/*  MPEG-1 audio wave format (audio layer only).   (0x0050)   */
+typedef struct mpeg1waveformat_tag {
+    WAVEFORMATEX    wfx;
+    WORD            fwHeadLayer;
+    DWORD           dwHeadBitrate;
+    WORD            fwHeadMode;
+    WORD            fwHeadModeExt;
+    WORD            wHeadEmphasis;
+    WORD            fwHeadFlags;
+    DWORD           dwPTSLow;
+    DWORD           dwPTSHigh;
+} MPEG1WAVEFORMAT;
+typedef MPEG1WAVEFORMAT                 *PMPEG1WAVEFORMAT;
+typedef MPEG1WAVEFORMAT NEAR           *NPMPEG1WAVEFORMAT;
+typedef MPEG1WAVEFORMAT FAR            *LPMPEG1WAVEFORMAT;
+
+#define ACM_MPEG_LAYER1             (0x0001)
+#define ACM_MPEG_LAYER2             (0x0002)
+#define ACM_MPEG_LAYER3             (0x0004)
+#define ACM_MPEG_STEREO             (0x0001)
+#define ACM_MPEG_JOINTSTEREO        (0x0002)
+#define ACM_MPEG_DUALCHANNEL        (0x0004)
+#define ACM_MPEG_SINGLECHANNEL      (0x0008)
+#define ACM_MPEG_PRIVATEBIT         (0x0001)
+#define ACM_MPEG_COPYRIGHT          (0x0002)
+#define ACM_MPEG_ORIGINALHOME       (0x0004)
+#define ACM_MPEG_PROTECTIONBIT      (0x0008)
+#define ACM_MPEG_ID_MPEG1           (0x0010)
+
 #pragma pack(pop)
 
 #endif

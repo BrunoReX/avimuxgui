@@ -1,6 +1,12 @@
 #include "stdafx.h"
 #include "audiosource_generic.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 	//////////////////////////
 	// generic audio source //
 	//////////////////////////
@@ -104,7 +110,7 @@ __int64 AUDIOSOURCE::GetUnstretchedDuration()
 //	return 0;
 }
 
-char* AUDIOSOURCE::GetIDString()
+char* AUDIOSOURCE::GetCodecID()
 {
 	return NULL;
 }
@@ -135,13 +141,13 @@ int AUDIOSOURCE::IsCompatible(AUDIOSOURCE* a)
 	if ((i=GetFormatTag()) && (j=a->GetFormatTag())) {
 		if (i!=j || k!=l) return MMSIC_FORMATTAG;
 	} else {
-		if (strcmp(GetIDString(),a->GetIDString())) {
+		if (strcmp(GetCodecID(),a->GetCodecID())) {
 			return MMSIC_IDSTRING;
 		}
 	}
 
 	if (a->GetFrequency() != GetFrequency()) return MMSIC_SAMPLERATE;
-
+	
 	return MMS_COMPATIBLE;
 }
 

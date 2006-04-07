@@ -14,7 +14,7 @@ SILENCE::~SILENCE()
 {
 }
 
-SILENCE::Init(char* lpcName)
+int SILENCE::Init(char* lpcName)
 {
 	int	i;
 	bool	bAlloc=false;
@@ -58,6 +58,7 @@ SILENCE::Init(char* lpcName)
 //	MessageBox(0,buffer,NULL,MB_OK);
 	iNbrOfDescs=i;
 	if (bAlloc) delete dir;
+	return 0;
 }
 
 int	SILENCE::Close()

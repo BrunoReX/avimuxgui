@@ -19,6 +19,9 @@
 // Siehe AVIMux_GUI.cpp für die Implementierung dieser Klasse
 //
 
+HINSTANCE GetInstance();
+void ProcessMsgQueue(HWND hwnd);
+
 class CAVIMux_GUIApp : public CWinApp
 {
 public:

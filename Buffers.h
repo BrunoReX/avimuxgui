@@ -2,6 +2,7 @@
 #define I_BUFFER
 
 #include "basestreams.h"
+#include "xml.h"
 
 const int CBN_REF1	= 0x01;
 const int CSB_ASCII = 0x04;
@@ -15,17 +16,22 @@ class CBuffer
 		int		iRefCount;
 		int		iSize;
 		int		iAllocedSize;
+		int		external;
 	protected:
 		void*	lpData;
 	public:
 		CBuffer();
 		CBuffer(int iSize, void* lpData = NULL, int iFlags = 0);
-		~CBuffer();
+		virtual ~CBuffer();
 		int		virtual GetSize(void);
+		void	virtual Resize(int new_size);
+		void	virtual Prepend(int pos, void* data, int len);
+		void	virtual Cut(int pos, int len);
 		bool	virtual DecRefCount();
 		void	virtual IncRefCount();
 		void	virtual SetRefCount(int i);
 		void	virtual SetData(void* lpsource);
+		void	virtual SetExternal(void* lpsource, int size);
 		void	virtual SetSize(int iSize);
 		void	virtual* GetData();
 		char	virtual* AsString();
@@ -46,19 +52,6 @@ class CBuffer
 		void	virtual Refer(CBuffer** p);
 };
 
-/*
-class CMultimediaBuffer: public CBuffer
-{
-	private:
-		__int64	qwStart_ns;
-	public:
-		CMultimediaBuffer();
-		~CMultimediaBuffer();
-		void	 virtual SetTimeStamp(__int64 qwTime);
-		__int64 virtual GetTimeStamp(void);
-
-};
-*/
 
 class CStringBuffer: public CBuffer
 {
@@ -67,43 +60,22 @@ class CStringBuffer: public CBuffer
 		CBuffer* b[3];
 		int		iOutputFormat;
 		int		GetOutputFormat();
-		int		SetOutputFormat(int iFormat);
 		void	Prepare(int iFormat);
 	public:
 		CStringBuffer();
 		CStringBuffer(char* s, int iFlags = CBN_REF1);
+		int		SetOutputFormat(int iFormat);
 		void	virtual Set(char* s, int iFlags = CSB_ASCII);
 		char	virtual* Get(void);
 		void	virtual* GetData();
 		int		virtual GetSize(void);
 
+		void	virtual IncRefCount();
 		bool	virtual DecRefCount();
 };
 
-/*const int LISTINS_BEGIN  = 0x01;
-const int LISTINS_END    = 0x02;
 
-
-class CList
-{
-	private:
-		CBuffer*	data;
-		CList*		next;
-		CList*		prev;
-		bool		bEmpty;
-		bool		IsEmpty();
-	public:
-		CList();
-		~CList();
-		void	virtual		Insert(CBuffer* lpBuffer,int iFlag);
-		CList	virtual*	GetNext();
-		CList	virtual*	GetPrev();
-		void	virtual		SetData(CBuffer* lpBuffer);
-		CBuffer virtual*	GetData();
-		void	virtual		SetNext(CList* lpNext);
-		void	virtual		SetPrev(CList* lpPrev);
-};
-*/
+#define I_ATTRIBUTES
 
 const int ATTRTYPE_INT64	= 0x01;
 const int ATTRTYPE_ASCII	= 0x02;
@@ -142,20 +114,27 @@ class CAttribs
 		CAttribs*			Resolve(char* cPath, char** cName);
 		void				DeleteLine(int iLine);
 		void				DuplicateLine(CAttribs* a, int iLine);		
+		void				CopyLine(CAttribs* a, int iLine);
 	public:
 		CAttribs();
+		virtual ~CAttribs();
 		CAttribs(int iSize);
 		void				Add(char* cName, int iFlags, int iType, void* pData);
 		void				AddInt(char* cName, int iFlags, __int64 pData);
+		void		virtual CopyTo(CAttribs* target);
 		void				Set(char* cName, void* pData);
 		void				SetInt(char* cName, __int64 pData);
 		__int64				GetInt(char* cName);
+		__int64				GetIntWithDefault(char* cName, __int64 _default = 0);
 		int					Exists(char* cName);
 		CAttribs*			GetAttr(char* cName);
-		void				GetStr(char* cName, char** cDest);
+		void				SetStr(char* cName, char* cValue);
+		int					GetStr(char* cName, char** cDest);
 		void				Delete();
 		CAttribs*			Duplicate();
 		void				Export(CAttribs* a);
+		operator XMLNODE*();
+		int					Import(XMLNODE* xml);
 };
 
 template <class T> void DecBufferRefCount(T** buffer)

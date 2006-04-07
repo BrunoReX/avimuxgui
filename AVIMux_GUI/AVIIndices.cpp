@@ -56,7 +56,9 @@ void INDEX::SetData(DWORD _dwStream,DWORD _dwFlags,_int64 _qwOffset,DWORD _dwSiz
 	dwFlags=_dwFlags;
 	if (_qwOffset) qwOffset=_qwOffset;
 	dwSize=_dwSize;
-	dwKind=_dwKind;
+
+	if (_dwKind != INDEXTYPE_UNCHANGED)
+		dwKind=_dwKind;
 }
 
 DWORD INDEX::SelectStream(DWORD dwStreamNbr)

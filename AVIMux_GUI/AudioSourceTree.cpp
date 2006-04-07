@@ -4,7 +4,6 @@
 #include "stdafx.h"
 #include "AVIMux_GUI.h"
 #include "AudioSourceTree.h"
-//#include "AudioSourceList.h"
 #include "formattext.h"
 #include "audiosource.h"
 #include "AVIMux_GUIDlg.h"
@@ -12,6 +11,8 @@
 #include "..\basestreams.h"
 #include "..\utf-8.h"
 #include "UnicodeTreeCtrl.h"
+#include "FileDialogs.h"
+#include ".\audiosourcetree.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -45,15 +46,15 @@ void CAudioSourceTree::OnFinalRelease()
 
 BEGIN_MESSAGE_MAP(CAudioSourceTree, CUnicodeTreeCtrl)
 	//{{AFX_MSG_MAP(CAudioSourceTree)
-	ON_WM_RBUTTONUP()
-	ON_WM_RBUTTONDOWN()
 	ON_NOTIFY_REFLECT(NM_RCLICK, OnRclick)
 	ON_NOTIFY(TVN_BEGINDRAG, IDC_AUDIOTREE, OnBegindrag)
 	ON_WM_LBUTTONUP()
 	ON_NOTIFY(TVN_BEGINDRAGW, IDC_AUDIOTREE, OnBegindrag)
 	ON_NOTIFY_REFLECT(TVN_BEGINDRAG, OnBegindrag)
 	ON_NOTIFY_REFLECT(TVN_BEGINDRAGW, OnBegindrag)
+	ON_WM_CREATE()
 	//}}AFX_MSG_MAP
+	ON_NOTIFY_REFLECT(TVN_GETDISPINFO, OnTvnGetdispinfo)
 END_MESSAGE_MAP()
 
 BEGIN_DISPATCH_MAP(CAudioSourceTree, CUnicodeTreeCtrl)
@@ -97,6 +98,16 @@ TREE_ITEM_INFO*	BuildTIIfromSSI(SUBTITLE_STREAM_INFO* ssi)
 	return tii;
 }
 
+TREE_ITEM_INFO* BuildTIIfromVSI(VIDEO_STREAM_INFO* vsi)
+{
+	TREE_ITEM_INFO* tii = new TREE_ITEM_INFO;
+
+	tii->iID = TIIID_VSI;
+	tii->pVSI = vsi;
+
+	return tii;
+}
+
 int CALLBACK AudioTree_CompareFunc(LPARAM lParam1, LPARAM lParam2, 
 		LPARAM lParamSort)
 {
@@ -132,11 +143,26 @@ void CAudioSourceTree::Sort()
 		hItem = GetNextSiblingItem(hItem);
 	}
 
+	InvalidateRect(NULL);
+	UpdateWindow();
 }
 
 TREE_ITEM_INFO* CAudioSourceTree::GetItemInfo(HTREEITEM hItem)
 {
 	return (TREE_ITEM_INFO*)GetItemData(hItem);
+}
+
+TREE_ITEM_INFO* CAudioSourceTree::FindItemOriginalPosition(int org_pos)
+{
+	HTREEITEM hItem = GetRootItem();
+
+	while (hItem) {
+		if (GetItemInfo(hItem)->iOrgPos == org_pos)
+			return GetItemInfo(hItem);
+		hItem = GetNextSiblingItem(hItem);
+	}
+
+	return NULL;
 }
 
 HTREEITEM CAudioSourceTree::FindID(HTREEITEM hItem,int iID, TREE_ITEM_INFO** tii)
@@ -167,7 +193,8 @@ CDynIntArray* CAudioSourceTree::GetItems(HTREEITEM hItem,int iID, int iCheck, CD
 		tii = (TREE_ITEM_INFO*)GetItemData(hItem);
 		if (tii->iID == iID && ++i && (iCheck == -1 || Tree_GetCheckState(this,hItem))) {
 			a->Insert((int)hItem);
-			if (indices) (*indices)->Insert(i-1);
+			if (indices) 
+				(*indices)->Insert(i-1);
 		}
 
 		hItem = GetNextSiblingItem(hItem);
@@ -191,10 +218,19 @@ void CAudioSourceTree::OpenContextMenu(CPoint point)
 	if (hItem && !MuxingInProgress()) {
 		TREE_ITEM_INFO* tii = (TREE_ITEM_INFO*)GetItemData(hItem);
 		bool bDefault = false;
-		if (tii->iID == TIIID_ASI && tii->pASI->audiosource->IsDefault()) bDefault = true;
-		if (tii->iID == TIIID_SSI && tii->pSSI->lpsubs->IsDefault()) bDefault = true;
+		
+		if (tii->iID == TIIID_ASI && tii->pASI->audiosource->IsDefault()) 
+			bDefault = true;
+		
+		if (tii->iID == TIIID_SSI && tii->pSSI->lpsubs->IsDefault()) 
+			bDefault = true;
+
+		if (tii->iID == TIIID_VSI && tii->pVSI->videosource->IsDefault())
+			bDefault = true;
+		
 		c->AppendMenu(MF_STRING | bDefault*MF_CHECKED, IDM_SETDEFAULTTRACK, 
 			LoadString(STR_MAIN_AS_DEFAULTTRACK));
+		
 		init_sep;
 
 		if (tii->iID == TIIID_ASI) {
@@ -234,7 +270,7 @@ void CAudioSourceTree::OpenContextMenu(CPoint point)
 
 	delete c;
 }
-
+/*
 void CAudioSourceTree::OnRButtonUp(UINT nFlags, CPoint point) 
 {
 	// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen und/oder Standard aufrufen
@@ -245,7 +281,7 @@ void CAudioSourceTree::OnRButtonUp(UINT nFlags, CPoint point)
 
 	CUnicodeTreeCtrl::OnRButtonUp(nFlags, point);
 }
-
+*/
 typedef struct 
 {
 	FILESTREAM* file;
@@ -267,7 +303,7 @@ int ExtractThread(EXTRACT_THREAD_DATA*	lpETD)
 	char cTime[20];
 	char* lpBuffer = new char[2<<20];
 	int iLastTime = GetTickCount();
-	a->Seek(0);
+	a->ReInit();
 
 	while (!a->IsEndOfStream() && !DoStop()) {
 		__int64 iTimecode;
@@ -307,7 +343,7 @@ int ExtractThread_ADTS(EXTRACT_THREAD_DATA*	lpETD)
 	char* lpBuffer_in  = new char[1<<18];
 	char* lpBuffer_out = new char[1<<18];
 	int iLastTime = GetTickCount();
-	a->Seek(0);
+	a->ReInit();
 	while (!a->IsEndOfStream() && !DoStop()) {
 		__int64 iTimecode;
 	
@@ -356,7 +392,7 @@ int ExtractThread_OGGVorbis(EXTRACT_THREAD_DATA*	lpETD)
 	AUDIOSOURCE* a = lpETD->a;
 	a->Enable(1);
 	a->FormatSpecific(MMSGFS_VORBIS_CONFIGPACKETS, arg);
-	a->Seek(0);
+	a->ReInit();
 
 	FILESTREAM* f = lpETD->file;
 	OGGFILE* ogg = new OGGFILE;
@@ -372,10 +408,16 @@ int ExtractThread_OGGVorbis(EXTRACT_THREAD_DATA*	lpETD)
 	char cTime[20];
 	char* lpBuffer_in  = new char[1<<18];
 	int iLastTime = GetTickCount();
+	__int64 iFirstTimecode = -0x7FFFFFFF;
+
 	while (!a->IsEndOfStream() && !DoStop()) {
 		__int64 iTimecode = 0;
 	
 		int size = a->Read(lpBuffer_in, 1, NULL, NULL, &iTimecode, &ARI);
+		if (iFirstTimecode == -0x7FFFFFFF)
+			iFirstTimecode = iTimecode;
+
+		iTimecode -= iFirstTimecode;
 		
 		if (size!=AS_ERR) {
 			__int64 samples = 0;
@@ -420,18 +462,21 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 {
 	// TODO: Speziellen Code hier einfügen und/oder Basisklasse aufrufen
 	CWinThread*	thread;
-	CFileDialog*	cfd;
+//	CFileDialog*	cfd;
 	CAVIMux_GUIDlg*	cMainDlg = (CAVIMux_GUIDlg*)GetParent();
 	char cFilter[256];
 	char cDefExt[5];
 	int iFmt;
 	char* cFmt;
+	int open = 0;
 	HTREEITEM hItem;
 	TREE_ITEM_INFO* tii;
 	AUDIO_STREAM_INFO* asi;
 	AUDIOSOURCE* a;
 	SUBTITLE_STREAM_INFO* ssi;
 	SUBTITLESOURCE* s;
+	OPENFILENAME o; 
+	memset(&o, 0, sizeof(o));
 
 	switch (LOWORD(wParam))
 	{
@@ -453,7 +498,7 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 			a = asi->audiosource;
 
 			iFmt = a->GetFormatTag();
-			cFmt = a->GetIDString();
+			cFmt = a->GetCodecID();
 			
 			if (iFmt == 0x0055 || cFmt && !strcmp(cFmt,"A_MPEG/L3")) {
 				strcpy(cFilter,"*.mp3|*.mp3||");
@@ -475,14 +520,19 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 				strcpy(cDefExt,"raw");
 			}
 
-			cfd=new CFileDialog(false, cDefExt, NULL, OFN_OVERWRITEPROMPT, cFilter);
-			if (cfd->DoModal()==IDOK) {
+
+			PrepareSimpleDialog(&o, m_hWnd, cFilter);
+			o.Flags |= OFN_OVERWRITEPROMPT;
+			o.lpstrDefExt = cDefExt;
+			open = GetOpenSaveFileNameUTF8(&o, 0);
+			
+			if (open) {
 				EXTRACT_THREAD_DATA* lpETD = new EXTRACT_THREAD_DATA;
 				lpETD->file = new FILESTREAM;
-				if (lpETD->file->Open(cfd->GetPathName().GetBuffer(512),STREAM_WRITE)!=STREAM_ERR) {
+				if (lpETD->file->Open(o.lpstrFile,STREAM_WRITE)!=STREAM_ERR) {
 					lpETD->dlg = cMainDlg;
 					lpETD->a = a;
-					cMainDlg->m_Prg_Dest_File.SetWindowText(cfd->GetPathName());
+					cMainDlg->m_Prg_Dest_File.SetWindowText(o.lpstrFile);
 					thread=AfxBeginThread((AFX_THREADPROC)ExtractThread,lpETD);
 				} else {
 					MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE),LoadString(STR_GEN_ERROR),
@@ -498,14 +548,21 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 			tii = (TREE_ITEM_INFO*)GetItemData(hItem);
 			asi = tii->pASI;
 			a = asi->audiosource;
-			cfd=new CFileDialog(false, cDefExt, NULL, OFN_OVERWRITEPROMPT, cFilter);
-			if (cfd->DoModal()==IDOK) {
+			
+			PrepareSimpleDialog(&o, m_hWnd, cFilter);
+			o.Flags |= OFN_OVERWRITEPROMPT;
+			o.lpstrDefExt = cDefExt;
+			open = GetOpenSaveFileNameUTF8(&o, 0);
+
+			//cfd=new CFileDialog(false, cDefExt, NULL, OFN_OVERWRITEPROMPT, cFilter);
+			
+			if (open) {
 				EXTRACT_THREAD_DATA* lpETD = new EXTRACT_THREAD_DATA;
 				lpETD->file = new FILESTREAM;
-				if (lpETD->file->Open(cfd->GetPathName().GetBuffer(512),STREAM_WRITE)!=STREAM_ERR) {
+				if (lpETD->file->Open(o.lpstrFile,STREAM_WRITE)!=STREAM_ERR) {
 					lpETD->dlg = cMainDlg;
 					lpETD->a = a;
-					cMainDlg->m_Prg_Dest_File.SetWindowText(cfd->GetPathName());
+					cMainDlg->m_Prg_Dest_File.SetWindowText(o.lpstrFile);
 					thread=AfxBeginThread((AFX_THREADPROC)ExtractThread_ADTS,lpETD);
 				} else {
 					MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE),LoadString(STR_GEN_ERROR),
@@ -520,14 +577,20 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 			tii = (TREE_ITEM_INFO*)GetItemData(hItem);
 			asi = tii->pASI;
 			a = asi->audiosource;
-			cfd=new CFileDialog(false, cDefExt, NULL, OFN_OVERWRITEPROMPT, cFilter);
-			if (cfd->DoModal()==IDOK) {
+		//	cfd=new CFileDialog(false, cDefExt, NULL, OFN_OVERWRITEPROMPT, cFilter);
+		
+			PrepareSimpleDialog(&o, m_hWnd, cFilter);
+			o.Flags |= OFN_OVERWRITEPROMPT;
+			o.lpstrDefExt = cDefExt;
+			open = GetOpenSaveFileNameUTF8(&o, 0);
+			
+			if (open) {
 				EXTRACT_THREAD_DATA* lpETD = new EXTRACT_THREAD_DATA;
 				lpETD->file = new FILESTREAM;
-				if (lpETD->file->Open(cfd->GetPathName().GetBuffer(512),STREAM_WRITE)!=STREAM_ERR) {
+				if (lpETD->file->Open(o.lpstrFile,STREAM_WRITE)!=STREAM_ERR) {
 					lpETD->dlg = cMainDlg;
 					lpETD->a = a;
-					cMainDlg->m_Prg_Dest_File.SetWindowText(cfd->GetPathName());
+					cMainDlg->m_Prg_Dest_File.SetWindowText(o.lpstrFile);
 					thread=AfxBeginThread((AFX_THREADPROC)ExtractThread_OGGVorbis,lpETD);
 				} else {
 					MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE),LoadString(STR_GEN_ERROR),
@@ -557,10 +620,16 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 
 			s->Seek(0);
 			s->SetRange(0,0x7FFFFFFFFFFFFFFF);
-			cfd=new CFileDialog(false, cDefExt, NULL, OFN_OVERWRITEPROMPT, cFilter);
-			if (cfd->DoModal()==IDOK) {
+//			cfd=new CFileDialog(false, cDefExt, NULL, OFN_OVERWRITEPROMPT, cFilter);
+
+			PrepareSimpleDialog(&o, m_hWnd, cFilter);
+			o.Flags |= OFN_OVERWRITEPROMPT;
+			o.lpstrDefExt = cDefExt;
+			open = GetOpenSaveFileNameUTF8(&o, 0);
+
+			if (open) {
 				FILESTREAM* f = new FILESTREAM;
-				if (f->Open(cfd->GetPathName().GetBuffer(512),STREAM_WRITE)!=STREAM_ERR) {
+				if (f->Open(o.lpstrFile,STREAM_WRITE)!=STREAM_ERR) {
 					char* lpBuffer = new char[2<<23];
 					f->Write(lpBuffer,s->Render2Text(lpBuffer));
 					f->Close();
@@ -577,16 +646,15 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 		case IDM_SETDEFAULTTRACK:
 			hItem = GetSelectedItem();
 			tii = (TREE_ITEM_INFO*)GetItemData(hItem);
-			if (tii->iID == TIIID_ASI) {
-				asi = tii->pASI;
-				a = asi->audiosource;
-				a->SetDefault(!a->IsDefault());
-			}
-			if (tii->iID == TIIID_SSI) {
-				ssi = tii->pSSI;
-				s = ssi->lpsubs;
-				s->SetDefault(!s->IsDefault());
-			}
+			if (tii->iID == TIIID_ASI) 
+				tii->pASI->audiosource->SetDefault(!tii->pASI->audiosource->IsDefault());
+			
+			if (tii->iID == TIIID_SSI)
+				tii->pSSI->lpsubs->SetDefault(!tii->pSSI->lpsubs->IsDefault());
+			
+			if (tii->iID == TIIID_VSI)
+				tii->pVSI->videosource->SetDefault(!tii->pVSI->videosource->IsDefault());
+
 			InvalidateRect(NULL);
 			break;
 	}
@@ -594,18 +662,6 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 	return CUnicodeTreeCtrl::OnCommand(wParam, lParam);
 }
 
-
-void CAudioSourceTree::OnRButtonDown(UINT nFlags, CPoint point) 
-{
-	// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen und/oder Standard aufrufen
-
-//	Beep(100,200);
-	CUnicodeTreeCtrl::OnRButtonDown(nFlags, point);
-}
-
-bool b_rdown = false;
-DWORD mouse_x, mouse_y;
-/*
 LRESULT CAudioSourceTree::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) 
 {
 	// TODO: Speziellen Code hier einfügen und/oder Basisklasse aufrufen
@@ -620,7 +676,7 @@ LRESULT CAudioSourceTree::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	
 	return CUnicodeTreeCtrl::WindowProc(message, wParam, lParam);
 }
-*/
+
 void CAudioSourceTree::OnRclick(NMHDR* pNMHDR, LRESULT* pResult) 
 {
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
@@ -666,7 +722,7 @@ void CAudioSourceTree::OnLButtonUp(UINT nFlags, CPoint point)
 		hItem = HitTest(point, &iFlags);
 		TREE_ITEM_INFO* tii2 = (TREE_ITEM_INFO*)GetItemData(hItem);
 	
-		if (hItem && (tii2->iID == TIIID_ASI || tii2->iID == TIIID_SSI)) {
+		if (hItem && (tii2->iID == TIIID_ASI || tii2->iID == TIIID_SSI || tii2->iID == TIIID_VSI)) {
 			TREE_ITEM_INFO* tii1 = (TREE_ITEM_INFO*)GetItemData(dragged_item.hItem);
 
 			bool bDown = (point.y > drag_source_point.y);
@@ -696,4 +752,342 @@ int CAudioSourceTree::GetRootCount()
 	while (hItem = GetNextSiblingItem(hItem)) iCount++;
 
 	return iCount;
+}
+
+
+int CAudioSourceTree::OnCreate(LPCREATESTRUCT lpCreateStruct) 
+{
+	if (CUnicodeTreeCtrl::OnCreate(lpCreateStruct) == -1)
+		return -1;
+	
+	// TODO: Speziellen Erstellungscode hier einfügen
+	
+	return 0;
+}
+
+void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	LPNMTVDISPINFO pTVDispInfo = reinterpret_cast<LPNMTVDISPINFO>(pNMHDR);
+	// TODO: Fügen Sie hier Ihren Kontrollbehandlungscode für die Benachrichtigung ein.
+	*pResult = 0;
+
+	AUDIO_STREAM_INFO* asi = NULL;
+	TREE_ITEM_INFO*	   tii = NULL;
+	char*	d = pTVDispInfo->item.pszText;
+	bool	bBracket = false;
+
+	char	bitrate[128];
+	char	channels[128];
+	char	sample_rate[128];
+
+	char	c[1024];
+	ZeroMemory(c,sizeof(c));
+	memset(bitrate, 0, sizeof(bitrate));
+	memset(channels, 0, sizeof(channels));
+	memset(sample_rate, 0, sizeof(sample_rate));
+	HTREEITEM hItem = pTVDispInfo->item.hItem;
+	char* AAC_prof_name;
+	bool bAddComma=false;
+	int i,j;
+	
+	if ((pTVDispInfo->item.mask & TVIF_TEXT) == 0) {
+		*pResult = 0;
+		return;
+	}
+	
+	tii = GetItemInfo(hItem);
+
+	if (!0) { //bEditInProgess) {
+		if (tii && tii->iID == TIIID_ASI) {
+			*d = 0;
+			
+			if (tii->pASI->audiosource->IsDefault()) {
+				strcat(d,"(default) ");
+			}
+			strcat(d,"audio: ");
+			if (tii) asi = tii->pASI;
+			if (asi && asi->bNameFromFormatTag) {
+				int idatarate = (asi->audiosource->GetAvgBytesPerSec() + 62) /125;
+				if (idatarate) 
+					sprintf(bitrate,"%d kbps",idatarate);
+				else 
+					strcpy(bitrate, "unknown bitrate");
+
+				sprintf(channels, "%d Ch", asi->audiosource->GetChannelCount());
+				
+				int isr = (int)(0.49+asi->audiosource->GetOutputFrequency());
+				if ((isr % 1000) == 0) {
+					sprintf(sample_rate, "%2dkHz", 
+						(int)((0.49+asi->audiosource->GetOutputFrequency())/1000));
+				} else {
+					sprintf(sample_rate, "%5dHz", 
+						(int)((0.49+asi->audiosource->GetOutputFrequency())));
+				}
+
+				switch (asi->dwType) {
+					case AUDIOTYPE_MP3CBR:
+						i = (int)asi->audiosource->FormatSpecific(MMSGFS_MPEG_LAYERVERSION);
+						j = (int)asi->audiosource->FormatSpecific(MMSGFS_MPEG_VERSION);
+						sprintf(c,"MPEG %d Layer %d (CBR %s, %s, %s",j,i,bitrate,channels,
+							sample_rate);
+						bBracket = true;
+						break;
+					case AUDIOTYPE_MP3VBR:
+						i = (int)asi->audiosource->FormatSpecific(MMSGFS_MPEG_LAYERVERSION);
+						j = (int)asi->audiosource->FormatSpecific(MMSGFS_MPEG_VERSION);
+						sprintf(c,"MPEG %d Layer %d (VBR, %s, %s",j, i,channels,
+							sample_rate);
+						bBracket = true;
+						break;
+					case AUDIOTYPE_PLAINCBR:
+						sprintf(c,"CBR (0x%04X", asi->audiosource->GetFormatTag());
+						bBracket = true;
+						break;
+					case AUDIOTYPE_AC3:
+						sprintf(c,"AC3 (%s %s, %s, %s",bitrate, asi->audiosource->IsCBR()?"CBR":"VBR",
+							channels, sample_rate);
+						bBracket = true;
+						break;
+					case AUDIOTYPE_PCM:
+						sprintf(c,"PCM (%s, %s, %s", bitrate, channels, sample_rate);
+						bBracket = true;
+						break;
+					case AUDIOTYPE_DTS:
+						sprintf(c,"DTS (%s %s, %s, %s",bitrate, asi->audiosource->IsCBR()?"CBR":"VBR",
+							channels, sample_rate);
+						bBracket = true;
+						break;
+					case AUDIOTYPE_VORBIS:
+						sprintf(c,"Vorbis (%s, %s, %s",bitrate, channels,
+							sample_rate);
+						bBracket = true;
+						break;
+					case AUDIOTYPE_AAC:
+						if ((int)asi->audiosource->FormatSpecific(MMSGFS_AAC_ISSBR)) 
+							AAC_prof_name = "HE";
+						else switch (asi->audiosource->FormatSpecific(MMSGFS_AAC_PROFILE)) {
+							case AAC_ADTS_PROFILE_LC: AAC_prof_name = "LC"; break;
+							case AAC_ADTS_PROFILE_LTP: AAC_prof_name = "LTP"; break;
+							case AAC_ADTS_PROFILE_MAIN: AAC_prof_name = "MAIN"; break;
+							case AAC_ADTS_PROFILE_SSR: AAC_prof_name = "SSR"; break;
+							default: AAC_prof_name = "unknown";
+						}
+						sprintf(c,"%s-AAC (MPEG %d, %s, %s, %s",
+							AAC_prof_name, 
+							(int)asi->audiosource->FormatSpecific(MMSGFS_AAC_MPEGVERSION),
+							bitrate, channels, sample_rate);
+						bBracket = true;
+						break;
+					case AUDIOTYPE_DIVX:
+						sprintf(c,"divX%s, %s, %s, %s",bitrate, channels, sample_rate);
+						break;
+				/*	default:
+						if (asi->audiosource->GetIDString()) {
+							sprintf(c,"%s (%s",asi->audiosource->GetIDString(),cdatarate);
+						}
+						break;				
+						*/
+				}
+			}
+
+			strcat(d,c);
+
+			if (asi) {
+				int offset = asi->audiosource->GetOffset();
+				if (offset) {
+					sprintf(c,", bad: %d ",offset);
+					strcat(d,c);
+				}
+				if (asi->iDelay) {
+					sprintf(c,", delay: %d ms",asi->iDelay);
+					strcat(d,c);
+				}
+			}
+
+			if (asi && !asi->bNameFromFormatTag) {
+				sprintf(c,asi->audiosource->GetCodecID());
+				strcat(d,c);
+			}
+
+			if (!bBracket) {
+				strcat(d," (");
+				bBracket = true;
+			} else {
+				strcat(d,", ");
+			}
+
+			if (asi && asi->iSize) {
+				char cSize[30];
+				FormatSize(cSize,asi->iSize);
+				strcat(d,cSize);
+				bAddComma = true;
+			}
+
+			if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED) && 
+				  FindID(hItem,TIIID_LNGCODE,&tii) && tii->pText && strlen(tii->pText)) {
+				if (bAddComma) strcat(d,", ");
+				bAddComma = true;
+				sprintf(c,"%s",tii->pText);
+				strcat(d,c);
+			}
+
+			if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED) && 
+				  FindID(hItem,TIIID_STRNAME,&tii) && tii->pText && strlen(tii->pText)) {
+				if (bAddComma) strcat(d,", ");
+				bAddComma = false;
+				sprintf(c,"%s",tii->pText);
+				strcat(d,c);
+			}
+
+			if (bBracket) strcat(d,")");
+
+		} else
+		if (tii && tii->iID == TIIID_SSI) {
+			*d = 0;
+			if (tii->pSSI->lpsubs->IsDefault()) {
+				strcat(d,"(default) ");
+			}
+
+			SUBTITLESOURCE* subs = tii->pSSI->lpsubs;
+
+			strcat(d,"subtitle: ");
+			if (tii->pSSI) {
+				switch (tii->pSSI->lpsubs->GetFormat()) {
+					case SUBFORMAT_SRT:
+						sprintf(c,"SRT");
+						break;
+					case SUBFORMAT_SSA:
+						sprintf(c,"SSA");
+						break;
+					case SUBFORMAT_VOBSUB:
+						sprintf(c,"Vobsub");
+						break;
+				}
+				strcat(d,c);
+				bAddComma = false;
+				bBracket = true;
+				
+				if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED) && 
+					  FindID(hItem,TIIID_LNGCODE,&tii) && tii->pText && strlen(tii->pText)) {
+					sprintf(c," (%s",tii->pText);
+					strcat(d,c);
+					bAddComma = true;
+					bBracket = false;
+				}
+				if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED) && 
+					  FindID(hItem,TIIID_STRNAME,&tii) && tii->pText && strlen(tii->pText)) {
+					if (bAddComma) strcat(d,", ");
+					if (bBracket) strcat(d," (");
+					bAddComma = true;
+					bBracket = false;
+					sprintf(c,"%s",tii->pText);
+					strcat(d,c);
+				}
+				int _i; 
+				if ((_i = subs->GetCompressionAlgo()) != COMPRESSION_NONE) {
+					if (bAddComma) strcat(d,", ");
+					if (bBracket) strcat(d," (");
+					bAddComma = false;
+					bBracket = false;
+					sprintf(c,"compression: %s",((_i == COMPRESSION_ZLIB)?"zlib":"unknown"));
+					strcat(d,c);
+				}
+
+				if (!bBracket) strcat(d,")");
+			}
+
+		} else
+		if (tii && tii->iID == TIIID_VSI) {
+			*d = 0;
+			VIDEOSOURCE* v = tii->pVSI->videosource;
+			char* codecid = v->GetCodecID();
+			bool bracket = true;
+			
+			if (v->IsDefault()) 
+				strcat(d,"(default) ");
+			strcat(d, "video: ");
+			
+			if (codecid) {
+				strcat(d, codecid);
+				strcat(d, " ");
+			};
+			
+			if (!codecid || !strcmp(codecid, "V_MS/VFW/FOURCC")) {
+				DWORD dwfourcc = v->GetFourCC();
+				char fourcc[32]; memset(fourcc, 0, sizeof(fourcc));
+				char fmts[64];
+				if (!codecid)
+					strcpy(fmts, "FourCC: %c%c%c%c");
+				else {
+					strcpy(fmts, "(FourCC: %c%c%c%c, ");
+					bracket = false;
+				}
+
+				sprintf(fourcc, fmts, (dwfourcc >> 0) & 0xFF,
+					(dwfourcc >> 8) & 0xFF, (dwfourcc >> 16) & 0xFF,
+					(dwfourcc >> 24) & 0xFF);
+				strcat(d, fourcc);
+				strcat(d, " ");
+			}
+
+			if (bracket) strcat(d, "(");
+			bAddComma = false;
+			c[0]=0;
+			
+			int idatarate = (int) (((double)v->GetSize() / (v->GetDurationUnscaled() / 8000000)));
+			if (idatarate) {
+				if (idatarate < 1000.)
+					sprintf(bitrate,"%d kbps",idatarate);
+				else
+					sprintf(bitrate,"%4.2fMbps",(float)idatarate/1000.);
+			} else 
+				strcpy(bitrate, "unknown bitrate");
+			if (bAddComma) strcat(d, ", ");
+			strcat(d, bitrate);
+			bAddComma = true;
+
+			if (bAddComma) strcat(d, ", ");
+			__int64 s = v->GetSize();
+			FormatSize(c, s);
+			strcat(d, c);
+			bAddComma = true;
+
+			s = (v->GetDuration() * v->GetTimecodeScale() + 499999) / 1000000;
+			if (s > 0) {
+				if (bAddComma) strcat(d, ", ");
+				Millisec2Str(s, c);
+				strcat(d, c);
+				bAddComma = true;
+			}
+
+			if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED)) {
+				v->GetLanguageCode(c);
+				if (c[0]) {
+					if (bAddComma) strcat(d, ", ");
+					strcat(d, c);
+					bAddComma = true;
+				}
+				v->GetName(c);
+				if (c[0]) {
+					if (bAddComma) strcat(d, ", ");
+					strcat(d, c);
+					bAddComma = true;
+				}
+				strcat(d, ")");
+			}
+		} else
+
+		if (tii && tii->iID == TIIID_LNGCODE) {
+			sprintf(d,"language code: %s", tii->pText);
+		} else
+
+		if (tii && tii->iID == TIIID_STRNAME) {
+			sprintf(d,"stream name: %s", tii->pText);
+		}
+	}
+
+	*pResult = 0;
+
+
+
 }

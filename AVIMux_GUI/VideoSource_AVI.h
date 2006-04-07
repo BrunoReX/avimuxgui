@@ -19,7 +19,7 @@ class VIDEOSOURCEFROMAVI: public VIDEOSOURCE
 		__int64		virtual GetExactSize(void);
 	public:
 		VIDEOSOURCEFROMAVI();
-		~VIDEOSOURCEFROMAVI();
+		virtual ~VIDEOSOURCEFROMAVI();
 		void		virtual* GetFormat();
 		int			virtual	Open(AVIFILEEX* avifile);
 		int			virtual GetFrame(void* lpDest,DWORD* lpdwSize,__int64* lpiTimecode = NULL, ADVANCEDREAD_INFO* lpAARI = NULL);
@@ -35,6 +35,8 @@ class VIDEOSOURCEFROMAVI: public VIDEOSOURCE
 		bool		virtual IsKeyFrame(DWORD dwNbr = CN_CURRENT_CHUNK);
 		bool		virtual IsCFR(void);
 		int			virtual GetFormatSize(void);
+		void		virtual GetCropping(RECT* r);
+		DWORD		virtual GetFourCC();
 
 };
 

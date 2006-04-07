@@ -1,4 +1,4 @@
-//Microsoft Developer Studio generated resource script.
+// Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
 
@@ -27,18 +27,18 @@ LANGUAGE LANG_GERMAN, SUBLANG_GERMAN
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE DISCARDABLE 
+1 TEXTINCLUDE 
 BEGIN
     "resource.h\0"
 END
 
-2 TEXTINCLUDE DISCARDABLE 
+2 TEXTINCLUDE 
 BEGIN
     "#include ""afxres.h""\r\n"
     "\0"
 END
 
-3 TEXTINCLUDE DISCARDABLE 
+3 TEXTINCLUDE 
 BEGIN
     "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
     "#define _AFX_NO_OLE_RESOURCES\r\n"
@@ -66,35 +66,35 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDR_MAINFRAME           ICON    DISCARDABLE     "res\\AVIMux_GUI.ico"
+IDR_MAINFRAME           ICON                    "res\\AVIMux_GUI.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // Dialog
 //
 
-IDD_SETOUTPUTOPTIONS DIALOGEX 0, 0, 1444, 253
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION
+IDD_SETOUTPUTOPTIONS DIALOGEX 0, 0, 1606, 253
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION
 CAPTION "Optionen: Ausgabe"
-FONT 8, "MS Sans Serif"
+FONT 8, "Microsoft Sans Serif", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,183,195,60,14
     PUSHBUTTON      "Abbrechen",IDCANCEL,183,212,60,14
     CONTROL         "rec-Listen erstellen",IDC_RECLISTS,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,275,36,139,10
-    LTEXT           "Audio-Interleave",IDC_SAUDIOINTERLEAVE,278,177,58,8
+                    BS_AUTOCHECKBOX | WS_TABSTOP,278,40,136,10
+    LTEXT           "Audio-Interleave",IDC_SAUDIOINTERLEAVE,278,181,58,8
     GROUPBOX        " Optionen ",IDC_SFO_OPTIONS,8,8,166,219,NOT WS_VISIBLE | 
                     WS_GROUP,WS_EX_TRANSPARENT
-    EDITTEXT        IDC_AUDIOINTERLEAVE,338,175,40,12,ES_AUTOHSCROLL | 
+    EDITTEXT        IDC_AUDIOINTERLEAVE,338,179,40,12,ES_AUTOHSCROLL | 
                     ES_NUMBER,WS_EX_CLIENTEDGE | WS_EX_RIGHT
-    LTEXT           "Preload (ms):",IDC_SPRELOAD,278,205,54,8
-    EDITTEXT        IDC_PRELOAD,338,203,40,12,ES_AUTOHSCROLL,WS_EX_RIGHT
+    LTEXT           "Preload (ms):",IDC_SPRELOAD,278,209,54,8
+    EDITTEXT        IDC_PRELOAD,338,207,40,12,ES_AUTOHSCROLL,WS_EX_RIGHT
     EDITTEXT        IDC_MAXFILESIZE,123,145,34,12,ES_AUTOHSCROLL,WS_EX_RIGHT
     EDITTEXT        IDC_FORMAT,99,170,57,12,ES_AUTOHSCROLL
     LTEXT           "Frames:",IDC_SFO_OSP_FRAMES,20,188,73,8
     EDITTEXT        IDC_MAXFRAMES,99,186,57,12,ES_AUTOHSCROLL
     CONTROL         "Open-DML - Ausgabe",IDC_OPENDML,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,284,71,85,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,285,76,117,10
     PUSHBUTTON      "erweitert",IDC_MAXSIZE_EXTENDED,32,157,36,12
     CONTROL         "",IDC_USESPLITPOINTLIST,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,20,159,11,8
@@ -102,10 +102,10 @@ BEGIN
                     BS_AUTOCHECKBOX | WS_TABSTOP,20,147,100,8,
                     WS_EX_TRANSPARENT
     CONTROL         "Legacy-Index erstellen",IDC_MAKEIDX1,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,284,130,127,10
-    CONTROL         "kB",IDC_AI_KB,"Button",BS_AUTORADIOBUTTON,300,189,25,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,285,135,127,10
+    CONTROL         "kB",IDC_AI_KB,"Button",BS_AUTORADIOBUTTON,300,193,25,10
     CONTROL         "frames",IDC_AI_FRAMES,"Button",BS_AUTORADIOBUTTON,329,
-                    189,37,10
+                    193,37,10
     GROUPBOX        " AVI - Struktur ",IDC_SFO_O_AVISTRUCTURE,269,12,153,211
     GROUPBOX        " Teilen ",IDC_SFO_O_SPLIT,14,134,155,88
     EDITTEXT        IDC_MAXFILES,116,202,40,12,ES_AUTOHSCROLL
@@ -113,62 +113,61 @@ BEGIN
                     BS_AUTOCHECKBOX | WS_TABSTOP,20,203,91,10
     CONTROL         "Numerierung:",IDC_USENUMBERING,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,20,171,76,10
-    GROUPBOX        " Open-DML - Optionen ",IDC_SFO_ODML_SETTINGS,275,61,142,
+    GROUPBOX        " Open-DML - Optionen ",IDC_SFO_ODML_SETTINGS,277,65,137,
                     110,WS_GROUP
-    LTEXT           "Standardindices pro Stream",IDC_SFO_STDIDXPERSTREAM,285,
-                    82,126,8
+    LTEXT           "Standardindices pro Stream",IDC_SFO_STDIDXPERSTREAM,286,
+                    87,123,8
     CONTROL         "1 pro RIFF-Liste",IDC_STDI_RIFF,"Button",
-                    BS_AUTORADIOBUTTON,291,94,117,10
-    CONTROL         "1 pro",IDC_STDI_FRAMES,"Button",BS_AUTORADIOBUTTON,291,
-                    105,39,10
+                    BS_AUTORADIOBUTTON,292,99,117,10
+    CONTROL         "1 pro",IDC_STDI_FRAMES,"Button",BS_AUTORADIOBUTTON,292,
+                    110,39,10
     CONTROL         "automatisch",IDC_STDI_AUTO,"Button",BS_AUTORADIOBUTTON,
-                    291,117,118,10
-    EDITTEXT        IDC_STDI_NBROFFRAMES,333,104,35,13,ES_AUTOHSCROLL
-    LTEXT           "Frames",IDC_SFO_FRAMES,381,106,33,8
+                    292,122,118,10
+    EDITTEXT        IDC_STDI_NBROFFRAMES,334,109,35,13,ES_AUTOHSCROLL
+    LTEXT           "Frames",IDC_SFO_FRAMES,374,111,33,8
     CONTROL         "MP3-CBR Frame Mode",IDC_MP3CBRFRAMEMODE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,275,49,138,10
-    GROUPBOX        " MKV - Struktur",IDC_SFO_O_MKVOPTIONS,434,12,155,211
+                    BS_AUTOCHECKBOX | WS_TABSTOP,278,51,134,10
+    GROUPBOX        " MKV - Struktur",IDC_SFO_O_MKVPAGE1,434,12,155,211
     GROUPBOX        "Allgemein",IDC_SFO_O_GENERAL,14,11,155,211
-    PUSHBUTTON      "Kapitel",IDC_GEN_CHAPTERS,24,25,135,14
-    COMBOBOX        IDC_STDOUTPUTFORMATS,24,57,133,59,CBS_DROPDOWN | 
+    COMBOBOX        IDC_STDOUTPUTFORMATS,24,37,133,59,CBS_DROPDOWNLIST | 
                     CBS_SORT | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "1st timestamp:",IDC_1STTIMESTAMP_LABEL,444,229,76,8
+    LTEXT           "1st timestamp:",IDC_1STTIMESTAMP_LABEL,444,230,76,8
     EDITTEXT        IDC_1STTIMESTAMP,526,227,42,12,ES_AUTOHSCROLL
     LTEXT           "AC3-Frames pro Chunk:",IDC_AC3FRAMECOUNT_LABEL,1254,51,
                     94,8
-    EDITTEXT        IDC_AC3FRAMECOUNT,1349,49,27,12,ES_AUTOHSCROLL | 
-                    ES_READONLY
+    EDITTEXT        IDC_AC3FRAMECOUNT,1349,49,27,12,ES_CENTER | 
+                    ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "Spin1",IDC_AC3FRAMECOUNT_SPIN,"msctls_updown32",
                     UDS_ARROWKEYS,1380,48,10,14
     CONTROL         "don't write block size",IDC_DONTWRITEBLOCKSIZE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,605,227,133,10
-    LTEXT           "Standardausgabeformat:",IDC_STDOUTPUTFORMAT_LABEL,24,47,
+    LTEXT           "Standardausgabeformat:",IDC_STDOUTPUTFORMAT_LABEL,24,27,
                     78,8
-    LTEXT           "cluster size:",IDC_CLUSTERSIZE_LABEL,445,133,70,8
-    EDITTEXT        IDC_CLUSTERSIZE,528,131,41,12,ES_CENTER | ES_AUTOHSCROLL | 
+    LTEXT           "cluster size:",IDC_CLUSTERSIZE_LABEL,445,139,70,8
+    EDITTEXT        IDC_CLUSTERSIZE,528,137,41,12,ES_CENTER | ES_AUTOHSCROLL | 
                     ES_READONLY
     CONTROL         "Spin1",IDC_CLUSTERSIZE_SPIN,"msctls_updown32",
-                    UDS_ARROWKEYS,570,131,11,12
-    EDITTEXT        IDC_MKV_LACESIZE,536,86,32,12,ES_CENTER | ES_AUTOHSCROLL | 
+                    UDS_ARROWKEYS,570,137,11,12
+    EDITTEXT        IDC_MKV_LACESIZE,536,92,32,12,ES_CENTER | ES_AUTOHSCROLL | 
                     ES_READONLY
     CONTROL         "Spin1",IDC_MKV_LACESIZE_SPIN,"msctls_updown32",
-                    UDS_ARROWKEYS,570,86,11,12
-    LTEXT           "cluster time:",IDC_CLUSTERTIME_LABEL,445,146,75,8
-    EDITTEXT        IDC_CLUSTERTIME,528,144,41,12,ES_CENTER | ES_AUTOHSCROLL | 
+                    UDS_ARROWKEYS,570,92,11,12
+    LTEXT           "cluster time:",IDC_CLUSTERTIME_LABEL,445,152,75,8
+    EDITTEXT        IDC_CLUSTERTIME,528,150,41,12,ES_CENTER | ES_AUTOHSCROLL | 
                     ES_READONLY
     CONTROL         "Spin1",IDC_CLUSTERTIME_SPIN,"msctls_updown32",
-                    UDS_ARROWKEYS,570,144,11,12
+                    UDS_ARROWKEYS,570,150,11,12
     CONTROL         "Schreibe ""PrevClusterSize""",IDC_MKV_PREVSIZE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,445,176,138,8
+                    BS_AUTOCHECKBOX | WS_TABSTOP,445,182,138,8
     CONTROL         "Schreibe ""Position""",IDC_MKV_POSITION,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,445,188,137,8
+                    BS_AUTOCHECKBOX | WS_TABSTOP,445,194,137,8
     CONTROL         "limit first cluster to 30 sec",IDC_1STCL_30sec,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,460,162,118,10
-    CONTROL         "AVI",IDC_RADIO_AVI,"Button",BS_AUTORADIOBUTTON | 
+                    BS_AUTOCHECKBOX | WS_TABSTOP,460,168,118,10
+    CONTROL         "AVI",IDC_RADIO_OUTPUT_AVI,"Button",BS_AUTORADIOBUTTON | 
                     BS_PUSHLIKE | BS_MULTILINE | WS_GROUP,182,105,72,14
-    CONTROL         "Allgemein",IDC_RADIO_GENERAL,"Button",
+    CONTROL         "Allgemein",IDC_RADIO_OUTPUT_GENERAL,"Button",
                     BS_AUTORADIOBUTTON | BS_PUSHLIKE,182,91,72,14
-    CONTROL         "MKV",IDC_RADIO_MKV,"Button",BS_AUTORADIOBUTTON | 
+    CONTROL         "MKV",IDC_RADIO_OUTPUT_MKV,"Button",BS_AUTORADIOBUTTON | 
                     BS_PUSHLIKE,182,120,72,14
     CONTROL         "AVI/MP3/M2F2",IDC_RADIO_INPUT_AVIMP3,"Button",
                     BS_AUTORADIOBUTTON | BS_PUSHLIKE,182,37,72,14
@@ -182,9 +181,9 @@ BEGIN
                     ES_READONLY | NOT WS_VISIBLE
     CONTROL         "Spin1",IDC_MKV_AC3FRAMESPERBLOCK_SPIN,"msctls_updown32",
                     UDS_ARROWKEYS | NOT WS_VISIBLE,394,229,10,12
-    COMBOBOX        IDC_LACESTYLE,474,72,107,67,CBS_DROPDOWN | WS_VSCROLL | 
+    COMBOBOX        IDC_LACESTYLE,474,78,107,67,CBS_DROPDOWN | WS_VSCROLL | 
                     WS_TABSTOP
-    LTEXT           "Lacing",IDC_MKV_LACE,445,74,25,8
+    LTEXT           "Lacing",IDC_MKV_LACE,445,80,25,8
     GROUPBOX        " AVI - Dateien ",IDC_IAVI_Label,602,12,155,210
     LTEXT           "Output",IDC_STATIC,182,80,22,8
     LTEXT           "Input",IDC_STATIC,182,13,17,8
@@ -213,197 +212,233 @@ BEGIN
     GROUPBOX        " Mode 2 - Form 2 - Dateien ",IDC_IM2F2_LABEL,602,106,
                     155,117,0,WS_EX_TRANSPARENT
     CONTROL         "CRC-Check standardmäßig aktivieren",IDC_IM2F2_CRCCHECK,
-                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,609,
-                    125,143,18
+                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,610,
+                    120,141,18
     GROUPBOX        " MKV - Dateien ",IDC_IMKV_Label,763,12,155,211
     GROUPBOX        " Kapitel ",IDC_IMKV_CHAPTERS_LABEL,771,25,138,32
-    CONTROL         "Kapitel aus Dateinamen erzeugen",
-                    IDC_IMKV_CH_FROMFILENAMES,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,1099,31,124,10
+    CONTROL         "Kapitel aus Dateinamen erzeugen",IDC_I_CH_FROMFILENAMES,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,1099,31,124,10
     CONTROL         "Kapitel importieren",IDC_IMKV_CH_IMPORT,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,781,38,119,10
     CONTROL         "'overlapped file' for output",IDC_OVERLAPPED,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,24,76,130,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,24,56,130,10
     CONTROL         "always write DisplayWidth/Height",IDC_MKV_DISPWH,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,936,173,136,8
+                    BS_AUTOCHECKBOX | WS_TABSTOP,1412,78,137,8
     CONTROL         "Spin1",IDC_LACEEXCEPTIONFORMATSPIN,"msctls_updown32",
-                    UDS_ARROWKEYS,522,86,11,12
-    EDITTEXT        IDC_LACEEXCEPTIONFORMAT,488,86,33,12,ES_AUTOHSCROLL
+                    UDS_ARROWKEYS,522,92,11,12
+    EDITTEXT        IDC_LACEEXCEPTIONFORMAT,488,92,33,12,ES_AUTOHSCROLL
     CONTROL         "",IDC_USELACINGEXCEPTION,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,474,89,9,8
+                    WS_TABSTOP,474,95,9,8
     CONTROL         "lace video",IDC_LACEVIDEO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,445,101,79,10
-    EDITTEXT        IDC_LACEVIDEO_COUNT,536,100,32,12,ES_AUTOHSCROLL | 
-                    ES_READONLY
+                    WS_TABSTOP,445,107,79,10
+    EDITTEXT        IDC_LACEVIDEO_COUNT,536,106,32,12,ES_CENTER | 
+                    ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "Spin1",IDC_LACEVIDEO_SPIN,"msctls_updown32",
-                    UDS_ARROWKEYS,570,99,11,14
-    CONTROL         "force Matroska 1.0 compliance",IDC_FORCEMKV10,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,443,37,113,8
+                    UDS_ARROWKEYS,570,105,11,14
+    CONTROL         "force Matroska v1 compliance",IDC_FORCEMKV1,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,445,44,135,8
     CONTROL         "write Cues",IDC_WRITECUES,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,937,98,134,10
+                    WS_TABSTOP,936,101,134,10
     CONTROL         "video",IDC_WRITECUES_VIDEO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,950,109,33,10
+                    WS_TABSTOP,950,112,59,10
     CONTROL         "audio",IDC_WRITECUES_AUDIO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,950,120,33,10
+                    WS_TABSTOP,950,124,59,10
     CONTROL         "only for audio-only",IDC_WRITECUES_ONLYAUDIOONLY,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,962,133,113,10
-    GROUPBOX        " Cues ",IDC_MKV_CUES,925,87,155,136
-    GROUPBOX        "Lacing",IDC_MKV_LACING,434,61,155,162
-    GROUPBOX        "Cluster",IDC_MKV_CLUSTER,434,118,155,105
-    GROUPBOX        " MKV - Struktur - 2",IDC_SFO_O_MKVOPTIONS2,925,12,155,
-                    211
-    LTEXT           "MKV:",IDC_TCS_MKV_LABEL,934,59,18,8
-    EDITTEXT        IDC_TCS_MKV,1024,56,47,12,ES_AUTOHSCROLL
-    LTEXT           "MKA:",IDC_TCS_MKA_LABEL,934,71,18,8
-    EDITTEXT        IDC_TCS_MKA,1024,69,47,12,ES_AUTOHSCROLL
+                    BS_AUTOCHECKBOX | WS_TABSTOP,964,135,105,10
+    GROUPBOX        " Cues ",IDC_MKV_CUES,925,87,155,137
+    GROUPBOX        "Lacing",IDC_MKV_LACING,434,69,155,154
+    GROUPBOX        "Cluster",IDC_MKV_CLUSTER,434,124,155,99
+    GROUPBOX        " MKV - Struktur - 2",IDC_SFO_O_MKVPAGE2,925,13,155,211
+    LTEXT           "MKV:",IDC_TCS_MKV_LABEL,934,65,18,8
+    EDITTEXT        IDC_TCS_MKV,1024,62,47,12,ES_RIGHT | ES_AUTOHSCROLL
+    LTEXT           "MKA:",IDC_TCS_MKA_LABEL,934,76,18,8
+    EDITTEXT        IDC_TCS_MKA,1024,74,47,12,ES_RIGHT | ES_AUTOHSCROLL
     CONTROL         "1",IDC_MKV_PAGE1,"Button",BS_AUTORADIOBUTTON | 
-                    BS_PUSHLIKE | WS_GROUP,444,23,20,10
+                    BS_PUSHLIKE | WS_GROUP,445,26,20,10
     CONTROL         "2",IDC_MKV_PAGE2,"Button",BS_AUTORADIOBUTTON | 
-                    BS_PUSHLIKE,464,23,20,10
-    GROUPBOX        "others",IDC_others,925,147,155,76
+                    BS_PUSHLIKE,465,26,20,10
+    GROUPBOX        "others",IDC_OUTPUT_MKV3_OTHERS,1403,53,155,171
     CONTROL         "write 2nd copy of Tracks element",IDC_2ndCopieOfTracks,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,936,161,139,10
-    GROUPBOX        " Timecode scale ",IDC_TIMECODESCALE,925,47,155,176
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,1412,65,139,10
+    GROUPBOX        " Timecode scale ",IDC_TIMECODESCALE,925,53,155,171
     CONTROL         "Index in Seekhead",IDC_INDEXINSEEKHEAD,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,445,200,139,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,445,206,139,10
     CONTROL         "Logfile",IDC_LOGFILE,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,24,89,37,10
-    EDITTEXT        IDC_RIFFAVISIZE,338,141,36,12,ES_CENTER | ES_AUTOHSCROLL
-    LTEXT           "RIFF - AVI",IDC_RIFFAVISIZE_LABEL,299,143,34,8
-    LTEXT           "MB",IDC_RIFFAVISIZE_UNIT,382,143,22,8
+                    WS_TABSTOP,24,69,37,10
+    EDITTEXT        IDC_RIFFAVISIZE,339,146,36,12,ES_CENTER | ES_AUTOHSCROLL
+    LTEXT           "RIFF - AVI",IDC_RIFFAVISIZE_LABEL,300,148,34,8
+    LTEXT           "MB",IDC_RIFFAVISIZE_UNIT,383,148,22,8
     GROUPBOX        " General ",IDC_SFO_I_GENERAL,1086,13,155,211
     CONTROL         "unnötige Seekoperationen vermeiden",IDC_AVOIDSEEKOPS,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,1099,42,137,12
     CONTROL         "unbuffered read",IDC_SFO_ALLOWUNBUFFEREDREAD,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,1099,56,66,10
     CONTROL         "unbuffered write",IDC_SFO_ALLOWUNBUFFEREDWRITE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,24,101,67,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,24,81,67,10
     GROUPBOX        " AVI - Struktur - 2",IDC_SFO_O_AVISTRUCTURE2,1246,13,
                     153,211
     CONTROL         "1",IDC_AVI_PAGE1,"Button",BS_AUTORADIOBUTTON | 
-                    BS_PUSHLIKE,275,22,20,10
+                    BS_PUSHLIKE,278,26,20,10
     CONTROL         "2",IDC_AVI_PAGE2,"Button",BS_AUTORADIOBUTTON | 
-                    BS_PUSHLIKE,295,22,20,10
+                    BS_PUSHLIKE,298,26,20,10
     LTEXT           "MP3-VBR Interleave",IDC_MP3VBRFRAMECOUNT_LABEL,1253,77,
                     91,8
     EDITTEXT        IDC_MP3VBRFRAMECOUNT,1349,75,27,12,ES_CENTER | 
                     ES_AUTOHSCROLL
-    LTEXT           "Width of Floats in Bits:",IDC_FLOATWIDTH_LABEL,933,202,
-                    82,8
-    EDITTEXT        IDC_FLOATWIDTH,1022,200,30,12,ES_CENTER | ES_AUTOHSCROLL | 
+    LTEXT           "Width of Floats in Bits:",IDC_FLOATWIDTH_LABEL,1411,175,
+                    93,8
+    EDITTEXT        IDC_FLOATWIDTH,1512,173,27,12,ES_CENTER | ES_AUTOHSCROLL | 
                     ES_READONLY
     CONTROL         "Spin1",IDC_FLOATWIDTH_SPIN,"msctls_updown32",
-                    UDS_ARROWKEYS,1054,200,11,12
+                    UDS_ARROWKEYS,1540,173,11,12
     EDITTEXT        IDC_DTSFRAMECOUNT,1349,62,27,12,ES_CENTER | 
                     ES_AUTOHSCROLL
     LTEXT           "DTS-Frames per Chunk:",IDC_DTSFRAMECOUNT_LABEL,1253,64,
                     90,8
     CONTROL         "randomize element order",IDC_RANDOMIZE_ELEMENT_ORDER,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,936,184,140,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,1412,157,140,10
     CONTROL         "Low-overhead mode",IDC_HAALIMODE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,284,156,126,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,285,161,126,10
+    CONTROL         "add JUNK before headers",IDC_MOVEHDRL,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,1253,93,133,10
+    CONTROL         "index non-Clusters in 1st Seekhead",
+                    IDC_NONCLUSTERTOFIRSTSEEKHEAD,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,1412,91,141,10
+    LTEXT           "Size of Headers (kB):",IDC_MKV_HEADERSIZE_LABEL,1412,
+                    188,96,8
+    EDITTEXT        IDC_MKV_HEADERSIZE,1512,186,27,12,ES_CENTER | 
+                    ES_AUTOHSCROLL
+    CONTROL         "subs",IDC_WRITECUES_SUBS,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,1015,111,31,10
+    GROUPBOX        " MKV - Struktur - 3",IDC_SFO_O_MKVPAGE3,1403,13,155,211
+    CONTROL         "3",IDC_MKV_PAGE3,"Button",BS_AUTORADIOBUTTON | 
+                    BS_PUSHLIKE,485,26,20,10
+    LTEXT           "minimum (ms)",IDC_CUE_MINIMUM_INTERVAL_LABEL,939,173,97,
+                    8
+    CONTROL         "auto cue size",IDC_CUES_AUTOSIZE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,939,185,130,10
+    EDITTEXT        IDC_CUE_MINIMUM_INTERVAL,1041,171,30,12,ES_CENTER | 
+                    ES_AUTOHSCROLL
+    LTEXT           "kB per stream and hour:",
+                    IDC_SIZE_PER_STREAM_AND_HOUR_LABEL,947,197,90,8
+    EDITTEXT        IDC_SIZE_PER_STREAM_AND_HOUR,1041,195,30,12,ES_CENTER | 
+                    ES_AUTOHSCROLL
+    GROUPBOX        " Cue interval setting ",IDC_CUE_INTERVAL_SETTINGS_LABEL,
+                    925,161,155,63
+    LTEXT           "target size ratio (/1000):",
+                    IDC_CUE_TARGET_SIZE_RATIO_LABEL,947,209,92,8
+    EDITTEXT        IDC_CUE_TARGET_SIZE_RATIO,1041,207,30,12,ES_CENTER | 
+                    ES_AUTOHSCROLL
+    CONTROL         "hard linking when splitting",IDC_MKV_HARD_LINKING,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,1412,105,136,10
+    CONTROL         "write CueBlockNumber",IDC_WRITECUES_BLOCKNUMBER,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,949,147,106,10
+    CONTROL         "asynchronous read-ahead",IDC_INPUT_OVERLAPPED,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,1099,69,98,10
+    CONTROL         "header stripping",IDC_HEADER_STRIPPING,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,1412,144,142,10
+    CONTROL         "force Matroska v2 compliance",IDC_FORCEMKV2,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,445,56,135,8
+    CONTROL         "Create A_AAC codec id",IDC_MKV3_USE_A_AAC,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,1412,119,138,10
 END
 
-IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 239, 96
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Info über AVI-Mux GUI"
-FONT 8, "MS Sans Serif"
+IDD_ABOUTBOX DIALOGEX 0, 0, 239, 96
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Information über AVI-Mux GUI"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     LTEXT           "Alexander Noé",IDC_AUTHOR,7,32,119,8
     DEFPUSHBUTTON   "OK",IDOK,94,75,50,14,WS_GROUP
-    LTEXT           "Mail: noe@hrz.tu-chemnitz.de",IDC_STATIC,7,44,94,8
-    LTEXT           "http://www-user.tu-chemnitz.de/~noe/Video-Zeug/AVIMux%20GUI/",
-                    IDC_STATIC,7,56,225,8
-    CTEXT           "Static",IDC_ABOUTBOX_LABEL,7,10,225,11,SS_SUNKEN
+    LTEXT           "Mail: alex@alexander-noe.com",IDC_STATIC,7,44,98,8
+    LTEXT           "http://www.alexander-noe.com/video/amg",IDC_STATIC,7,56,
+                    225,8
+    CTEXT           "Static",IDC_ABOUTBOX_LABEL,7,7,225,11,SS_SUNKEN
 END
 
-IDD_AVIMUX_GUI_DIALOG DIALOGEX 0, 0, 435, 365
-STYLE DS_MODALFRAME | DS_CENTER | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | 
-    WS_CAPTION | WS_SYSMENU
-EXSTYLE WS_EX_APPWINDOW
+IDD_AVIMUX_GUI_DIALOG DIALOGEX 0, 0, 438, 415
+STYLE DS_SETFONT | DS_CENTER | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | 
+    WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+EXSTYLE WS_EX_CLIENTEDGE | WS_EX_APPWINDOW
 CAPTION "AVI-Mux GUI"
-FONT 8, "MS Sans Serif"
+FONT 8, "Microsoft Sans Serif", 400, 0, 0x0
 BEGIN
-    PUSHBUTTON      "Beenden",IDCANCEL,389,233,38,14
-    LISTBOX         IDC_AVAILABLEAUDIOSTREAMS,387,206,32,39,
-                    LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | NOT WS_VISIBLE | 
-                    WS_VSCROLL | WS_HSCROLL | WS_TABSTOP
-    LTEXT           "zur Verfügung stehende Streams:",
-                    IDS_MAIN_AVAILABLESTREAMS,14,91,106,8
-    LISTBOX         IDC_AVAILABLEVIDEOSTREAMS,14,109,264,19,LBS_SORT | 
-                    LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_HSCROLL | 
-                    WS_TABSTOP
-    LTEXT           "Video",IDS_MAIN_VIDEO,14,100,19,8
-    LTEXT           "Audio",IDS_MAIN_AUDIO,14,131,36,8
-    PUSHBUTTON      "Start",IDC_START,346,233,41,14
-    PUSHBUTTON      "Stop",IDC_STOP,347,233,38,14
-    GROUPBOX        " Fortschritt ",IDS_MAIN_PROGRESS,14,259,411,99,0,
+    PUSHBUTTON      "Beenden",ID_LEAVE,392,257,38,14,NOT WS_TABSTOP
+    LTEXT           "Audio",IDS_MAIN_AUDIO,14,115,36,8
+    PUSHBUTTON      "Start",IDC_START,347,257,37,14,NOT WS_TABSTOP
+    PUSHBUTTON      "Stop",IDC_STOP,347,240,38,14
+    GROUPBOX        " Fortschritt ",IDS_MAIN_PROGRESS,14,303,416,105,0,
                     WS_EX_TRANSPARENT
-    LTEXT           "Zieldatei:",IDS_MAIN_PRG_DESTFILE,22,316,30,8
-    EDITTEXT        IDC_DESTFILE,69,314,219,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Position:",IDS_MAIN_PRG_FRAMES,291,314,28,8
-    EDITTEXT        IDC_FRAMES,324,313,96,12,ES_AUTOHSCROLL | ES_READONLY,
-                    WS_EX_RIGHT
-    PUSHBUTTON      "Videoquelle hinzufügen",IDC_ADDAVILIST,14,74,410,13
-    LISTBOX         IDC_SOURCEFILELIST,14,19,410,52,LBS_NOINTEGRALHEIGHT | 
-                    LBS_EXTENDEDSEL | WS_VSCROLL | WS_TABSTOP,
+    LTEXT           "Zieldatei:",IDS_MAIN_PRG_DESTFILE,22,372,30,8
+    EDITTEXT        IDC_DESTFILE,69,370,351,12,ES_AUTOHSCROLL | ES_READONLY | 
+                    NOT WS_TABSTOP
+    LTEXT           "Position:",IDS_MAIN_PRG_FRAMES,282,359,28,8
+    EDITTEXT        IDC_FRAMES,313,357,107,12,ES_AUTOHSCROLL | ES_READONLY | 
+                    NOT WS_TABSTOP,WS_EX_CLIENTEDGE | WS_EX_RIGHT
+    PUSHBUTTON      "Videoquelle hinzufügen",IDC_ADDAVILIST,14,74,416,13,NOT 
+                    WS_TABSTOP
+    LISTBOX         IDC_SOURCEFILELIST,14,19,416,52,LBS_OWNERDRAWFIXED | 
+                    LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_VSCROLL,
                     WS_EX_ACCEPTFILES
-    LTEXT           "Fortschritt:",IDS_MAIN_PRG_PROGRESS,21,329,34,8
+    LTEXT           "Fortschritt:",IDS_MAIN_PRG_PROGRESS,21,359,34,8
     CONTROL         "Progress1",IDC_LEGACYPROGRESS,"msctls_progress32",
-                    WS_BORDER,69,340,351,12,WS_EX_CLIENTEDGE
-    LTEXT           "Legacy-Index:",IDS_MAIN_PRG_LEGIDX,21,341,46,8
-    LTEXT           "offene Dateien",IDS_MAIN_OPENFILES,14,9,407,8
-    CONTROL         "kein Audio",IDC_NO_AUDIO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,55,130,64,10,WS_EX_TRANSPARENT
-    DEFPUSHBUTTON   "Ausgabeoptionen",IDC_OUTPUTOPTIONS,346,218,81,14
-    LTEXT           "Protokoll",IDS_MAIN_PROTOCOL,379,109,48,8
+                    WS_BORDER,69,383,351,12,WS_EX_CLIENTEDGE
+    LTEXT           "Legacy-Index:",IDS_MAIN_PRG_LEGIDX,21,384,46,8
+    CONTROL         "offene Dateien",IDS_MAIN_OPENFILES,"Static",
+                    SS_LEFTNOWORDWRAP | WS_GROUP,14,9,416,8
+    CONTROL         "kein Audio",IDC_NO_AUDIO,"Button",BS_AUTOCHECKBOX,55,
+                    114,64,10,WS_EX_TRANSPARENT
+    DEFPUSHBUTTON   "Ausgabeoptionen",IDC_OUTPUTOPTIONS,347,221,83,14,
+                    BS_NOTIFY | NOT WS_TABSTOP
+    LTEXT           "Protokoll",IDS_MAIN_PROTOCOL,15,251,48,8
     CONTROL         "alle Audiostreams",IDC_ALL_AUDIO,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,122,130,76,10
-    LISTBOX         IDC_AVAILABLETEXTSTREAMS,14,206,264,40,
-                    LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | NOT WS_VISIBLE | 
-                    WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Untertitel",IDS_MAIN_SUBTITLES,14,142,36,8
+                    BS_AUTOCHECKBOX,122,114,76,10
+    LTEXT           "Untertitel",IDS_MAIN_SUBTITLES,14,126,36,8
     CONTROL         "keine Untertitel",IDC_NO_SUBTITLES,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,55,142,63,10
+                    BS_AUTOCHECKBOX,55,126,63,10
     CONTROL         "alle Untertitel",IDC_ALL_SUBTITLES,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,122,142,75,10
-    CONTROL         "default:",IDC_DEFAULT_AUDIO,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,203,131,48,8
-    EDITTEXT        IDC_DEFAULT_AUDIO_NUMBER,254,129,24,12,ES_AUTOHSCROLL
-    LTEXT           "Attributwert",IDS_MAIN_AUDIONAME,345,148,49,8
-    EDITTEXT        IDC_AUDIONAME,344,158,83,14,ES_AUTOHSCROLL
-    LTEXT           "Delay:",IDS_MAIN_AUDIODELAY,345,175,68,19
-    EDITTEXT        IDC_DELAY,345,195,82,14,ES_AUTOHSCROLL
+                    BS_AUTOCHECKBOX,122,126,75,10
+    CONTROL         "default:",IDC_DEFAULT_AUDIO,"Button",BS_AUTOCHECKBOX,
+                    203,115,48,8
+    EDITTEXT        IDC_DEFAULT_AUDIO_NUMBER,254,113,24,12,ES_AUTOHSCROLL
+    EDITTEXT        IDC_AUDIONAME,347,151,83,14,ES_AUTOHSCROLL
+    LTEXT           "Delay:",IDS_MAIN_AUDIODELAY,343,140,68,9
     CONTROL         "List2",IDC_ENHLIST,"SysListView32",LVS_REPORT | 
-                    LVS_ALIGNLEFT | NOT WS_VISIBLE | WS_BORDER | WS_TABSTOP,
-                    14,55,413,23,WS_EX_ACCEPTFILES
+                    LVS_ALIGNLEFT | NOT WS_VISIBLE | WS_BORDER,14,55,416,23,
+                    WS_EX_ACCEPTFILES
     CONTROL         "List1",IDC_PROGRESS_LIST,"SysListView32",LVS_REPORT | 
-                    LVS_ALIGNLEFT | LVS_NOSORTHEADER | WS_BORDER | 
-                    WS_TABSTOP,20,267,399,41
+                    LVS_ALIGNLEFT | LVS_NOSORTHEADER | WS_BORDER,20,313,399,
+                    41
     CONTROL         "List1",IDC_PROTOCOL,"SysListView32",LVS_REPORT | 
-                    WS_BORDER | WS_TABSTOP,378,119,46,105
-    CONTROL         "Progress1",IDC_PROGCTRL,"msctls_progress32",PBS_SMOOTH | 
-                    WS_BORDER,69,327,351,12,WS_EX_CLIENTEDGE
-    EDITTEXT        IDC_VIDEOSTRETCHFACTOR,324,133,44,12,ES_AUTOHSCROLL | 
+                    LVS_NOSORTHEADER | WS_BORDER,51,250,65,30
+    CONTROL         "Progress1",IDC_PROGCTRL,"msctls_progress32",WS_BORDER | 
+                    0x1,69,357,203,12,WS_EX_CLIENTEDGE
+    EDITTEXT        IDC_VIDEOSTRETCHFACTOR,327,104,44,12,ES_AUTOHSCROLL | 
+                    NOT WS_VISIBLE | NOT WS_TABSTOP
+    LTEXT           "stretch by",IDC_VIDEOSTRETCHFACTORLABEL,290,106,33,8,
                     NOT WS_VISIBLE
-    LTEXT           "stretch by",IDC_VIDEOSTRETCHFACTORLABEL,281,135,41,8,
-                    NOT WS_VISIBLE
-    EDITTEXT        IDC_TITLE,324,107,102,12,ES_AUTOHSCROLL
-    LTEXT           "title:",IDC_TITLELABEL,281,108,13,8
+    EDITTEXT        IDC_TITLE,65,91,212,12,ES_AUTOHSCROLL | NOT WS_TABSTOP
+    LTEXT           "title:",IDC_TITLELABEL,14,93,48,8
     CONTROL         "Tree1",IDC_AUDIOTREE,"SysTreeView32",TVS_HASBUTTONS | 
                     TVS_HASLINES | TVS_LINESATROOT | TVS_EDITLABELS | 
                     TVS_SHOWSELALWAYS | TVS_CHECKBOXES | TVS_FULLROWSELECT | 
-                    WS_BORDER | WS_TABSTOP,14,156,324,91
-    LTEXT           "resolution:",IDC_OUTPUTRESOLUTION_LABEL,282,122,40,8
-    EDITTEXT        IDC_OUTPUTRESOLUTION,324,120,43,12,ES_AUTOHSCROLL
-    COMBOBOX        IDC_STREAM_LNG,344,194,48,30,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_BORDER | WS_TABSTOP,14,140,324,107,WS_EX_CLIENTEDGE
+    RTEXT           "resolution:",IDC_OUTPUTRESOLUTION_LABEL,281,92,40,8
+    EDITTEXT        IDC_OUTPUTRESOLUTION,327,91,103,12,ES_AUTOHSCROLL | NOT 
                     WS_TABSTOP
-    EDITTEXT        IDC_STATUSLINE,14,252,413,14,ES_AUTOHSCROLL | 
-                    ES_READONLY
+    COMBOBOX        IDC_STREAM_LNG,347,166,83,114,CBS_DROPDOWN | WS_VSCROLL | 
+                    WS_TABSTOP
+    EDITTEXT        IDC_DELAY,347,187,83,13,ES_AUTOHSCROLL
+    EDITTEXT        IDC_STATUSLINE,14,283,416,14,ES_AUTOHSCROLL | 
+                    ES_READONLY | WS_DISABLED | NOT WS_TABSTOP
+    LTEXT           "Attributwert",IDS_MAIN_AUDIONAME,344,140,49,8
+    PUSHBUTTON      "Chapters",IDC_CHAPTER_EDITOR,347,205,83,14,NOT 
+                    WS_TABSTOP
+    PUSHBUTTON      "Button1",IDCANCEL,390,240,31,13,NOT WS_VISIBLE
 END
 
-IDD_SPLITPOINTS DIALOG DISCARDABLE  0, 0, 213, 169
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_SPLITPOINTS DIALOG  0, 0, 213, 169
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Split-Punkte manuell eingeben"
 FONT 8, "MS Sans Serif"
 BEGIN
@@ -421,8 +456,8 @@ BEGIN
                     IDC_STATIC,8,30,190,8
 END
 
-IDD_ADDSPLITPOINTDLG DIALOG DISCARDABLE  0, 0, 154, 82
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_ADDSPLITPOINTDLG DIALOG  0, 0, 154, 82
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Split-punkt"
 FONT 8, "MS Sans Serif"
 BEGIN
@@ -432,24 +467,26 @@ BEGIN
     LTEXT           "neuer Teil ab:",IDC_ASP_NEWPART,7,21,44,8
 END
 
-IDD_VIDEOINFO DIALOG DISCARDABLE  0, 0, 419, 231
-STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_CAPTION
+IDD_VIDEOINFO DIALOGEX 0, 0, 418, 228
+STYLE DS_SETFONT | DS_3DLOOK | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU | WS_THICKFRAME
+EXSTYLE WS_EX_CLIENTEDGE
 CAPTION "Informationen über AVI-Datei"
-FONT 9, "Courier New"
+FONT 9, "Courier New", 0, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,94,210,50,14
-    LISTBOX         IDE_VIDEOINFORMATION,7,7,405,178,LBS_NOINTEGRALHEIGHT | 
+    DEFPUSHBUTTON   "OK",IDOK,7,207,50,14
+    LISTBOX         IDE_VIDEOINFORMATION,7,7,242,178,LBS_NOINTEGRALHEIGHT | 
                     WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "Änderungen übernehmen",IDC_APPLYREPAIRS,160,210,89,14
-    PUSHBUTTON      "RIFF",IDC_BUTTON1,268,210,50,14
+    PUSHBUTTON      "Änderungen übernehmen",IDC_APPLYREPAIRS,116,207,118,14
+    PUSHBUTTON      "RIFF",IDC_BUTTON1,270,207,50,14
     CONTROL         "Tree1",IDC_TREE1,"SysTreeView32",TVS_HASBUTTONS | 
                     TVS_HASLINES | TVS_LINESATROOT | WS_BORDER | WS_TABSTOP,
-                    7,7,405,192
-    PUSHBUTTON      "Save",IDC_SAVETREE,362,210,50,14
+                    258,7,153,174
+    PUSHBUTTON      "Save",IDC_SAVETREE,361,207,50,14
 END
 
-IDD_SETFRAMERATE DIALOG DISCARDABLE  0, 0, 151, 103
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_SETFRAMERATE DIALOG  0, 0, 151, 103
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Framerate"
 FONT 8, "MS Sans Serif"
 BEGIN
@@ -464,8 +501,8 @@ BEGIN
                     10
 END
 
-IDD_SETFLAGS DIALOG DISCARDABLE  0, 0, 215, 133
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_SETFLAGS DIALOG  0, 0, 215, 133
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "dwFlags festlegen"
 FONT 8, "MS Sans Serif"
 BEGIN
@@ -487,75 +524,85 @@ BEGIN
     PUSHBUTTON      "Zurücksetzen",IDC_SETFALGS_RESET,160,112,48,14
 END
 
-IDD_RIFFCHUNKTREEDLG DIALOG DISCARDABLE  0, 0, 375, 198
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_RIFFCHUNKTREEDLG DIALOGEX 0, 0, 374, 198
+STYLE DS_SETFONT | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | 
+    WS_THICKFRAME
 CAPTION "RIFF Tree"
-FONT 9, "Courier New"
+FONT 9, "Courier New", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,318,7,50,14
-    PUSHBUTTON      "Abbrechen",IDCANCEL,318,24,50,14
+    DEFPUSHBUTTON   "OK",IDOK,317,7,50,14
     CONTROL         "Tree1",IDC_TREE1,"SysTreeView32",TVS_HASBUTTONS | 
                     TVS_HASLINES | TVS_LINESATROOT | WS_BORDER | WS_TABSTOP,
-                    7,7,308,184
-    PUSHBUTTON      "Save",IDC_SAVE,318,42,50,14
+                    6,7,308,184
+    PUSHBUTTON      "Save",IDC_SAVE,317,22,50,14
+    PUSHBUTTON      "Wait",IDC_WAIT_FOR_COMPLETE_TREE,317,38,50,14
 END
 
-IDD_CHAPTERDIALOG DIALOGEX 0, 0, 306, 267
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Chapters"
-FONT 10, "Microsoft Sans Serif"
+IDD_CHAPTERDIALOG DIALOGEX 0, 0, 306, 327
+STYLE DS_SETFONT | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | 
+    WS_THICKFRAME
+EXSTYLE WS_EX_CLIENTEDGE
+FONT 10, "Microsoft Sans Serif", 0, 0, 0x1
 BEGIN
-    PUSHBUTTON      "OK",IDOK,195,246,50,14,NOT WS_TABSTOP
-    PUSHBUTTON      "Abbrechen",IDCANCEL,249,246,50,14,NOT WS_TABSTOP
+    PUSHBUTTON      "OK",IDOK,249,306,50,14,NOT WS_TABSTOP
+    PUSHBUTTON      "Abbrechen",IDCANCEL,195,306,50,14,NOT WS_VISIBLE | NOT 
+                    WS_TABSTOP
     CONTROL         "Tree1",IDC_CHAPTERTREE,"SysTreeView32",TVS_HASBUTTONS | 
                     TVS_HASLINES | TVS_LINESATROOT | TVS_EDITLABELS | 
                     TVS_SHOWSELALWAYS | TVS_TRACKSELECT | TVS_FULLROWSELECT | 
-                    WS_BORDER,7,32,292,125,WS_EX_ACCEPTFILES
-    PUSHBUTTON      "Subchapter",IDC_MAKESUBCHAPTER,7,246,50,14,NOT 
+                    WS_BORDER | WS_TABSTOP,7,35,292,140,WS_EX_ACCEPTFILES
+    PUSHBUTTON      "Subchapter",IDC_MAKESUBCHAPTER,7,306,50,14,NOT 
                     WS_TABSTOP
-    PUSHBUTTON      "speichern als...",IDC_SAVEAS,62,246,64,14,NOT 
+    PUSHBUTTON      "speichern als...",IDC_SAVEAS,62,306,64,14,NOT 
                     WS_TABSTOP
-    DEFPUSHBUTTON   "Button3",IDC_BUTTON3,136,246,50,14,NOT WS_VISIBLE | NOT 
+    DEFPUSHBUTTON   "Button3",IDC_BUTTON3,136,306,50,14,NOT WS_VISIBLE | NOT 
                     WS_TABSTOP
-    LTEXT           "Syntax:  from [ - till]> title.  Use F2 to edit items in the chapter tree or the chapter title below",
-                    IDC_STATIC,7,7,292,8
     CONTROL         "List2",IDC_CHAPTER_DISPLAY,"SysListView32",LVS_REPORT | 
                     LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | 
-                    WS_BORDER,7,158,292,53
-    CONTROL         "Tree1",IDC_CHAPTERDISPLAY_EDIT,"SysTreeView32",
-                    TVS_EDITLABELS | TVS_DISABLEDRAGDROP | WS_BORDER | 
-                    WS_TABSTOP,97,214,202,21
-    COMBOBOX        IDC_CHAPTERDISPLAY_LNG,7,214,88,75,CBS_DROPDOWN | 
+                    WS_BORDER,7,177,292,53
+    COMBOBOX        IDC_CHAPTERDISPLAY_LNG,7,233,88,75,CBS_DROPDOWN | 
                     CBS_SORT | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Use the Ins key to add a new chapter on the same level as the selected chapter",
-                    IDC_STATIC,7,18,235,8
+    LTEXT           "Syntax:  from [ - till]> title.  Use F2 to edit items in the chapter tree or the chapter title below. Use the Ins key to add a new chapter on the same level as the selected chapter and PgUp/PgDn to move chapters up or down.",
+                    IDC_CHAPTERS_USAGE_LABEL,7,7,285,28
+    EDITTEXT        IDC_CHAPTERSEGMENTUID,97,245,202,12,ES_AUTOHSCROLL,
+                    WS_EX_ACCEPTFILES
+    LTEXT           "ChapterSegmentUID:",IDC_CHAPTERSEGMENTUID_LABEL,7,247,
+                    87,8
+    LTEXT           "Chapter/Edition UID:",IDC_CHAPTERUID_LABEL,7,259,62,8
+    EDITTEXT        IDC_CHAPTERUID,97,257,202,12,ES_AUTOHSCROLL | 
+                    ES_READONLY | WS_DISABLED
+    EDITTEXT        IDC_CHAPTER_TITLE,97,233,202,12,ES_AUTOHSCROLL
 END
 
-IDD_EBMLTREE_DLG DIALOG DISCARDABLE  0, 0, 421, 220
-STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_EBMLTREE_DLG DIALOGEX 0, 0, 421, 225
+STYLE DS_SETFONT | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | 
+    WS_THICKFRAME
+EXSTYLE WS_EX_CLIENTEDGE
 CAPTION "EBML Tree"
-FONT 10, "Microsoft Sans Serif"
+FONT 10, "Microsoft Sans Serif", 0, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,346,7,68,14
+    DEFPUSHBUTTON   "OK",IDOK,364,7,50,14
     CONTROL         "Tree1",IDC_TREE1,"SysTreeView32",TVS_HASBUTTONS | 
-                    TVS_HASLINES | TVS_LINESATROOT | WS_BORDER | WS_TABSTOP,
-                    7,7,330,206
-    CONTROL         "absolute",IDC_ABSOLUTE,"Button",BS_AUTORADIOBUTTON,344,
-                    34,70,10
-    CONTROL         "relative",IDC_RELATIVE,"Button",BS_AUTORADIOBUTTON,344,
-                    45,70,10
+                    TVS_HASLINES | TVS_LINESATROOT | TVS_DISABLEDRAGDROP | 
+                    WS_BORDER | WS_TABSTOP,7,7,330,211,WS_EX_DLGMODALFRAME | 
+                    WS_EX_CLIENTEDGE
+    CONTROL         "absolute",IDC_ABSOLUTE,"Button",BS_AUTORADIOBUTTON,354,
+                    34,58,10
+    CONTROL         "relative",IDC_RELATIVE,"Button",BS_AUTORADIOBUTTON,354,
+                    45,58,10
     PUSHBUTTON      "full",IDC_FULLEXPAND,364,69,50,14,NOT WS_VISIBLE
+    PUSHBUTTON      "+",IDC_FONT_LARGER,404,22,10,10
+    PUSHBUTTON      "-",IDC_FONT_SMALLER,393,22,10,10
 END
 
 
-#ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////
 //
 // Version
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,16,10,0
+ FILEVERSION 1,17,5,0
  PRODUCTVERSION 1,0,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
@@ -571,18 +618,13 @@ BEGIN
     BEGIN
         BLOCK "040704b0"
         BEGIN
-            VALUE "Comments", "\0"
-            VALUE "CompanyName", "\0"
-            VALUE "FileDescription", "AVI-Mux GUI\0"
-            VALUE "FileVersion", "1, 16, 10, 0\0"
-            VALUE "InternalName", "AVIMux_GUI\0"
-            VALUE "LegalCopyright", "Copyright (C) 2002\0"
-            VALUE "LegalTrademarks", "\0"
-            VALUE "OriginalFilename", "AVIMux_GUI.EXE\0"
-            VALUE "PrivateBuild", "\0"
-            VALUE "ProductName", "Anwendung AVIMux_GUI\0"
-            VALUE "ProductVersion", "1, 0, 0, 1\0"
-            VALUE "SpecialBuild", "\0"
+            VALUE "FileDescription", "AVI-Mux GUI"
+            VALUE "FileVersion", "1, 17, 5, 0"
+            VALUE "InternalName", "AVIMux_GUI"
+            VALUE "LegalCopyright", "Copyright (C) 2002 - 2005"
+            VALUE "OriginalFilename", "AVIMux_GUI.EXE"
+            VALUE "ProductName", "AVI-Mux GUI"
+            VALUE "ProductVersion", "1, 0, 0, 1"
         END
     END
     BLOCK "VarFileInfo"
@@ -591,8 +633,6 @@ BEGIN
     END
 END
 
-#endif    // !_MAC
-
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -600,11 +640,11 @@ END
 //
 
 #ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO DISCARDABLE 
+GUIDELINES DESIGNINFO 
 BEGIN
     IDD_SETOUTPUTOPTIONS, DIALOG
     BEGIN
-        RIGHTMARGIN, 1436
+        RIGHTMARGIN, 1598
         BOTTOMMARGIN, 244
     END
 
@@ -619,9 +659,9 @@ BEGIN
     IDD_AVIMUX_GUI_DIALOG, DIALOG
     BEGIN
         LEFTMARGIN, 14
-        RIGHTMARGIN, 427
+        RIGHTMARGIN, 430
         TOPMARGIN, 7
-        BOTTOMMARGIN, 358
+        BOTTOMMARGIN, 408
     END
 
     IDD_SPLITPOINTS, DIALOG
@@ -643,9 +683,9 @@ BEGIN
     IDD_VIDEOINFO, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 412
+        RIGHTMARGIN, 411
         TOPMARGIN, 7
-        BOTTOMMARGIN, 224
+        BOTTOMMARGIN, 221
     END
 
     IDD_SETFRAMERATE, DIALOG
@@ -667,7 +707,7 @@ BEGIN
     IDD_RIFFCHUNKTREEDLG, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 368
+        RIGHTMARGIN, 367
         TOPMARGIN, 7
         BOTTOMMARGIN, 191
     END
@@ -677,7 +717,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 299
         TOPMARGIN, 7
-        BOTTOMMARGIN, 260
+        BOTTOMMARGIN, 320
     END
 
     IDD_EBMLTREE_DLG, DIALOG
@@ -685,7 +725,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 414
         TOPMARGIN, 7
-        BOTTOMMARGIN, 213
+        BOTTOMMARGIN, 218
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -696,7 +736,7 @@ END
 // Menu
 //
 
-IDR_SOURCEFILEMENU MENU DISCARDABLE 
+IDR_SOURCEFILEMENU MENU 
 BEGIN
     MENUITEM "IDM_ADDAVILIST",              IDM_ADDAVILIST
     MENUITEM "IDM_ADDFILE",                 IDM_ADDFILE
@@ -753,16 +793,37 @@ BEGIN
     MENUITEM "IDM_IMMED_ADD_AUDIO",         IDM_IMMED_ADD_AUDIO
     MENUITEM "IDM_ENABLECHAPTER",           IDM_ENABLECHAPTER
     MENUITEM "IDM_HIDECHAPTER",             IDM_HIDECHAPTER
+    MENUITEM "IDM_ORDEREDEDITION",          IDM_ORDEREDEDITION
+    MENUITEM "IDM_DEFAULTEDITION",          IDM_DEFAULTEDITION
+    MENUITEM "IDM_CHAPTER_COPY",            IDM_CHAPTER_COPY
+    MENUITEM "IDM_CHAPTER_PASTE_AS_CHILD",  IDM_CHAPTER_PASTE_AS_CHILD
+    MENUITEM "IDM_CHAPTER_PASTE_AFTER",     IDM_CHAPTER_PASTE_AFTER
+    MENUITEM "IDM_CHAPTER_PASTE_INTO_NEW_EDITION", 
+                                            IDM_CHAPTER_PASTE_INTO_NEW_EDITION
+
+    MENUITEM "IDM_CHAPTER_DELETE_CLIPBOARD", IDM_CHAPTER_DELETE_CLIPBOARD
+    MENUITEM "IDM_CHAPTER_PASTE_EACH_INTO_EDITION", 
+                                            IDM_CHAPTER_PASTE_EACH_INTO_EDITION
+
+    MENUITEM "IDM_CHAPTER_REINIT_UID_32",   IDM_CHAPTER_REINIT_UID_32
+    MENUITEM "IDM_CHAPTER_REINIT_UID_64",   IDM_CHAPTER_REINIT_UID_64
+    MENUITEM "IDM_CHAPTER_COPY_CHILDREN",   IDM_CHAPTER_COPY_CHILDREN
+    MENUITEM "IDM_CHAPTER_NUMERATE",        IDM_CHAPTER_NUMERATE
+    MENUITEM "IDM_EDITION_TO_CHAPTER",      IDM_EDITION_TO_CHAPTER
+    MENUITEM "IDM_EBMLTREE",                40106
+    MENUITEM "IDM_SELVIDEO",                IDM_SELVIDEO
+    MENUITEM "IDM_DESELVIDEO",              40109
+    MENUITEM "IDM_RIFFTREE",                40111
 END
 
-IDR_SPLITPOINTLISTMENU MENU DISCARDABLE 
+IDR_SPLITPOINTLISTMENU MENU 
 BEGIN
     MENUITEM "hinzufügen",                  IDM_ADDSPLITPOINT
     MENUITEM "entfernen",                   IDM_REMOVESPLITPOINT
     MENUITEM "ändern",                      IDM_CHANGESPLITPOINT
 END
 
-IDR_AUDIOSTREAMSMENU MENU DISCARDABLE 
+IDR_AUDIOSTREAMSMENU MENU 
 BEGIN
     MENUITEM "Delay festlegen",             IDM_SETDELAY
     MENUITEM "MP3 extrahieren",             IDM_EXTRACTMP3
@@ -775,7 +836,7 @@ BEGIN
     MENUITEM "extract to OGG",              IDM_EXTRACT_OGGVORBIS
 END
 
-IDR_VIDEOINFOMENU MENU DISCARDABLE 
+IDR_VIDEOINFOMENU MENU 
 BEGIN
     MENUITEM "defekte dwDuration-Werte reparieren", IDM_VILB_REPAIRODML
     MENUITEM "fehlerhaften dwMicroSecPerFrame-Wert reparieren", 
@@ -786,7 +847,7 @@ BEGIN
     MENUITEM "MainAVIHeader.dwTotalFrames reparieren", IDM_VILB_TOTALFRAMES
 END
 
-IDR_LANGUAGES MENU DISCARDABLE 
+IDR_LANGUAGES MENU 
 BEGIN
     MENUITEM "IDM_LANG1",                   IDM_LANG1
     MENUITEM "IDM_LANG2",                   IDM_LANG2
@@ -806,7 +867,7 @@ BEGIN
     MENUITEM "IDM_LANG16",                  IDM_LANG16
 END
 
-IDR_SUBTITLEMENU MENU DISCARDABLE 
+IDR_SUBTITLEMENU MENU 
 BEGIN
     MENUITEM "extract srt",                 IDM_EXTRACTSRT
     MENUITEM "extract ssa",                 IDM_EXTRACTSSA
@@ -818,14 +879,14 @@ END
 // Bitmap
 //
 
-IDB_BITMAP1             BITMAP  DISCARDABLE     "res\\bitmap1.bmp"
+IDB_BITMAP1             BITMAP                  "res\\bitmap1.bmp"
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // String Table
 //
 
-STRINGTABLE DISCARDABLE 
+STRINGTABLE 
 BEGIN
     IDS_ABOUTBOX            "Inf&o über AVIMux_GUI..."
     IDS_FILEISMP3CBR        "Diese MP3-Datei ist CBR"
@@ -840,7 +901,7 @@ BEGIN
     IDS_NOVIDEOSOURCECHOSEN "Keine Videoquelle ausgewählt!"
 END
 
-STRINGTABLE DISCARDABLE 
+STRINGTABLE 
 BEGIN
     IDS_FILETYPENOTSUPPORTED 
                             "Es werden nur AVI-, MP3-, WAV-, AC3-, DTS-, SRT- und gültige AVI-Mux GUI - Scriptdateien akzeptiert!"
@@ -859,7 +920,7 @@ BEGIN
     IDS_ADD                 "hinzufügen"
 END
 
-STRINGTABLE DISCARDABLE 
+STRINGTABLE 
 BEGIN
     IDS_REMOVE              "entfernen"
     IDS_CHANGE              "ändern"
@@ -879,7 +940,7 @@ BEGIN
     IDS_VI_SIZEOFVIDEO      "Größe des Videostreams"
 END
 
-STRINGTABLE DISCARDABLE 
+STRINGTABLE 
 BEGIN
     IDS_VI_VIDEODATARATE    "Videodatenrate"
     IDS_VI_AUDIOSTREAMS     "Anzahl Audiostreams"
@@ -899,7 +960,7 @@ BEGIN
     IDS_VI_FRAMES           "Frames"
 END
 
-STRINGTABLE DISCARDABLE 
+STRINGTABLE 
 BEGIN
     IDS_VI_OPENDMLINDEX     "Open-DML-Index"
     IDS_VI_SUPERINDEXENTRIES "Einträge im Superindex"
@@ -918,7 +979,7 @@ BEGIN
     IDS_VILB_REPAIRFRAMERATE "fehlerhaften dwMicroSecPerFrame-Wert reparieren"
 END
 
-STRINGTABLE DISCARDABLE 
+STRINGTABLE 
 BEGIN
     IDS_VILB_SETFRAMERATE   "Framerate ändern..."
     IDS_FILEALREADYINUSE    "Diese Datei wird bereits verwendet:%c%c%c%c%s"
@@ -926,7 +987,7 @@ BEGIN
     IDS_CANTOPENMP3         "Die MP3/AC3/DTS-Quelldatei konnte nicht geöffnet werden. Vermutlich ist der erste Frameheader fehlerhaft."
     IDS_VILB_SETMAHFLAGS    "MainAVIHeader.dwFlags ändern"
     IDS_VERSION             "Version"
-    IDS_VERSION_INFO        "1.16.11"
+    IDS_VERSION_INFO        "1.17.5"
     IDS_VILB_CHUNKSIZES     "Chunkgrößen"
     IDS_VILB_OVER           "über"
     IDS_VILB_UPTO           "bis zu"
@@ -938,7 +999,7 @@ BEGIN
     IDS_CONTINUE            "Fortsetzen?"
 END
 
-STRINGTABLE DISCARDABLE 
+STRINGTABLE 
 BEGIN
     IDS_CRAPAC3DATA         "An folgenden Positionen wurden Fehler im AC3-Stream gefunden:"
     IDS_NOPERCENT_D         "Auf Grund der gewählten maximalen Dateigröße wird mehr als eine Ausgabedatei entstehen.%c%cDie fortlaufende Nummer der Datei hat jedoch keinen Einfluß auf den Dateinamen (es fehlt ein %%d im Numerierungsstring).%c%c%c%cForsetzen (nicht empfohlen)?"
@@ -955,7 +1016,7 @@ BEGIN
     IDS_MBYTE               "MByte"
 END
 
-STRINGTABLE DISCARDABLE 
+STRINGTABLE 
 BEGIN
     IDS_TOOMANYSTRFORSTDAVI "Es soll eine Standard-AVI-Datei mit mehr als 9 Streams erzeugt werden. Auf Grund eines Bugs in DirectShow ist es jedoch nötig, Open-DML zu verwenden, da die Datei sonst nicht korrekt wiedergegeben werden wird.\n\nSoll der Vorgang fortgesetzt und die Ausgabe auf Open-DML eingestellt werden?"
     IDS_LANGUAGE            "Sprache"

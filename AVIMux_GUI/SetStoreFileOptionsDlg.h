@@ -14,6 +14,8 @@
 #include "ClusterTimeEdit.h"
 #include "AC3FrameCountEdit.h"
 #include "MKVAC3FrameCountEdit.h"
+#include "MKVHeaderSizeEdit.h"
+#include "ResizeableDialog.h"
 #include "..\Chapters.h"
 #include "..\Buffers.h"
 
@@ -33,14 +35,8 @@ typedef struct
 	DWORD	dwIgnoreSize;
 } OPENFILEOPTIONS;
 
-const int SOFO_AVI_IGNORELARGECHUNKS		= 0x00000001;
-const int SOFO_AVI_TRYTOREPAIRLARGECHUNKS	= 0x00000002;
-const int SOFO_AVI_FORCEMP3VBR				= 0x00000004;
-const int SOFO_AVI_REPAIRDX50				= 0x00000008;
 
-const int SOFO_AVI_MASK                     = 0x0000000F;
-
-const int SOFO_M2F2_DOM2F2CRCCHECK			= 0x00000020;
+//const int SOFO_M2F2_DOM2F2CRCCHECK			= 0x00000020;
 
 const int SOFO_MP3_CHECKCBRASK				= 0x00000100;
 const int SOFO_MP3_CHECKCBRALWAYS			= 0x00000200;
@@ -57,43 +53,63 @@ const int SOFO_CH_MASK                      = 0x00030000;
 static const char* cLaceDefinitionFormats[] = {
 	"general", "mp3", "ac3", "dts", "aac", "vorbis" };
 
+const int CONTROL_CHECKBOX = 0x01;
+const int CONTROL_INTEGER  = 0x02;
+const int CONTROL_COMBOBOX = 0x03;
 
 typedef struct
 {
-	DWORD		dwPreload;
-	DWORD		dwMaxFileSize;
-	DWORD		dwUseMaxFileSize;
+	void*		control;
+	int			type;
+	char		attrib[1024];
+	char**		string_list;
+} CONTROL_DESCRIPTOR;
+
+typedef std::vector<CONTROL_DESCRIPTOR> CONTROL_DESCRIPTORS;
+
+typedef struct
+{
 	DWORD		dwUseManualSplitPoints;
-	DWORD		dwDontUseNumbering;
+
 	char*		lpcNumbering;
 	DWORD		dwFrames;
 	DWORD		dwUseMaxFiles;
 	DWORD		dwMaxFiles;
-	CDialog*	cdMain;
+//	CDialog*	cdMain;
 	bool		bDispDoneDlg;
-	bool		bDispOverwriteDlg;
+
 	bool		bExitAfterwards;
 	bool		bB0rk;
 	int			i1stTimecode;
-	int			iStdOutputFormat;
+//	int			iStdOutputFormat;
 	int			iActiveButton;
+
+	int			active_avi_page;
+	int			active_mkv_page;
+
 	CChapters*	chapters;
 	CSplitPoints* split_points;
 } STOREFILEOPTIONS;
 
-class CSetStoreFileOptionsDlg : public CDialog
+class CSetStoreFileOptionsDlg : public CResizeableDialog
 {
 private:
 	STOREFILEOPTIONS	sfoData;
+	CONTROL_DESCRIPTORS control_descriptors;
+
 	OPENFILEOPTIONS     ofoData;
 	CAttribs*			settings;
+	CAttribs*			copy_of_settings;
 	CDynIntArray*		pages[10];
+
+	bool				AllowFreeStyle();
 // Konstruktion
 protected:
 	int			ShowPage(int a);
 	CAttribs*	GetCurrentLaceDefinition();
 public:
 	CSetStoreFileOptionsDlg(CWnd* pParent = NULL);   // Standardkonstruktor
+	virtual ~CSetStoreFileOptionsDlg();
 	void		SetData(STOREFILEOPTIONS* lpsfoData,OPENFILEOPTIONS* lpofoData, CAttribs* lpsettings);
 	void		GetData(STOREFILEOPTIONS* lpsfoData,OPENFILEOPTIONS* lpofoData, CAttribs** lpsettings);
 	void		RefreshDlg();
@@ -108,7 +124,7 @@ public:
 	void		UpdateMaxFiles();
 	void		SaveCurrentLaceStyleDefinition();
 	void		UpdateLaceDefition();
-	void		UpdateForceV10();
+	void		UpdateForceV();
 	void		UpdateCueSettings();
 	void		UpdateMakeLegacyIndex();
 	void		UpdateGeneralInput();
@@ -118,6 +134,31 @@ public:
 // Dialogfelddaten
 	//{{AFX_DATA(CSetStoreFileOptionsDlg)
 	enum { IDD = IDD_SETOUTPUTOPTIONS };
+	CButton	m_Create_A_AAC;
+	CButton	m_ForceMKV1Compliance;
+	CButton	m_ForceMKV2Compliance;
+	CButton	m_MKVOutputOptions3;
+	CButton	m_MKVOutputOptions2;
+	CButton	m_MKVOutputOptions;
+	CButton	m_Header_Stripping;
+	CButton	m_Others;
+	CButton	m_Input_Overlapped;
+	CButton	m_WriteCueBlockNumber;
+	CButton	m_MKV_Hard_Linking;
+	CStatic	m_Cue_target_size_ratio_label;
+	CEdit	m_Cue_target_size_ratio;
+	CButton	m_chapters_from_filenames;
+	CButton	m_Cue_Interval_Settings_Label;
+	CStatic	m_Cues_size_per_stream_and_hour_label;
+	CEdit	m_Cues_size_per_stream_and_hour;
+	CButton	m_Cues_Autosize;
+	CEdit	m_Cue_Minimum_Interval;
+	CStatic	m_Cue_Minimum_Interval_Label;
+	CButton	m_WriteCues_Subs;
+	CStatic	m_MKVHeaderSize_Label;
+	CMKVHeaderSizeEdit	m_MKVHeaderSize;
+	CButton	m_Nonclusters_in_first_SeekHead;
+	CButton	m_AddJUNK;
 	CButton	m_Haalimode;
 	CButton	m_Randomize_Element_Order;
 	CEdit	m_DTSFrameCount;
@@ -138,13 +179,11 @@ public:
 	CButton	m_Logfile;
 	CButton	m_IndexClustersInSeekhead;
 	CButton	m_TimecodeScale;
-	CButton	m_Others;
 	CButton	m_Write2ndCopyOfTracks;
 	CStatic	m_TimecodeScale_MKV_Label;
 	CEdit	m_TimecodeScale_MKV;
 	CStatic	m_TimecodeScale_MKA_Label;
 	CEdit	m_TimecodeScale_MKA;
-	CButton	m_MKVOutputOptions_2;
 	CButton	m_MKV_Cluster;
 	CButton	m_MKV_Lacing;
 	CButton	m_MKV_Cues;
@@ -152,7 +191,6 @@ public:
 	CButton	m_WriteCues_Audio;
 	CButton	m_WriteCues_Audio_OnlyAudioOnly;
 	CButton	m_WriteCues;
-	CButton	m_ForceMKV10Compliance;
 	CSpinButtonCtrl	m_LaceVideo_Spin;
 	CEdit	m_LaceVideo_Count;
 	CButton	m_LaceVideo;
@@ -161,7 +199,6 @@ public:
 	CEdit	m_LaceDefinitionFormat;
 	CButton	m_DisplayWidth_Height;
 	CButton	m_Overlapped;
-	CButton	m_IMKV_chFromFilenames;
 	CButton	m_IMKV_chImport;
 	CButton	m_IMKV_Chapters_Label;
 	CButton	m_IMKV_Label;
@@ -185,7 +222,7 @@ public:
 	CStatic	m_MKV_AC3FramesPerBlock_Label;
 	CButton	m_Options;
 	CButton	m_Radio_AVI;
-	CButton	m_Radio_General;
+	CButton	m_Radio_Output_General;
 	CButton	m_Radio_MKV;
 	CButton m_Radio_Input_AVIMP3;
 	CButton m_Radio_Input_MKV;
@@ -233,9 +270,7 @@ public:
 	CEdit	m_1stTimestamp;
 	CStatic	m_1stTimestamp_Label;
 	CComboBox	m_CBStdOutputFormat;
-	CButton	m_BChapters;
 	CButton	m_General;
-	CButton	m_MKVOutputOptions;
 	CButton m_STDI_RIFF;
 	CButton m_STDI_Frames;
 	CButton m_STDI_auto;
@@ -243,6 +278,7 @@ public:
 	CButton m_AI_Frames;
 	CButton m_MKV_Page1;
 	CButton m_MKV_Page2;
+	CButton m_MKV_Page3;
 	CButton m_AVI_Page1;
 	CButton m_AVI_Page2;
 	//}}AFX_DATA
@@ -289,7 +325,6 @@ protected:
 	afx_msg void OnUselacingexception();
 	afx_msg void OnLacevideo();
 	afx_msg void OnDeltaposLacevideoSpin(NMHDR* pNMHDR, LRESULT* pResult);
-	afx_msg void OnForcemkv10();
 	afx_msg void OnWritecues();
 	afx_msg void OnWritecuesVideo();
 	afx_msg void OnWritecuesAudio();
@@ -303,6 +338,13 @@ protected:
 	afx_msg void OnAviPage2();
 	afx_msg void OnChangeMp3vbrframecount();
 	afx_msg void OnDeltaposFloatwidthSpin(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnChangeMkvHeadersize();
+	afx_msg void OnMkvPage3();
+	afx_msg void OnCuesAutosize();
+	afx_msg void OnChangeSizePerStreamAndHour();
+	afx_msg void OnForcemkv1();
+	afx_msg void OnForcemkv2();
+	afx_msg void OnInputOverlapped();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	// Generierte OLE-Dispatch-Zuordnungsfunktionen

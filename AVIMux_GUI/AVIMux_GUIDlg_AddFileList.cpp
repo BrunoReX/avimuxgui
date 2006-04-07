@@ -1,7 +1,126 @@
-#include "stdafx.h"
+#include "stdafx.h" 
 #include "avimux_guidlg.h"
 #include "formattext.h"
 #include "avistream.h"
+#include "..\UnicodeCalls.h"
+#include "videosource_avi.h"
+#include "videosource_matroska.h"
+#include "UTF8Windows.h"
+
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
+DWORD* DuplicateFileUsageList(DWORD* in)
+{
+	int size;
+	DWORD* res = (DWORD*)malloc(size = sizeof(DWORD) * (in[0] + 1));
+	memcpy(res, in, size);
+	return res;
+}
+
+bool _is_equal(int v1, int v2)
+{
+	return v1 == v2;
+}
+
+bool _is_equal(char* c1, char* c2)
+{
+	return !strcmp(c1, c2);
+}
+
+template <class T>bool CheckForEquality(int msg_index, 
+					  T v1, T v2, 
+					  int n1, int n2,
+					  char* f1, char* f2,
+					  int final, char* final_error_message)
+{
+	char c[65536];
+	sprintf(c, LoadString(msg_index, LOADSTRING_UTF8),
+		n1, f1, v1,
+		n2, f2, v2);
+
+	char* hdl = NULL;
+	char* u = NULL;
+	bool bBad = false;
+	fromUTF8(LoadString(STR_GEN_ERROR, LOADSTRING_UTF8), &hdl);
+
+	if (!_is_equal(v1, v2)) {
+		bBad = true;
+		if (final_error_message) {
+			strcat(final_error_message, c);
+			strcat(final_error_message, "\x0D\x0D");
+		}
+	}
+
+	if (final) {
+		if (final_error_message[0]) {
+			fromUTF8(final_error_message, &u);
+			(*UMessageBox())(0, u, hdl, MB_OK | MB_ICONERROR);
+			free(hdl);
+			free(u);
+			final_error_message[0]=0;
+			return false;
+		} else {
+			if (bBad) {
+				char* u = NULL;
+				fromUTF8(c, &u);
+				(*UMessageBox())(0, u, hdl, MB_OK | MB_ICONERROR);
+				free(u);
+			}
+		}
+	}
+
+	free(hdl);
+	return true;
+}
+
+bool CheckSampleRates(AUDIOSOURCE* a1, AUDIOSOURCE* a2, int n1, int n2,
+					  char* f1, char* f2, int final, char* fem)
+{
+	return CheckForEquality(STR_ERR_SAMPLERATESBAD, a1->GetFrequency(),
+		a2->GetFrequency(), n1, n2, f1, f2, final, fem);
+}
+
+bool CheckChannels(AUDIOSOURCE* a1, AUDIOSOURCE* a2, int n1, int n2,
+				   char* f1, char* f2, int final, char* fem)
+{
+	return CheckForEquality(STR_ERR_CHANNELCOUNTBAD, a1->GetChannelCount(),
+		a2->GetChannelCount(), n1, n2, f1, f2, final, fem);
+}
+
+bool CheckMPEGLayerVersion(MP3SOURCE* a1, MP3SOURCE* a2, int n1, int n2,
+						   char* f1, char* f2, int final, char* fem)
+{
+	return CheckForEquality(STR_ERR_BADLAYERVERSIONS, a1->GetLayerVersion(),
+		a2->GetLayerVersion(), n1, n2, f1, f2, final, fem);
+}
+
+bool CheckAACProfileVersion(AACSOURCE* a1, AACSOURCE* a2, int n1, int n2,
+							char* f1, char* f2, int final, char* fem)
+{
+	char p1[16]; p1[0]=0;
+	char p2[16]; p2[0]=0;
+	a1->GetProfileString(p1, sizeof(p1));
+	a2->GetProfileString(p2, sizeof(p2));
+	return CheckForEquality(STR_ERR_BADAACPROFILES, p1, p2, n1, n2,
+		f1, f2, final, fem);
+}
+/*bool CheckMPEGVersion(MP3SOURCE* a1, MP3SOURCE* a2, int n1, int n2,
+					  char* f1, char* f2, int final, char* fem)
+{
+	return CheckForEquality(STR_ERR_BADMPEGVERSIONS, a1->GetMPEGVersion(),
+		a2->GetMPEGVersion(), n1, n2, f1, f2, final, fem);
+}
+*/
+template<class T>bool CheckMPEGVersion(T* a1, T* a2, int n1, int n2,
+					  char* f1, char* f2, int final, char* fem)
+{
+	return CheckForEquality(STR_ERR_BADMPEGVERSIONS, a1->GetMPEGVersion(),
+		a2->GetMPEGVersion(), n1, n2, f1, f2, final, fem);
+}
 
 void CAVIMux_GUIDlg::OnAddFileList() 
 {
@@ -10,12 +129,11 @@ void CAVIMux_GUIDlg::OnAddFileList()
 	if (bEditInProgess) return;
 	int						dwNbrOfFiles,dwNbrOfSource;
 	int						i,j;
-	int						iIndex2;
 	int						dwNbrOfSubs;
 	int						iAudioStreamCount;
 	DWORD*					dwSelectedFiles;
 
-	VIDEO_SOURCE_INFORMATION* lpvsi;
+	VIDEO_STREAM_INFO*		lpvsi;
 	VIDEOSOURCELIST*		lpvsl;
 
 	AVISTREAM*				lpAS;
@@ -32,11 +150,8 @@ void CAVIMux_GUIDlg::OnAddFileList()
 	__int64					qwBias;
 	DWORD					dwSize;
 
-	char					Buffer[200];
-	char					cMessage[500];
-
-//	char*					cFilename;
-//	char*					cExtension;
+	char					Buffer[65536];
+	char					cMessage[65536];
 
 	bool					bVFR = false;
 	bool					bAVIOutputPossible = true;
@@ -46,12 +161,10 @@ void CAVIMux_GUIDlg::OnAddFileList()
 
 	int bAVI = false; int bMKV = false; bool bCrap = false; int bMP3 = false;
 	int bAAC = false; int bAC3 = false; bool bDTS = false; int bOVRB = false;
-
 	
 	AUDIO_STREAM_INFO**		asi;
 	SUBTITLE_STREAM_INFO**	ssi;
 	bool				bNoMP3CBR;
-//	CBuffer*			cb;
 
 // wieviele gewählt?
 	dwNbrOfFiles=SendDlgItemMessage(IDC_SOURCEFILELIST,LB_GETSELCOUNT,0,0);
@@ -61,11 +174,18 @@ void CAVIMux_GUIDlg::OnAddFileList()
 		MessageBox(cStr,cstrError,MB_OK | MB_ICONERROR);
 		return;
 	}
-	// welche?
+// welche?
 	dwSelectedFiles=new DWORD[1+dwNbrOfFiles];
 	dwSelectedFiles[0]=dwNbrOfFiles;
+
+	DWORD* dwSelectedFilesIndexes = new DWORD[1+dwNbrOfFiles];
 	SendDlgItemMessage(IDC_SOURCEFILELIST,LB_GETSELITEMS,dwNbrOfFiles,
-		(LPARAM)&(dwSelectedFiles[1]));
+		(LPARAM)&(dwSelectedFilesIndexes[1]));
+	for (i=0;i<dwNbrOfFiles;i++) {
+		FILE_INFO* fi = (FILE_INFO*)((CBuffer*)m_SourceFiles.GetItemData(dwSelectedFilesIndexes[i+1]))->GetData();
+		dwSelectedFiles[i+1] = fi->file_id;
+	}
+	delete dwSelectedFilesIndexes;
 
 	if (dwNbrOfFiles==1) bChaptersFromFiles = false;
 // join matroska, mp3 or avi files, but no mixture
@@ -98,17 +218,22 @@ void CAVIMux_GUIDlg::OnAddFileList()
 
 			if (fi->bInUse) {
 				char msg[1024]; msg[0] = 0;
-				sprintf(msg, LoadString(STR_ERR_FILEINUSE), fi->lpcName);
-				MessageBox(msg, LoadString(STR_GEN_ERROR), MB_OK | MB_ICONERROR);
+				char* c;
+				c = LoadString(STR_ERR_FILEINUSE, LOADSTRING_UTF8);
+				sprintf(msg, c, fi->lpcName);
+				MessageBoxUTF8(m_hWnd, msg, LoadString(STR_GEN_ERROR),
+					MB_OK | MB_ICONERROR);
 				return;
 			}
 		}
 		if (bCrap || (bAVI + bMKV + bMP3 + bAAC + bAC3 + bDTS + bOVRB> 1)) {
-			MessageBox(LoadString(STR_ERR_LISTINCOMPATIBLE),"Error",MB_OK | MB_ICONERROR);
+			MessageBox(LoadString(STR_ERR_LISTINCOMPATIBLE),
+				LoadString(STR_GEN_ERROR), MB_OK | MB_ICONERROR);
 			return;
 		}
 		if (bOVRB && dwNbrOfFiles>1) {
-			MessageBox("Joining OGG/Vorbis files is not yet supported!", "Error", MB_OK | MB_ICONERROR);
+			MessageBox("Joining OGG/Vorbis files is not yet supported!", 
+				LoadString(STR_GEN_ERROR), MB_OK | MB_ICONERROR);
 			return;
 		}
 	}
@@ -116,6 +241,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 	if (bMP3) {
 		MP3SOURCE* m1, *m2;
 		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[1]);
+		FILE_INFO* fi1 = fi;
 		m1 = fi->MP3File;
 
 		for (i=2;i<=dwNbrOfFiles;i++)
@@ -123,58 +249,46 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
 			m2 = fi->MP3File;
 
-			if (m1->GetChannelCount() != m2->GetChannelCount()) {
-				MessageBox("Number of channels do not match!",LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
-				return;
-			}
+			bool bSuccess = true;
+			char errmsg[65536]; errmsg[0]=0;
 
-			if (m1->GetFrequency() != m2->GetFrequency()) {
-				MessageBox("Sample rates do not match!",LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
-				return;
-			}
+			bSuccess &= CheckMPEGVersion(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
+			bSuccess &= CheckSampleRates(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
+			bSuccess &= CheckChannels(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
+			bSuccess &= CheckMPEGLayerVersion(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 1, errmsg);
 
-			if (m1->GetLayerVersion() != m2->GetLayerVersion()) {
-				MessageBox("Layer versions do not match!",LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
-				return;
-			}
-
-			if (m1->GetMPEGVersion() != m2->GetMPEGVersion()) {
-				MessageBox("MPEG Versions do not match!",LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
-				return;
-			}
+			if (!bSuccess)
+					return;
 		}
 	}
 
 	if (bAAC) {
 		AACSOURCE* m1, *m2;
 		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[1]);
+		FILE_INFO* fi1 = fi;
 		m1 = fi->AACFile;
 
-		for (i=2;i<=dwNbrOfFiles;i++)
-		{
+		for (i=2;i<=dwNbrOfFiles;i++) {
 			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
 			m2 = fi->AACFile;
 
-			if (m1->GetChannelCount() != m2->GetChannelCount()) {
-				MessageBox("Number of channels do not match!",LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
-				return;
-			}
+			bool bSuccess = true;
+			char errmsg[65536]; errmsg[0]=0;
 
-			if (m1->GetFrequency() != m2->GetFrequency()) {
-				MessageBox("Sample rates do not match!",LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
-				return;
-			}
+			bSuccess &= CheckMPEGVersion(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
+			bSuccess &= CheckSampleRates(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
+			bSuccess &= CheckChannels(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
+			bSuccess &= CheckAACProfileVersion(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 1, errmsg);
 
-			if (m1->GetMPEGVersion() != m2->GetMPEGVersion()) {
-				MessageBox("MPEG Versions do not match!",LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
-				return;
-			}
+			if (!bSuccess)
+					return;
 		}
 	}
 
-	if (bAC3) {
-		AC3SOURCE* m1, *m2;
+	if (bAC3 || bDTS) {
+		AUDIOSOURCE* m1, *m2;
 		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[1]);
+		FILE_INFO* fi1 = fi;
 		m1 = fi->AC3File;
 
 		for (i=2;i<=dwNbrOfFiles;i++)
@@ -182,39 +296,17 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
 			m2 = fi->AC3File;
 
-			if (m1->GetChannelCount() != m2->GetChannelCount()) {
-				MessageBox("Number of channels do not match!",LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
-				return;
-			}
+			bool bSuccess = true;
+			char errmsg[65536]; errmsg[0]=0;
 
-			if (m1->GetFrequency() != m2->GetFrequency()) {
-				MessageBox("Sample rates do not match!",LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
-				return;
-			}
+			bSuccess &= CheckSampleRates(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
+			bSuccess &= CheckChannels(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 1, errmsg);
+
+			if (!bSuccess)
+					return;
 		}
 	}
 
-	if (bDTS) {
-		DTSSOURCE* m1, *m2;
-		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[1]);
-		m1 = fi->DTSFile;
-
-		for (i=2;i<=dwNbrOfFiles;i++)
-		{
-			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
-			m2 = fi->DTSFile;
-
-			if (m1->GetChannelCount() != m2->GetChannelCount()) {
-				MessageBox("Number of channels do not match!",LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
-				return;
-			}
-
-			if (m1->GetFrequency() != m2->GetFrequency()) {
-				MessageBox("Sample rates do not match!",LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
-				return;
-			}
-		}
-	}
 	// check wether list of AVI files is valid
 	if (bAVI)
 	{
@@ -239,7 +331,8 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			a1->GetVideoResolution(&dwX[0],&dwY[0]);
 			a2->GetVideoResolution(&dwX[1],&dwY[1]);
 			if (dwX[0] != dwX[1] || dwY[0] != dwY[1]) {
-				MessageBox(LoadString(STR_ERR_VIDEORESOLUTIONDIFFERS),LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
+				MessageBox(LoadString(STR_ERR_VIDEORESOLUTIONDIFFERS),
+					LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
 				return;
 			}
 			
@@ -344,11 +437,18 @@ void CAVIMux_GUIDlg::OnAddFileList()
 
 	// build video source
 	bNoMP3CBR=false;
+	int edition_index = -1;
+	if (bChaptersFromFiles && dwNbrOfFiles>1) {
+		SINGLE_CHAPTER_DATA	scd; memset(&scd,0,sizeof(scd));
+		scd.bIsEdition = 1;
+		edition_index = chapters->AddChapter(&scd);
+	}
+
 	for (i=1;i<=dwNbrOfFiles;i++)
 	{
 		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
 
-		char* cNoExt = new char[512];
+		char* cNoExt = new char[512]; cNoExt[0]=0;
 
 		name_without_ext(fi->lpcName, cNoExt);
 
@@ -360,28 +460,39 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			
 			// create chapter if necessary
 			
- 			if (bChaptersFromFiles) chapters->AddChapter(lpvsfa->GetBias(BIAS_UNSCALED),-1,cNoExt);
+ 			if (bChaptersFromFiles) chapters->GetSubChapters(edition_index)->AddChapter(
+				lpvsfa->GetBias(BIAS_UNSCALED),-1,cNoExt);
 
 		}
 		if (fi->dwType & FILETYPE_MKV) {
 			VIDEOSOURCEFROMMATROSKA* lpvsfm = new VIDEOSOURCEFROMMATROSKA(fi->MKVFile,-1);
 			if (lpvsfm->IsOpen()) {
 				lpvsl->Append(lpvsfm);
-			
+
 				// create chapter if necessary, and import the chapters in the file as subchapters
 				if (bChaptersFromFiles) {
 
-					chapters->AddChapter(lpvsfm->GetBias(BIAS_UNSCALED),-1,cNoExt);
-					if (bImportChapters) {
+					chapters->GetSubChapters(edition_index)->AddChapter(lpvsfm->GetBias(BIAS_UNSCALED),-1,cNoExt);
+					/*if (bImportChapters) {
 						chapters->GetSubChapters(CHAP_LAST)->Import(new CChapters(fi->MKVFile->GetChapterInfo()),
 							lpvsfm->GetBias(BIAS_UNSCALED), CHAP_IMPF_DELETE);
 
+					}*/
+					if (bImportChapters) {
+						CChapters* c = new CChapters(fi->MKVFile->GetChapterInfo());
+						for (int j=0;j<c->GetChapterCount();j++) {
+							if (c->IsEdition(j)) {
+								chapters->GetSubChapters(chapters->AddEmptyEdition())->
+									Import(c->GetSubChapters(j), lpvsfm->GetBias(BIAS_UNSCALED));
+							}
+						}
 					}
 				} else
 				if (bImportChapters) {
-					chapters->Import(new CChapters(fi->MKVFile->GetChapterInfo()),
-						lpvsfm->GetBias(BIAS_UNSCALED), CHAP_IMPF_DELETE);
+					CChapters* c = new CChapters(fi->MKVFile->GetChapterInfo());
+					chapters->Import(c, lpvsfm->GetBias(BIAS_UNSCALED));
 				}
+				
 			} else {
 				bNoVideo = true;
 				if (bImportChapters) {
@@ -411,15 +522,22 @@ void CAVIMux_GUIDlg::OnAddFileList()
 		lpASL[0] = new AUDIOSOURCELIST;
 		asi= new AUDIO_STREAM_INFO*[1];
 		newz(AUDIO_STREAM_INFO, 1, asi[0]);
-		newz(DWORD, 1+dwNbrOfFiles, asi[0]->lpdwFiles);
-		asi[0]->lpdwFiles[0] = dwNbrOfFiles;
+	//	newz(DWORD, 1+dwNbrOfFiles, asi[0]->lpdwFiles);
+	//	asi[0]->lpdwFiles[0] = dwNbrOfFiles;
 		m_StatusLine.SetWindowText("checking duration of source files...");
 		m_StatusLine.InvalidateRect(NULL);
 		m_StatusLine.UpdateWindow();
 		__int64 itc = 0;
 		time = GetTickCount();
+
+		CChapters* edition = NULL;
+		if (dwNbrOfFiles > 1 && bChaptersFromFiles) {
+//			chapters->AddEmptyEdition();
+			edition = chapters->GetSubChapters(edition_index);
+		}
+
 		for (i=1;i<=dwNbrOfFiles;i++) {
-			asi[0]->lpdwFiles[i] = dwSelectedFiles[i];
+		//	asi[0]->lpdwFiles[i] = dwSelectedFiles[i];
 			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
 			if (bMP3) a = fi->MP3File;
 			if (bAAC) a = fi->AACFile;
@@ -430,7 +548,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			name_without_ext(fi->lpcName, cNoExt);
 
 			if (dwNbrOfFiles > 1 && bChaptersFromFiles) {
-				chapters->AddChapter(itc, -1, cNoExt);
+				edition->AddChapter(itc, -1, cNoExt);
 				if (1/*i!=dwNbrOfFiles*/) {
 					__int64 r = 0;
 					__int64 itc_begin = itc;
@@ -447,15 +565,11 @@ void CAVIMux_GUIDlg::OnAddFileList()
 							m_StatusLine.UpdateWindow();
 						}
 					}
-				/*	m_StatusLine.SetWindowText(cMessage);
-					m_StatusLine.InvalidateRect(NULL);
-					m_StatusLine.UpdateWindow();
-*/
+
 					Millisec2Str((itc-itc_begin)/1000000, cTime);
 					sprintf(cMessage, "Duration found: %s", cTime);
 					AddProtocolLine(cMessage, 4);
 					a->Seek(0);
-					
 				}
 			}
 		}
@@ -506,18 +620,35 @@ void CAVIMux_GUIDlg::OnAddFileList()
 		asi[0]->audiosource = lpASL[0];
 		asi[0]->bNameFromFormatTag = 1;
 
+		asi[0]->lpdwFiles = DuplicateFileUsageList(dwSelectedFiles);
 		AddAudioStream(asi[0]);
 		bNoVideo = 1;
 
 		delete cNoExt; delete p;
 	}
 
-	if (fi->dwType & FILETYPE_AVI) 
-	{
-		for (j=0;j<fi->AVIFile->GetAudioStreamCount();j++)	{
+	if (!bNoVideo) {
+		cStr=LoadString(IDS_SOURCE);
+		cStr2=LoadString(STR_KBYTE);
+		char cDuration[20];
+		Millisec2Str(lpvsl->GetDuration() * lpvsl->GetTimecodeScale() / 1000000,cDuration);
+		wsprintf(Buffer,"%s %d: %d %s, %s",cStr.GetBuffer(255),
+			1+(dwNbrOfSource=SendDlgItemMessage(IDC_AVAILABLEVIDEOSTREAMS,LB_GETCOUNT)),
+			(DWORD)(lpvsl->GetSize()>>10),cStr2.GetBuffer(255),cDuration);
 
-			for (i=1;i<=dwNbrOfFiles;i++)
-			{
+		lpvsi=new VIDEO_STREAM_INFO;
+		ZeroMemory(lpvsi,sizeof(VIDEO_STREAM_INFO));
+
+		lpvsi->lpdwFiles=DuplicateFileUsageList(dwSelectedFiles);
+		lpvsi->videosource = lpvsl;
+		lpvsl->Enable(0);
+
+		AddVideoStream(lpvsi);
+	}
+
+	if (fi->dwType & FILETYPE_AVI) {
+		for (j=0;j<fi->AVIFile->GetAudioStreamCount();j++)	{
+			for (i=1;i<=dwNbrOfFiles;i++) {
 				fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
 
 				// check for special formats: mp3, ac3, dts, divx, pcm
@@ -539,10 +670,10 @@ void CAVIMux_GUIDlg::OnAddFileList()
 						mp3->SetResyncRange(1048576);
 						lpAudiosources[j] = mp3;
 						mp3->Open(new AVISTREAM(fi->AVIFile,j+1));
-						//lpAudiosources[j] = mp3 = new MP3SOURCE(new AVISTREAM(fi->AVIFile,j+1));
-						if (!IsMP3SampleCount(fi->AVIFile->GetStreamHeader(j+1)->dwScale)) {
-							if (!bNoMP3CBR) mp3->AssumeCBR();
-						}
+						if (!IsMP3SampleCount(fi->AVIFile->GetStreamHeader(j+1)->dwScale))
+							if (!bNoMP3CBR) 
+								mp3->AssumeCBR();
+						
 						FillMP3_ASI(&asi[j],(MP3SOURCE*)lpAudiosources[j]);
 						asi[j]->lpASH->dwScale = ((WAVEFORMATEX*)asi[j]->lpFormat)->nBlockAlign;
 						break;
@@ -566,13 +697,23 @@ void CAVIMux_GUIDlg::OnAddFileList()
 						FillDTS_ASI(&asi[j],(DTSSOURCE*)lpAudiosources[j]);
 						sprintf(Buffer,"%s", "DTS");
 						break;
-			/*		case OGG_WFORMATTAG:
-						((VORBISFROMOGG*)(lpAudiosources[j] = 
-							new VORBISFROMOGG(new OGGFILE(new AVISTREAM(fi->AVIFile, j+1), OGG_OPEN_READ)))
-							)->Open();
-						sprintf(Buffer,"%s", "OGG");
+					case 0x566F: {
+						VORBISPACKETSFROMAVI* a = new VORBISPACKETSFROMAVI(fi->AVIFile, j+1);
+						VORBISFROMOGG*        v = new VORBISFROMOGG;
+						v->Open(a);
+						asi[j]->lpFormat = calloc(1<<16, 1);
+						asi[j]->iFormatSize = v->RenderSetupHeader(asi[j]->lpFormatMKV);
+
+						lpAudiosources[j] = v; }
 						asi[j]->dwType = AUDIOTYPE_VORBIS;
-						break;*/
+						asi[j]->bNameFromFormatTag = 0;
+						break;
+					default:
+						lpAudiosources[j] = new AUDIOSOURCEFROMAVI(fi->AVIFile,j+1);
+						sprintf(Buffer,"%s", "unknown CBR");
+						asi[j]->dwType = AUDIOTYPE_CBR;
+						break;
+
 				}
 				lpAudiosources[j]->SetMaxLength(fi->AVIFile->GetNanoSecPerFrame() * fi->AVIFile->GetFrameCount(),TIMECODE_UNSCALED);
 				lpAudiosources[j]->SetDefault(fi->AVIFile->IsDefault(j+1));
@@ -611,9 +752,24 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			asi[j]->lpdwFiles = NULL;
 			asi[j]->audiosource = lpASL[j];
 			asi[j]->bNameFromFormatTag = true;
+
+			/*
+				Check if MP3 CBR audio sources of different bitrate have been joined. In this case,
+				the joined stream is of course VBR, and only MP3 VBR can be put into AVI, but not
+				MP1 VBR nor MP2 VBR.
+			*/
 			if (asi[j]->dwType == AUDIOTYPE_MP3CBR) {
-				if (!lpASL[j]->IsCBR()) asi[j]->dwType = AUDIOTYPE_MP3VBR;
+				if (!lpASL[j]->IsCBR()) {
+					asi[j]->dwType = AUDIOTYPE_MP3VBR;
+					lpASL[j]->AssumeVBR();
+					FillMP3_ASI(&asi[j], ((MP3SOURCE*)lpAudiosources[j]));
+					asi[j]->audiosource = lpASL[j];
+					MP3SOURCE* mp3 = (MP3SOURCE*)lpAudiosources[j];
+					if (mp3->GetLayerVersion() != 3)
+						lpASL[j]->AllowAVIOutput(false);
+				}
 			}
+			asi[j]->lpdwFiles = DuplicateFileUsageList(dwSelectedFiles);
 			AddAudioStream(asi[j]);
 		}
 
@@ -681,7 +837,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 	
 				cStr=LoadString(IDS_SOURCE);
 				cStr2=LoadString(IDS_VI_STREAM);
-
+				ssi[i]->lpdwFiles = DuplicateFileUsageList(dwSelectedFiles);
 				AddSubtitleStream(ssi[i]);
 			}
 			delete ssi;
@@ -725,6 +881,9 @@ void CAVIMux_GUIDlg::OnAddFileList()
 					asi[j]->lpFormat = new char[1<<16];
 					asi[j]->iFormatSize = vorbis->RenderSetupHeader(asi[j]->lpFormat);
 				}
+				if (a->FormatSpecific(MMSGFS_IS_AAC)) {
+					FillAAC_ASI(&asi[j], (AACSOURCE*)a);
+				}
 
 
 				switch (lpASL[j]->IsCompatible(a)) {
@@ -747,7 +906,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 
 			}
 
-			wsprintf(Buffer,"%s",lpASL[j]->GetIDString());
+			sprintf(Buffer,"%s",lpASL[j]->GetCodecID());
 
 			asi[j]->audiosource = lpASL[j];
 			asi[j]->bNameFromFormatTag = false;
@@ -777,6 +936,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 				asi[j]->bNameFromFormatTag = 1;
 			}
 
+			asi[j]->lpdwFiles = DuplicateFileUsageList(dwSelectedFiles);
 			AddAudioStream(asi[j]);
 		}
 
@@ -809,6 +969,11 @@ void CAVIMux_GUIDlg::OnAddFileList()
 					case MMS_COMPATIBLE:
 						lpSSL[j]->Append(s);
 						break;
+					case MMSIC_COMPRESSION:
+						sprintf(Buffer,LoadString(STR_ERR_SUBCOMPRESSIONINCOMPATIBLE),fi->lpcName,subs->At(j));
+						MessageBox(Buffer,LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
+						return;
+						break;
 					default:
 						sprintf(Buffer,LoadString(STR_ERR_SUBSINCOMPATIBLE),fi->lpcName,subs->At(j));
 						MessageBox(Buffer,LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
@@ -816,13 +981,14 @@ void CAVIMux_GUIDlg::OnAddFileList()
 				}
 			}
 		
-			wsprintf(Buffer,"%s",lpSSL[j]->GetIDString());
+			sprintf(Buffer,"%s",lpSSL[j]->GetCodecID());
 			
 			ssi[j]->lpsubs = lpSSL[j];
 			ssi[j]->lpfi = NULL;
 			ssi[j]->lpash = NULL;
 			lpSSL[j]->AllowAVIOutput(0);
 
+			ssi[j]->lpdwFiles = DuplicateFileUsageList(dwSelectedFiles);
 			AddSubtitleStream(ssi[j]);
 		}
 		
@@ -848,28 +1014,9 @@ void CAVIMux_GUIDlg::OnAddFileList()
 		fi->bInUse=true;
 	}
 
-	if (!bNoVideo) {
-		cStr=LoadString(IDS_SOURCE);
-		cStr2=LoadString(STR_KBYTE);
-		char cDuration[20];
-		Millisec2Str(lpvsl->GetDuration() * lpvsl->GetTimecodeScale() / 1000000,cDuration);
-		wsprintf(Buffer,"%s %d: %d %s, %s",cStr.GetBuffer(255),
-			1+(dwNbrOfSource=SendDlgItemMessage(IDC_AVAILABLEVIDEOSTREAMS,LB_GETCOUNT)),
-			(DWORD)(lpvsl->GetSize()>>10),cStr2.GetBuffer(255),cDuration);
-
-		lpvsi=new VIDEO_SOURCE_INFORMATION;
-		ZeroMemory(lpvsi,sizeof(VIDEO_SOURCE_INFORMATION));
-
-		lpvsi->lpdwFiles=dwSelectedFiles;
-		lpvsi->lpVideosourceList = lpvsl;
-		lpvsl->Enable(0);
-
-		iIndex2=m_VideoSources.AddString(Buffer);
-		m_VideoSources.SetItemData(iIndex2,(DWORD)lpvsl);
-	
-		lpvsl->SetUserData(lpvsi);
-	}
 
 	m_SourceFiles.AllowMoving(false);
+	m_SourceFiles.InvalidateRect(NULL);
+	m_SourceFiles.UpdateWindow();
 	
 }

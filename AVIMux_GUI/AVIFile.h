@@ -92,12 +92,14 @@ const int AFE_LEGACYINDEX = 0x00010001;
 */
 
 
+
 #include "RIFFFile.h"
 #include "..\BaseStreams.h"
 #include "math.h"
 #include "AVIIndices.h"
+#include <vector>
 
-#define FRAMETYPE DWORD
+#define FRAMETYPE unsigned int
 const int FT_KEYFRAME     = 0x01;
 const int FT_DELTAFRAME	  = 0x02;
 const int FT_DROPPEDFRAME = 0x04;
@@ -153,51 +155,52 @@ const int SN_JUNK = 0xffffffff;
 
 DWORD MakeFourCC (char* lpFourCC);
 
-// byte alignment
-#pragma pack(push,1)
-
 
 // information needed for each chunk
-typedef struct CHUNKINFO
+typedef struct
 {
-	_int64		qwPosition;			// position within file
-	DWORD		dwOffsetFieldB;		// offset of 2nd field to qwPosition
-	DWORD		dwLength;			// size of entire chunk
+	__int64		qwPosition;			// position within file
+	unsigned int	dwOffsetFieldB;		// offset of 2nd field to qwPosition
+	unsigned int	dwLength;			// size of entire chunk
 	FRAMETYPE	ftFrameType;		// video only: keyframe, deltaframe, dropped frame
-	_int64		qwStreamPos;		// position of chunk inside the stream
-} *LPCHUNKINFO;
+	__int64		qwStreamPos;		// position of chunk inside the stream
+} CHUNKINFO;
 //////////////////////////////////////////////////////
 
 
 /////////////////////////////////////
 
 // Infos über jeden Stream
-typedef struct STREAMINFO
+class STREAMINFO
 {
+public:
+	STREAMINFO();
+	virtual ~STREAMINFO();
 	AVIStreamHeader*		lpHeader;		// Streamheader
 	void*					lpFormat;		// Streamformat
 	void*					lpOutputFormat; // BMP: 24 Bit bzw. PCM: frqu./16/channels
 	void*					lpIndx;			// Zeiger auf Superindex (nur OpenDML)
 	DWORD					dwChunkCount;	// Anzahl Chunks im Stream
-	_int64					qwStreamLength; // gesamte Länge des Streams
+	__int64					qwStreamLength; // gesamte Länge des Streams
 	DWORD					dwProcessMode;  // Direct Stream Copy ?
 	DWORD					dwPos;			// aktueller Chunk
 	bool					bCompressed;	// ist der Stream komprimiert ?
 	bool					bDefault;		// stream is default?
-//	HACMSTREAM				has;			// nur Audio
-//	ACMSTREAMHEADER			hash;			// nur Audio
 	void*					lpBufIn;		// nur Audio: Eingabepuffer für Audiodekompr.
 	void*					lpBufOut;		// nur Audio: Ausgabepuffer für Audiodekompr.
 	DWORD					dwOffset;		// nur Audio: Offset innerhalb des aktuellen Chunks
-	CHUNKINFO*				ciChunks;
+//	CHUNKINFO*				ciChunks;
 	char*					lpcName;		// Name des Streams
-} *LPSTREAMINFO;
+	std::vector<CHUNKINFO>	chunks;
+};
 //////////////////////////////////////////
 
 
 
 /////////////////////////////////////////////////////
 
+// byte alignment
+#pragma pack(push,1)
 
 #pragma warning (disable:4200)
 
@@ -339,7 +342,7 @@ class FRAME
 		void*			lpUserData;
 	public:
 		FRAME(void);
-		~FRAME(void);
+		virtual ~FRAME(void);
 		bool			IsExternalBuffer(void);
 		DWORD			GetLineLength(void);
 		bool			SetWidth(DWORD);
@@ -424,14 +427,13 @@ class AVIFILEEX : public RIFFFILE
 		DWORD				dwRealFramesInRIFF;
 		DWORD				dwFramesPerIndex;
 		DWORD				dwFramesInCurrIndex;
-		DWORD				dwVideoStreamNbr;
 		bool				bDebug;
 		bool				bDummyMode;
+		bool				bMoveHDRLAround;
 		AVITYPE				atType; 
 		__int64				qwMoviPos;
 		__int64				qwFirstDataChunkPos;
 		DWORD*				dwLargestChunks;
-//		HIC					hic;
 		bool				bidx1present;
 		ODMLExtendedAVIHeader* 
 							lpExtAVIHeader;
@@ -441,6 +443,7 @@ class AVIFILEEX : public RIFFFILE
 		BITMAPINFOHEADER    bmi24bpp;
 		BITMAPINFOHEADER*   strfVideo;
 		STREAMINFO*			siStreams;
+//		std::vector<STREAMINFO> streams;
 		DWORD				dwPadding;
 
 		CALLBACKFUNCTIONS   cbfs;
@@ -456,6 +459,7 @@ class AVIFILEEX : public RIFFFILE
 		bool				bTryToRepairLargeChunks;
 		bool				bLowOverheadMode;
 		int					iStreamOfLastChunk;
+		int					video_stream_index;
 // R/W
 		int					GetStreamNbrFromFourCC(DWORD dwFourCC);
 // Öffnen
@@ -506,7 +510,7 @@ class AVIFILEEX : public RIFFFILE
 	public:
 		MainAVIHeader*		lpMainAVIHeader;
 		AVIFILEEX(void);
-		~AVIFILEEX(void);
+		virtual ~AVIFILEEX(void);
 // öffnen / schließen		
 		int					strfSize(DWORD dwStreamNbr,void* strf);
 		DWORD				Open(STREAM* lpStream, DWORD dwAccess, AVITYPE atAVIType);
@@ -596,6 +600,7 @@ class AVIFILEEX : public RIFFFILE
 		int					SetStreamFormat(DWORD,void*);
 		int					SetStreamDefault(DWORD, bool);
 		void				SetTitle(char* cTitle);
+		void				MoveHDRL(bool bEnabled);
 		int					WriteStandardIndex(void);
 // write-only, OpenDML-only
 		int					Enable(int iFlag, int iValue = 1);

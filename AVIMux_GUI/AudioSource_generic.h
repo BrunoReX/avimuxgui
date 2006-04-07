@@ -1,8 +1,6 @@
 #ifndef I_AUDIOSOURCE_GENERIC
 #define I_AUDIOSOURCE_GENERIC
 
-#include "windows.h"
-
 const int MMSGFS_MPEG_LAYERVERSION	= 0x0000000000000001;
 const int MMSGFS_MPEG_VERSION		= 0x0000000000000020;
 const int MMSGFS_AAC_PROFILE		= 0x0000000000000010;
@@ -21,7 +19,7 @@ const int MMSGFS_IS_DTS				= 0x000000000000001B;
 
 typedef int (_stdcall *RESYNCCALLBACK)(__int64,DWORD,DWORD);
 
-#include "multimedia_source.h"
+#include "../multimedia_source.h"
 
 const int AUDIOTYPE_CBR			= 0x01;
 const int AUDIOTYPE_VBR			= 0x00;
@@ -37,6 +35,9 @@ const int AUDIOTYPE_VORBIS		= 0x19;
 
 const int AS_OK					= 0x01;
 const int AS_ERR				= -0x01;
+
+const int ASOPEN_ERROR          = 0x00;
+const int ASOPEN_OK             = 0x01;
 
 const int SCANFORCBR_ALL		 = 0xFFFFFFFF;
 const int FRAMEMODE_ON			 = -0x01;
@@ -57,18 +58,18 @@ class AUDIOSOURCE: public MULTIMEDIASOURCE
 	public:
 		AUDIOSOURCE();
 		~AUDIOSOURCE();
-		__int64	virtual GetUnstretchedDuration();
+		int		virtual GetAvgBytesPerSec();
 		int		virtual GetBitDepth();
+		int		virtual GetChannelCount();
 		int		virtual GetFormatTag(void);
 		__int64 virtual GetFeature(int iFeature);
 		void	virtual *GetFormat();
 		int		virtual GetFrameMode(void);
 		int		virtual GetFrequency();
-		int		virtual GetOutputFrequency();
 		int		virtual GetGranularity();
-		int		virtual GetChannelCount();
-		int		virtual GetAvgBytesPerSec();
-		char	virtual *GetIDString();
+		int		virtual GetOutputFrequency();
+		__int64	virtual GetUnstretchedDuration();
+		char	virtual *GetCodecID();
 		int		virtual GetOffset();
 		int		virtual GetType();
 		bool	virtual IsCBR();
@@ -79,8 +80,8 @@ class AUDIOSOURCE: public MULTIMEDIASOURCE
 							ADVANCEDREAD_INFO* lpAARI = NULL);
 		int		virtual Seek(__int64 iPos);
 		int		virtual	SetFrameMode(DWORD dwMode);
-//		int		virtual SetDuration(__int64 iDuration);
-
+		void	virtual AssumeCBR(void) {};
+		void	virtual AssumeVBR(void) {};
 };
 
 

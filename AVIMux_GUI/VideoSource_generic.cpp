@@ -1,6 +1,11 @@
 #include "stdafx.h"
 #include "videosource_generic.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
 
 // Videosource
 
@@ -105,6 +110,16 @@ void VIDEOSOURCE::SetReferencedFramesAbsolute(int iCount, __int64 iThis, __int64
 	if (iCount>1) last_ref.iReferences[1] = iRef2;
 }
 
+void VIDEOSOURCE::SetReferencedFramesAbsolute(__int64 iThis, std::vector<__int64> &iRef)
+{
+	last_ref.iCount = iRef.size();
+	last_ref.iThis = iThis;
+
+	for (size_t i=0;i<iRef.size();i++)
+		last_ref.iReferences[i] = iRef[i];
+
+}
+
 int VIDEOSOURCE::GetLatestReference(int *lpiCount, __int64* lpiRef1, __int64 *lpiRef2)
 {
 	if (lpiCount) *lpiCount = last_ref.iCount;
@@ -147,4 +162,10 @@ void VIDEOSOURCE::GetOutputResolution(RESOLUTION* r)
 int VIDEOSOURCE::GetFormatSize()
 {
 	return 0;
+}
+
+void VIDEOSOURCE::GetCropping(RECT* r)
+{
+	*r = resOutput.rcCrop;
+	return;
 }

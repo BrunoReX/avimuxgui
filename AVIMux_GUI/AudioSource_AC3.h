@@ -13,7 +13,7 @@ typedef struct
 	__int64 iFrameDuration;
 } AC3INFO, *LPAC3INFO;
 
-class AC3SOURCE: public CBRAUDIOSOURCE
+class AC3SOURCE: public AUDIOSOURCEFROMBINARY
 {
 	private:
 		AC3INFO			ac3info;
@@ -32,6 +32,7 @@ class AC3SOURCE: public CBRAUDIOSOURCE
 	public:
 		AC3SOURCE();
 		AC3SOURCE(STREAM* lpStream);
+		virtual ~AC3SOURCE();
 		void	virtual SetResyncCallBack (RESYNCCALLBACK lpNewCallback,DWORD dwUserData) { lpRCB=lpNewCallback; dwRCBUserData=dwUserData; }
 		int		virtual Open(STREAM* lpStream);
 		int		virtual GetChannelCount();
@@ -43,6 +44,7 @@ class AC3SOURCE: public CBRAUDIOSOURCE
 		int		virtual GetFrequency(void);
 		int		virtual GetFrameSize() { return ac3info.dwFrameSize; };
 		bool	virtual IsCBR();
+		int		virtual GetStrippableHeaderBytes(void* pBuffer, int max);
 };
 
 typedef struct 

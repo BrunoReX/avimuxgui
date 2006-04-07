@@ -1,6 +1,12 @@
 #include "stdafx.h"
 #include "audiosource_dts.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 	//////////////////////
 	// DTS audio source //
 	//////////////////////
@@ -20,7 +26,7 @@ int DTSSOURCE::Resync()
 
 
 	qwOldPos=GetSource()->GetPos();
-	while ((dwOffset<=GetResyncRange())&&(!dwRes))
+	while (((int)dwOffset<=GetResyncRange())&&(!dwRes))
 	{
 		if (GetSource())
 		{
@@ -58,7 +64,7 @@ int DTSSOURCE::Resync()
 		GetSource()->SetOffset(GetSource()->GetOffset()+dwOffset);
 	}
 	GetSource()->Seek(qwOldPos);
-	if (dwOffset>=GetResyncRange())
+	if ((int)dwOffset>=GetResyncRange())
 	{
 		return 0;
 	}
@@ -69,6 +75,11 @@ int DTSSOURCE::Resync()
 bool DTSSOURCE::IsCBR()
 {
 	return true;
+}
+
+__int64 DTSSOURCE::GetFrameDuration()
+{
+	return dtsinfo.nano_seconds_per_frame;
 }
 
 int DTSSOURCE::ProcessFrameHeader(DTSINFO*	lpdtsinfo)
@@ -101,12 +112,14 @@ int DTSSOURCE::ProcessFrameHeader(DTSINFO*	lpdtsinfo)
 	dwChannels=channel_table[bitsource->ReadBits(6)]; // audio channel arrangement
 	dwFrequency=sample_rate_table[bitsource->ReadBits(4)]; // core audio sample frequency
 	fBitrate=bitrate_table[bitsource->ReadBits(5)]; // transmission bitrate
+	double seconds = (double)dwFrameSize / fBitrate / 125; 
     if(lpdtsinfo)
 	{
 		lpdtsinfo->fBitrate=fBitrate;
 		lpdtsinfo->dwFrameSize=dwFrameSize;
 		lpdtsinfo->dwFrequency=dwFrequency;
 		lpdtsinfo->dwChannels=dwChannels;
+		lpdtsinfo->nano_seconds_per_frame = (__int64)(seconds * 1000000000.);
 	}
 
 	GetSource()->Seek(qwOldPos);
@@ -115,15 +128,20 @@ int DTSSOURCE::ProcessFrameHeader(DTSINFO*	lpdtsinfo)
 
 int DTSSOURCE::Open(STREAM *lpStream)
 {
-	if (!lpStream) return AS_ERR;
-	if (CBRAUDIOSOURCE::Open(lpStream)==AS_ERR) return AS_ERR;
+	if (!lpStream || lpStream->GetSize() <= 0) 
+		return AS_ERR;
+
+	if (AUDIOSOURCEFROMBINARY::Open(lpStream)==AS_ERR)
+		return AS_ERR;
+
 	bitsource=new BITSTREAM;
 	bitsource->Open(lpStream);
 
 	lpStream->SetOffset(0);	
 	lpStream->Seek(0);
 
-	if (!Resync()) return 0;
+	if (!Resync()) 
+		return AS_ERR;
 	ProcessFrameHeader(&dtsinfo);
 
 	return 1;
@@ -230,10 +248,17 @@ int DTSSOURCE::doClose()
 	if (bitsource)
 	{
 		bitsource->Close();
-		free(bitsource);
+		delete bitsource;
 	}
-	CBRAUDIOSOURCE::doClose();
+//	CBRAUDIOSOURCE::doClose();
 	return 1;
+}
+
+int DTSSOURCE::GetStrippableHeaderBytes(void* pBuffer, int max)
+{
+	unsigned char b[] = {  0x7F, 0xFE, 0x80, 0x01 };
+	memcpy(pBuffer, (void*)b, min(max, 4));
+	return 4;
 }
 
 #pragma pack(pop)

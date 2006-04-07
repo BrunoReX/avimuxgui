@@ -11,12 +11,15 @@
 #include "videosource.h"
 #include "UnicodeTreeCtrl.h"
 #include "FILE_INFO.h"
+#include "AttachedWindows.h"
+#include "ResizeableDialog.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // Dialogfeld CVideoInformationDlg 
 
-class CVideoInformationDlg : public CDialog
+class CVideoInformationDlg : public CResizeableDialog
 {
+
 // Konstruktion
 public:
 	CVideoInformationDlg(CWnd* pParent = NULL);   // Standardkonstruktor
@@ -34,6 +37,8 @@ public:
 // Dialogfelddaten
 	//{{AFX_DATA(CVideoInformationDlg)
 	enum { IDD = IDD_VIDEOINFO };
+	CButton	m_Apply_Changes;
+	CButton	m_OK;
 	CButton	m_SaveTree_Button;
 	CUnicodeTreeCtrl	m_Tree;
 	CButton	m_BuildRIFFTree;
@@ -53,9 +58,11 @@ public:
 
 // Implementierung
 protected:
-	DWORD			dwKinfOfSource;
-	bool			InitDialog_VideoSource();
-	bool			InitDialog_Matroska();
+	DWORD	dwKinfOfSource;
+	bool	RenderChapters(CUnicodeTreeCtrl* cTree,HTREEITEM hParent,CHAPTERS* chapters);
+	void	AddTags(TAG_INDEX_LIST &pTags, HTREEITEM hParent);
+	bool	InitDialog_VideoSource();
+	bool	InitDialog_Matroska();
 
 	// Generierte Nachrichtenzuordnungsfunktionen
 	//{{AFX_MSG(CVideoInformationDlg)
@@ -72,6 +79,8 @@ protected:
 	//}}AFX_DISPATCH
 	DECLARE_DISPATCH_MAP()
 	DECLARE_INTERFACE_MAP()
+public:
+	afx_msg void OnBnClickedOk();
 };
 
 //{{AFX_INSERT_LOCATION}}

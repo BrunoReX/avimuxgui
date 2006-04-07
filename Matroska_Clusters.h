@@ -5,6 +5,7 @@
 #include "ebml_matroska.h"
 #include "matroska_IDs.h"
 #include "buffers.h"
+#include <vector>
 
 const int PREVSIZE_UNINITIALIZED = -0x02;
 const int PREVSIZE_UNKNOWN       = -0x01;
@@ -16,26 +17,29 @@ typedef struct
 	__int64		qwPreviousSize;
 } CLUSTER_INFO;
 
-typedef struct
+class READBLOCK_INFO
 {
+public:
+	READBLOCK_INFO();
 	int				iStream;
-	int				iReferences;
-	int				iReferencedFrames[2];
+	int				reference_types;
+
 	__int64			qwDuration;
-	int				iFrameCountInLace;
-	CBuffer*		cFrameSizes;
+	__int64			qwTimecode;
+
+	std::vector<int>		frame_sizes;
+	std::vector<__int64>	references;
+
 	int				iFlags;
 	CBuffer*		cData;
-	__int64			qwTimecode;
 	__int64			iEnqueueCount;
-} READBLOCK_INFO;
+};
 
 class EBMLM_Cluster : public EBML_MatroskaElement 
 {
 	private:
 		CLUSTER_INFO*		ClusterInfo;
 		int					iCurrentBlock;
-	//	EBMLELEMENTLIST*	e_BlockGroups;
 		EBMLM_CLBlockGroup*	e_CurrentBlockGroup;
 		EBMLM_CRC32*		e_CRC32;
 	protected: 
@@ -43,6 +47,7 @@ class EBMLM_Cluster : public EBML_MatroskaElement
 		void			RetrieveInfo();
 	public:
 		EBMLM_Cluster(STREAM* s,EBMLElement* p);
+		virtual ~EBMLM_Cluster();
 		__int64			GetTimecode();
 		__int64			GetDuration();
 		__int64			GetPreviousSize();

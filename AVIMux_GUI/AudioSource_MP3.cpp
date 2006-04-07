@@ -1,6 +1,12 @@
 #include "stdafx.h"
 #include "audiosource_mp3.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 	//////////////////////
 	// MP3 audio source //
 	//////////////////////
@@ -56,6 +62,9 @@ DWORD MP3SOURCE::ReadFrameHeader(void)
 
 int MP3SOURCE::Open(STREAM* lpStream)
 {
+	if (!lpStream || lpStream->GetSize() <= 0)
+		return AS_ERR;
+
 	DWORD		dwHeader=0;
 	int			iPadd,i;
 	byte		data[2000];
@@ -97,7 +106,7 @@ int MP3SOURCE::Open(STREAM* lpStream)
 		if (GetSource()->GetOffset()>=GetResyncRange()-4) 
 		{
 			GetSource()->SetOffset(0);
-			return 0;
+			return AS_ERR;
 		}
 	}
 	dwFrequency=fh->GetFrequency();
@@ -105,15 +114,23 @@ int MP3SOURCE::Open(STREAM* lpStream)
 	{
 		GetSource()->SetOffset(0);
 		GetSource()->Seek(0);
-		return 0;
+		return AS_ERR;
 	}
-	if (!(dwFrequency|fh->GetBitrate()|fh->GetFrameSize(&iPadd))) return 0;
+	if (!(dwFrequency|fh->GetBitrate()|fh->GetFrameSize(&iPadd))) return AS_ERR;
+
 	dwNanoSecPerFrame=(DWORD)((__int64)8000000*(__int64)fh->GetFrameSize(&iPadd)/fh->GetBitrate());
 	dwBitrate=fh->GetBitrate();
 	dwFrameSize=fh->GetFrameSize(&iPadd);
 	dwChannels=fh->GetChannelsNum();
 	dwLayer=fh->GetLayerVersion();
+	dwMode=fh->GetMode();
+	dwHasCRC=fh->HasCRC();
+	dwModeEx=fh->GetModeEx();
 	dwMPEGVersion=fh->GetMPEGVersion();
+	dwOriginal=fh->IsOriginal();
+	dwCopyright=fh->IsCopyright();
+	dwPrivate=fh->IsPrivate();
+	dwEmphasis=fh->GetEmphasis();
 	for (i=0;i<1024;dwRingBuffer[i++]=dwBitrate);
 	dwRingBufferPos=0;
 	GetSource()->Seek(0);
@@ -128,6 +145,14 @@ int MP3SOURCE::Open(STREAM* lpStream)
 	}
 
 	return (/*dwFrameSize && dwBitrate &&*/ qwPos<GetResyncRange() && qwPos < GetSize());
+}
+
+int MP3SOURCE::GetStrippableHeaderBytes(void* pBuffer, int max)
+{
+	if (max > 0)
+		((unsigned char*)pBuffer)[0] = 0xFF;
+
+	return 1;
 }
 
 __int64 MP3SOURCE::GetFrameDuration()
@@ -160,24 +185,6 @@ int MP3FRAMEHEADER::GetMPEGVersionIndex(void)
 	return ((dwFrameHeader>>19)&3);
 }
 
-int MP3FRAMEHEADER::GetChannelsNum(void)
-{
-	if (((dwFrameHeader >> 6) & 0x03) == 3 ) return 1;
-	else return 2;
-}
-
-int MP3FRAMEHEADER::GetMPEGVersion(void)
-{
-	switch ((dwFrameHeader>>19)&3)
-	{
-		case 0: return 4; break;
-		case 1: return -1; break;
-		case 2: return 2; break;
-		case 3: return 1; break;
-	}
-	return -1;
-}
-
 int MP3FRAMEHEADER::GetLayerIndex(void)
 {
 	return ((dwFrameHeader>>17)&3);
@@ -187,6 +194,12 @@ int MP3FRAMEHEADER::GetLayerVersion(void)
 {
 	DWORD dwLI=GetLayerIndex();
 	return (dwLI)?(4-dwLI):0;
+}
+
+// idiot note: that flag is a notprotection flag in the mpeg frame headers
+int MP3FRAMEHEADER::HasCRC(void)
+{
+	return !((dwFrameHeader>>16)&1);
 }
 
 int MP3FRAMEHEADER::GetBitrate(void)
@@ -242,6 +255,57 @@ int MP3FRAMEHEADER::GetPadding(void)
 {
 	DWORD dwTemp=(dwFrameHeader>>9)&1;
 	return (dwTemp*((GetLayerVersion()==1)?4:1));
+}
+
+
+int MP3FRAMEHEADER::GetChannelsNum(void)
+{
+	if (((dwFrameHeader >> 6) & 0x03) == 3 ) return 1;
+	else return 2;
+}
+
+int MP3FRAMEHEADER::GetMPEGVersion(void)
+{
+	switch ((dwFrameHeader>>19)&3)
+	{
+		case 0: return 4; break;
+		case 1: return -1; break;
+		case 2: return 2; break;
+		case 3: return 1; break;
+	}
+	return -1;
+}
+
+
+
+int MP3FRAMEHEADER::GetModeEx(void)
+{
+	return ((dwFrameHeader>>4)&3);
+}
+
+int MP3FRAMEHEADER::GetMode(void)
+{
+	return ((dwFrameHeader>>6)&3);
+}
+
+int MP3FRAMEHEADER::IsCopyright(void)
+{
+	return ((dwFrameHeader>>3)&1);
+}
+
+int MP3FRAMEHEADER::IsOriginal(void)
+{
+	return ((dwFrameHeader>>2)&1);
+}
+
+int MP3FRAMEHEADER::IsPrivate(void)
+{
+	return ((dwFrameHeader>>8)&1);
+}
+
+int MP3FRAMEHEADER::GetEmphasis(void)
+{
+	return ((dwFrameHeader)&3);
 }
 
 int MP3FRAMEHEADER::GetFrameSize(int* lpiPadd, float* fSize)
@@ -320,6 +384,11 @@ int MP3SOURCE::GetFormatTag()
 	return 0x0055;
 }
 
+int MP3SOURCE::HasCRC()
+{
+	return dwHasCRC;
+}
+
 int MP3SOURCE::doRead(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdwMicroSecRead,__int64* lpqwNanoSecRead)
 {
 	DWORD	dwBytes,dwRes,dwRead;
@@ -340,6 +409,7 @@ int MP3SOURCE::doRead(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdwMicroSecRe
 			for (int i=0;i<j;i++) {
 				dwRead+=ReadFrame(lpcDest+dwRead, lpdwMicroSecRead, &qwNanoSec);
 				(*lpqwNanoSecRead) += qwNanoSec;
+				if (lpdwMicroSecRead) (*lpdwMicroSecRead) = (DWORD)((*lpqwNanoSecRead)/1000);
 			}
 			return dwRead;
 		}
@@ -403,10 +473,41 @@ int MP3SOURCE::GetChannelCount(void)
 	return dwChannels;
 }
 
+int MP3SOURCE::GetMode(void)
+{
+	return dwMode;
+}
+
+int MP3SOURCE::GetModeEx(void)
+{
+	return dwModeEx;
+}
+
+int MP3SOURCE::IsPrivate(void)
+{
+	return dwPrivate;
+}
+
+int MP3SOURCE::IsCopyrighted()
+{
+	return dwCopyright;
+}
+
+int MP3SOURCE::IsOriginal()
+{
+	return dwOriginal;
+}
+
+int MP3SOURCE::GetEmphasis()
+{
+	return dwEmphasis;
+}
+
 __int64 MP3SOURCE::FormatSpecific(__int64 iCode, __int64 iValue)
 {
 	if (iCode == MMSGFS_MPEG_LAYERVERSION) return GetLayerVersion();
 	if (iCode == MMSGFS_MPEG_VERSION) return GetMPEGVersion();
+	if (iCode == MMSGFS_IS_MPEG) return true;
 
 	return 0;
 }
@@ -451,12 +552,31 @@ void MP3SOURCE::AssumeCBR()
 	bCBR=true;
 }
 
+void MP3SOURCE::AssumeVBR()
+{
+	bCBR=false;
+}
+
 bool MP3SOURCE::IsAVIOutputPossible()
 {
-	return (GetLayerVersion() == 3);
+	return (GetLayerVersion() == 3 || IsCBR());
 }
 
 int MP3SOURCE::GetMPEGVersion()
 {
 	return (int)dwMPEGVersion;
+}
+
+int MP3SOURCE::IsCompatible(AUDIOSOURCE* a)
+{
+	if (!a->FormatSpecific(MMSGFS_IS_MPEG))
+		return MMSIC_COMPRESSION;
+
+	if (GetLayerVersion() != a->FormatSpecific(MMSGFS_MPEG_LAYERVERSION))
+		return MMSIC_MPEG_LAYERVERSION;
+
+	if (GetMPEGVersion() != a->FormatSpecific(MMSGFS_MPEG_VERSION))
+		return MMSIC_MPEG_VERSION;
+
+	return MMS_COMPATIBLE;
 }

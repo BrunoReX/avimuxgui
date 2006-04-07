@@ -2,6 +2,13 @@
 #include "audiosource_matroska.h"
 #include "audiosource_aac.h"
 #include "audiosource_mp3.h"
+#include "../compression.h"
+
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
 
 	/////////////////////////////////////////
 	// audio source from a matroska stream //
@@ -14,6 +21,10 @@ AUDIOSOURCEFROMMATROSKA::AUDIOSOURCEFROMMATROSKA()
 	bDelace = false;
 }
 
+AUDIOSOURCEFROMMATROSKA::~AUDIOSOURCEFROMMATROSKA()
+{
+}
+
 AUDIOSOURCEFROMMATROSKA::AUDIOSOURCEFROMMATROSKA(MATROSKA* matroska, int iStream)
 {
 	ZeroMemory(&info,sizeof(info));
@@ -23,6 +34,7 @@ AUDIOSOURCEFROMMATROSKA::AUDIOSOURCEFROMMATROSKA(MATROSKA* matroska, int iStream
 
 void AUDIOSOURCEFROMMATROSKA::ReInit()
 {
+	info.m->GetSource()->InvalidateCache();
 	Seek(-33000);
 }
 
@@ -107,7 +119,38 @@ int AUDIOSOURCEFROMMATROSKA::Open(MATROSKA* matroska, int iStream)
 		}
 
 
-	} else {
+	} else 
+	if (!strcmp(c_codecid, "A_AAC")) {
+		if (info.m->GetCodecPrivateSize() == 2) {
+			info.aac.iValid = 1;
+			info.aac.iSBR = 0;
+		} else
+		if (info.m->GetCodecPrivateSize() == 5) {
+			info.aac.iValid = 1;
+			info.aac.iSBR = 1;
+		} else {
+			info.aac.iValid = 0;
+			return AS_ERR;
+		}
+
+		BYTE* b = (BYTE*)info.m->GetCodecPrivate();
+		info.aac.iProfile = (*b++>>3)-1;
+//		SetProfile((*b++>>3)-1);
+		info.aac.iMPEGVersion = 4;
+//		SetMPEGVersion(4);
+
+		for (int i=0;i<16;i++) {
+			if (aac_sampling_frequencies[i] == (int)(.5+GetFrequency()))
+				info.aac.iSRI[0] = i;
+			if (aac_sampling_frequencies[i] == (int)(.25+2*GetFrequency()))
+				info.aac.iSRI[1] = i;
+		}
+
+//		SetSampleRateIndex((int)FormatSpecific(MMSGFS_AAC_SAMPLERATEINDEX));
+		 
+//		SetChannelCount(*b++>>3 & 0x7);
+//		SetDefault(!(avifile->GetStreamHeader(stream)->dwFlags & AVISF_DISABLED));
+	} else	{
 		info.aac.iValid = 0;
 		if (!strcmp(c_codecid, "A_VORBIS")) {
 			info.vorbis.iValid = 1;
@@ -134,6 +177,46 @@ int AUDIOSOURCEFROMMATROSKA::Open(MATROSKA* matroska, int iStream)
 
 	AllowAVIOutput(false);
 	return AS_OK;
+}
+
+int AUDIOSOURCEFROMMATROSKA::GetStrippableHeaderBytes(void* pBuffer, int max)
+{
+	char* c_codecid = info.m->GetCodecID(info.iStream);
+	
+	if (!strcmp(c_codecid, "A_AC3")) {
+		if (max > 0)
+			((unsigned char*)pBuffer)[0] = 0x0B;
+		if (max > 1)
+			((unsigned char*)pBuffer)[1] = 0x77;
+		return 2;
+	}
+	if (!strcmp(c_codecid, "A_DTS")) {
+		unsigned char b[] = {  0x7F, 0xFE, 0x80, 0x01 };
+		memcpy(pBuffer, (void*)b, min(max, 4));
+		return 4;
+	}
+
+
+	if (GetSource()->GetTrackCompression(GetSourceStream(), 0) == COMPRESSION_HDRSTRIPING) {
+		int size = GetSource()->GetTrackCompressionPrivateSize(GetSourceStream(), 0);
+		void* p = malloc(size);
+		GetSource()->GetTrackCompressionPrivate(GetSourceStream(), 0, p);
+		int bytes_to_copy = min(size, max);
+		memcpy(pBuffer, p, bytes_to_copy);
+		free(p);
+		return size;
+	} else
+		return MMS_UNKNOWN;
+}
+
+MATROSKA* AUDIOSOURCEFROMMATROSKA::GetSource()
+{
+	return info.m;
+}
+
+int AUDIOSOURCEFROMMATROSKA::GetSourceStream()
+{
+	return info.iStream;
 }
 
 int AUDIOSOURCEFROMMATROSKA::doClose()
@@ -163,7 +246,7 @@ int AUDIOSOURCEFROMMATROSKA::GetFormatTag()
 	return 0;
 }
 
-char* AUDIOSOURCEFROMMATROSKA::GetIDString()
+char* AUDIOSOURCEFROMMATROSKA::GetCodecID()
 {
 	info.m->SetActiveTrack(info.iStream);
 	return info.m->GetCodecID();
@@ -203,7 +286,7 @@ bool AUDIOSOURCEFROMMATROSKA::IsEndOfStream()
 {
 	info.m->SetActiveTrack(info.iStream);
 
-	bool bRes = (info.m->IsEndOfStream() && (!bDelace || iPos >= curr_lace.iFrameCount));
+	bool bRes = (info.m->IsEndOfStream() && (iPos >= (int)curr_lace.frame_sizes.size()));
 	if (bRes) {
 		info.m->IsEndOfStream();
 	}
@@ -290,14 +373,17 @@ int AUDIOSOURCEFROMMATROSKA::Read(void* lpDest, DWORD dwMicrosecDesired,DWORD* l
 		// do not delace input data
 		if (info.m->Read(&r)==READBL_OK) {
 			if (lpAARI) {
-				if (r.iFlags & BLKHDRF_LACING) {
-					lpAARI->iFramecount = r.iFrameCount;
-					lpAARI->iFramesizes = r.iFrameSizes;
+				if (r.frame_sizes.size() >= 1) {
+					lpAARI->iFramecount = r.frame_sizes.size();
+					lpAARI->iFramesizes = new int[lpAARI->iFramecount];
+					for (int j=0;j<lpAARI->iFramecount;j++)
+						lpAARI->iFramesizes[j] = r.frame_sizes[j];
+
 				} else {
 					lpAARI->iFramecount = 0;
 					lpAARI->iFramesizes = 0;
 				}
-				if (r.iFlags & RIF_DURATION) {
+				if (r.iFlags & RBIF_DURATION) {
 					lpAARI->iDuration = r.qwDuration;
 					if (lpqwNanosecRead) {
 						*lpqwNanosecRead = r.qwDuration * info.m->GetTimecodeScale();
@@ -305,23 +391,26 @@ int AUDIOSOURCEFROMMATROSKA::Read(void* lpDest, DWORD dwMicrosecDesired,DWORD* l
 				} else lpAARI->iDuration = 0;
 			}
 	
-			if (lpiTimecode) *lpiTimecode = r.qwTimecode + iBias;
-			if (lpAARI && (iNTC = info.m->GetNextTimecode(info.iStream))>0) {
+			if (lpiTimecode) 
+				*lpiTimecode = r.qwTimecode + iBias;
+
+			if (lpAARI && (iNTC = info.m->GetNextTimecode(info.iStream))>0)
 				lpAARI->iNextTimecode = iNTC + GetBias();
-			} else {
+			else 
 				lpAARI->iNextTimecode = TIMECODE_UNKNOWN;
-			}
+			
 			memcpy(lpDest,r.pData->GetData(),r.pData->GetSize());
 			iSize = r.pData->GetSize();
 			DecBufferRefCount(&r.pData);
-			info.iFramesize = iSize / max(1,r.iFrameCount);
+			info.iFramesize = iSize / max(1,r.frame_sizes.size());
+			iPos = curr_lace.frame_sizes.size()+1;
 		} else {
 
 			return AS_ERR;
 		}
 	} else {
 		// delace input data
-		if (iPos >= curr_lace.iFrameCount) {
+		if (iPos >= (int)curr_lace.frame_sizes.size()) {
 			// end of current lace reached -> read new one
 			if (curr_lace.pData) DecBufferRefCount(&curr_lace.pData);
 			ZeroMemory(&curr_lace,sizeof(curr_lace));
@@ -337,14 +426,14 @@ int AUDIOSOURCEFROMMATROSKA::Read(void* lpDest, DWORD dwMicrosecDesired,DWORD* l
 		}
 
 		// determine size of next frame: either single frame or current frame in current lace
-		iSize = (curr_lace.iFrameCount>1)?curr_lace.iFrameSizes[iPos]:curr_lace.pData->GetSize();
+		iSize = (curr_lace.frame_sizes.size() > 1)?curr_lace.frame_sizes[iPos]:curr_lace.pData->GetSize();
 
-		if (lpiTimecode) *lpiTimecode = curr_lace.qwTimecode + iBias + iDur*iPos/GetTimecodeScale();
+		if (lpiTimecode) *lpiTimecode = curr_lace.qwTimecode + GetBias() + iDur*iPos/GetTimecodeScale();
 		
 		// next timecode
 		if (lpAARI) {
-			if (iPos<curr_lace.iFrameCount-1) {
-				lpAARI->iNextTimecode = curr_lace.qwTimecode + iBias + iDur*(iPos+1)/GetTimecodeScale();
+			if (iPos<(int)curr_lace.frame_sizes.size() - 1) {
+				lpAARI->iNextTimecode = curr_lace.qwTimecode + GetBias() + iDur*(iPos+1)/GetTimecodeScale();
 			} else {
 				iNTC = info.m->GetNextTimecode(info.iStream);
 				if (iNTC!=TIMECODE_UNKNOWN) {

@@ -1,6 +1,14 @@
 #include "stdafx.h"
 #include "integers.h"
 
+#ifdef DEBUG_NEW
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+#endif
+
 /*
 
   use lookup tables for variable size integer encoding. Might be faster or not...
@@ -46,7 +54,6 @@ int _stdcall Int2VSUInt(__int64 *x, char* y, int iLen)
 	if (!int2vsuint_table) {
 		int2vsuint_table = new INT2VSUINT_DESCR[int2vsuint_table_length];
 		ZeroMemory(int2vsuint_table,int2vsuint_table_length*sizeof(INT2VSUINT_DESCR));
-
 	}
 
 	if (*x > int2vsuint_table_length || iLen) {

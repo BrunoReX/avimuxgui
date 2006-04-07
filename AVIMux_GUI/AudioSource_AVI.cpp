@@ -2,6 +2,12 @@
 #include "audiosource_avi.h"
 #include "..\utf-8.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 	/////////////////////////////////////
 	// audio source from an AVI stream //
 	/////////////////////////////////////
@@ -81,6 +87,12 @@ __int64 AUDIOSOURCEFROMAVI::GetExactSize()
 int AUDIOSOURCEFROMAVI::Seek(__int64 iPos)
 {
 	return info.avifile->SeekByteStream(info.iStream,iPos);
+}
+
+void AUDIOSOURCEFROMAVI::ReInit()
+{
+	info.avifile->GetSource()->InvalidateCache();
+	Seek(0);
 }
 
 int AUDIOSOURCEFROMAVI::Read(void* lpDest, DWORD dwMicrosecDesired, DWORD* lpdwMicrosecRead, __int64* lpqwNanosecRead,

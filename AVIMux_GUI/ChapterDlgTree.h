@@ -13,9 +13,19 @@
 
 #include "UnicodeTreeCtrl.h"
 #include "..\chapters.h"
+#include "ChapterDlg.h"
 
 int RemoveFromTree(CUnicodeTreeCtrl* tree, HTREEITEM hParent);
 int FormatChapterEntry(__int64 iBegin, __int64 iEnd, char* cText, char* cBuffer);
+
+const int IDM_CHI_PHYSICALEQUIV_BASE = 0x1647;
+
+typedef struct
+{
+	CChapters*	c;
+	int			iIndex;
+	char*		cText;
+} CHAPTER_ENTRY;
 
 class CChapterDlgTree : public CUnicodeTreeCtrl
 {
@@ -30,7 +40,15 @@ public:
 // Operationen
 public:
 	CChapters* c;
+	CChapters* clipboard;
+	int	display_uids;
+
+	HTREEITEM		hContextMenuTarget;
 	void SetChapters(CChapters* _c);
+	void SetDisplayUIDs(bool bEnable);
+	CHAPTER_ENTRY*	GetSelectedChapterEntry();
+	HTREEITEM		GetParentMostItem(HTREEITEM hItem);
+
 // Überschreibungen
 	// Vom Klassen-Assistenten generierte virtuelle Funktionsüberschreibungen
 	//{{AFX_VIRTUAL(CChapterDlgTree)

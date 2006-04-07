@@ -20,7 +20,6 @@ int AVISTREAM::Open(AVIFILEEX* _AVIFile,DWORD _dwStreamNbr)
 	dwStreamNbr=_dwStreamNbr;
 //	SetDefault(!(AVIFile->GetStreamHeader(_dwStreamNbr)->dwFlags & AVISF_DISABLED));
 
-
 	return STREAM_OK;
 }
 

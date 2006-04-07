@@ -12,9 +12,9 @@ SSA sources without wrapping a SUBTITLESOURCELIST around!
 #ifndef I_SUBTITLES
 #define I_SUBTITLES
 
-#include "..\basestreams.h"
+#include "../basestreams.h"
 #include "file_info.h"
-#include "multimedia_source.h"
+#include "../multimedia_source.h"
 #include "textfiles.h"
 
 const int SUBS_ERR = -0x01;
@@ -166,6 +166,7 @@ class SUBTITLESOURCE: public MULTIMEDIASOURCE
 		int			virtual	ReadSSAEvents(void);
 		int			virtual	RenderSSAScriptInfo(char** lpDest);
 		int			virtual	RenderSSAStyles(char** lpDest);
+		int			virtual RenderSSAHeaderAfterStyles(char** lpDest);
 
 		void		virtual	SetSource(CTEXTFILE* c);
 		void		virtual	SetFormat(int iFormat);
@@ -208,7 +209,7 @@ class SUBTITLESOURCELIST: public SUBTITLESOURCE
 		SUBTITLESOURCELIST();
 		int		virtual	Append(SUBTITLESOURCE* subtitles);
 		int		virtual GetFormat();
-		char	virtual* GetIDString();
+		char	virtual* GetCodecID();
 		__int64 virtual GetNextTimecode();
 		int		virtual IsCompatible(SUBTITLESOURCE* s);
 		int		virtual	Read(void* lpDest, int* iSize = NULL, __int64* lpiTimecode = NULL,
@@ -248,7 +249,7 @@ class SUBTITLESFROMMATROSKA: public SUBTITLESOURCE
 		bool	virtual IsEndOfStream();
 		int		virtual GetName(char* lpDest);
 		int		virtual GetLanguageCode(char* lpDest);
-		char	virtual* GetIDString();
+		char	virtual* GetCodecID();
 		__int64 virtual GetNextTimecode();
 		int		virtual Enable(int bEnabled);
 		int		virtual RenderCodecPrivate(void* lpDest);
@@ -262,7 +263,7 @@ class SUBTITLES: public SUBTITLESOURCE
 	private:
 		int	virtual		ReadLine(char* lpBuffer);
 
-		ParseSRT();
+		int	virtual		ParseSRT();
 
 	protected:
 		int virtual		RenderSRTLine_time(SUBTITLE_DESCRIPTOR* subtitle, char** lpcDest, __int64 qwMSBegin, __int64 qwMSEnd);
@@ -290,7 +291,9 @@ class SUBTITLES: public SUBTITLESOURCE
 
 typedef struct
 {
+	DWORD*				lpdwFiles;
 	SUBTITLESOURCE*		lpsubs;
+
 	FILE_INFO*			lpfi;
 	AVIStreamHeader*	lpash;
 } SUBTITLE_STREAM_INFO;

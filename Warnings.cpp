@@ -7,6 +7,12 @@ FILE* warn_output = stderr;
 int bWarningsEnabled = 1;
 int bLongMessages = 1;
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 void EnableWarnings(int bEnabled = 1) 
 {
 	bWarningsEnabled = bEnabled;
@@ -22,6 +28,7 @@ void MKVParser_DebugMessage(char* message, char* cat, __int64 pos = 0)
 	if (bWarningsEnabled) {
 		char	buffer[1000];
 		buffer[0]=0;
+		printf("\r                                                                               \r");
 		if (!pos) {
 			if (bLongMessages) {
 				sprintf(buffer,"(mkv parser) %s: \n  %s\n\n",cat,message);
@@ -51,8 +58,8 @@ void B0rked (char* reason, __int64 pos) {
 }
 
 // output warning about obfuscated file to stderr
-void Obfuscated (char* reason, __int64 pos) {
-	MKVParser_DebugMessage(reason,"file is obfuscated", pos);
+void Weird (char* reason, __int64 pos) {
+	MKVParser_DebugMessage(reason,"file is weird", pos);
 }
 
 // output warning

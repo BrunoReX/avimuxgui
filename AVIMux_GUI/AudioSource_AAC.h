@@ -86,6 +86,7 @@ class AACSOURCE: public AUDIOSOURCEFROMBINARY
 		int		virtual GetChannelCount();
 		__int64 virtual GetFrameDuration();
 		int		virtual	GetMPEGVersion();
+		void	virtual GetProfileString(char* buf, int buf_len);
 		int		virtual GetSampleRateIndex(int bDouble = false);
 		__int64 virtual FormatSpecific(__int64 iCode, __int64 iValue = 0);
 };
@@ -111,6 +112,7 @@ class AACFROMAVI: public AACSOURCE
 		__int64		virtual GetExactSize();
 		int			virtual GetAvgBytesPerSec();
 		bool		virtual IsEndOfStream();
+		void		virtual ReInit();
 };
 
 #endif

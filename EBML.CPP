@@ -6,9 +6,94 @@
 #include "stdio.h"
 #include "FormatInt64.h"
 
+#ifdef DEBUG_NEW
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+#endif
+
+
+int		bCRC32AutoCheck = 0;
+int		iCRC32MinLevel = 1;
+
+int EBMLUIntLen(__int64 x)
+{
+	if (x < 0x7F) return 1;
+	if (x < 0x3FFF) return 2;
+	if (x < 0x1FFFFF) return 3;
+	if (x < 0x0FFFFFFF) return 4;
+	if (x < 0x07FFFFFFFF) return 5;
+	if (x < 0x03FFFFFFFFFF) return 6;
+	if (x < 0x01FFFFFFFFFFFF) return 7;
+	if (x < 0x00FFFFFFFFFFFFFF) return 8;
+	return 9;
+}
+
+int UIntLen(__int64 x)
+{
+	if (x <= 0xFF) return 1;
+	if (x <= 0xFFFF) return 2;
+	if (x <= 0xFFFFFF) return 3;
+	if (x <= 0xFFFFFFFF) return 4;
+	if (x <= 0xFFFFFFFFFF) return 5;
+	if (x <= 0xFFFFFFFFFFFF) return 6;
+	if (x <= 0xFFFFFFFFFFFFFF) return 7;
+	return 8;
+}
+
+EBML_INFO::EBML_INFO()
+{
+	EBMLVersion = 1;
+	EBMLReadVersion = 1;
+	EBMLMaxIDLengh = 4;
+	EBMLMaxSizeLength = 8;
+	DocTypeVersion = 1;
+	DocTypeReadVersion = 1;
+	DocType = NULL;
+}
+
+EBML_INFO::~EBML_INFO()
+{
+	if (DocType)
+		free(DocType);
+}
+
+void EBML_EnableCRC32AutoCheck(int bEnable)
+{
+	bCRC32AutoCheck = bEnable;
+}
+
+void EBML_SetCRC32AutoCheck_MinLevel(int min_level)
+{
+	iCRC32MinLevel = min_level;
+}
+
+int EBMLElement::AutoCheckCRC32()
+{
+	if (bCRC32AutoCheck) {
+		if (GetLevel() >= iCRC32MinLevel && IsMaster()) {
+			__int64 j = GetSource()->GetPos();
+			int check = CheckCRC();
+
+			if (check == EBML_CRC_FAILED) {
+				char cTxt[128]; cTxt[0]=0;sprintf(cTxt, "CRC check failed on element %s", GetTypeString());
+				B0rked(cTxt, GetStreamPos() - GetHeaderSize());
+			}
+			GetSource()->Seek(j);
+		}
+	}
+
+	return EBML_CRC_NOT_CHECKED;
+}
+
 void DeleteElementList(EBMLELEMENTLIST** pList)
 {
-	for (int i=0;i<(*pList)->iCount;i++) {
+	if (!pList || !*pList)
+		return;
+
+	for (size_t i=0;i<(*pList)->iCount;i++) {
 		(*pList)->pElement[i]->Delete();
 		delete (*pList)->pElement[i];
 	}
@@ -62,6 +147,9 @@ EBMLElement::EBMLElement()
 	qwHdrPos = 0;
 	buffer = NULL;
 	iSearchLimit = 100000;
+	iCRCcalculated = 0;
+	iCRC = 0;
+	bLengthUndefined = -1;
 	ZeroMemory(&sub_elements,sizeof(sub_elements));
 }
 
@@ -71,6 +159,7 @@ EBMLElement::EBMLElement(STREAM* s,EBMLElement* p)
 	SetParent(p);
 	qwElementLength = s->GetSize();
 	ZeroMemory(&sub_elements,sizeof(sub_elements));
+	bLengthUndefined = -1;
 }
 
 char* EBMLElement::GetTypeString()
@@ -161,8 +250,12 @@ __int64 EBMLElement::GetRelPos()
 
 bool EBMLElement::HasSucc()
 {
+	if (IsLengthUndefined())
+		return false;
+
 	if (GetParent())
 	  return (GetRelPos()+GetLength()<min(GetParentLength(),GetSource()->GetSize()));
+
 	  else return false;
 }
 
@@ -234,6 +327,7 @@ __int64 EBMLElement::ReadLength()
 	__int64 qwElementLength = 0;
 	j=0;
 	
+//	bLengthUndefined  = -1;
 	GetSource()->Read(&c,1);
 
 	i = iSizeLen = VSizeInt_Len[c];
@@ -252,9 +346,13 @@ __int64 EBMLElement::ReadLength()
 	}
 
 	if (qwElementLength == undefined_lengths[i-1]) {
+		if (bLengthUndefined == -1)
+			bLengthUndefined = 1;
 		Warning("read undefined length", GetSource()->GetPos() - i);
 		j=1;
-	}
+	} else
+		if (bLengthUndefined == -1)
+			bLengthUndefined = 0;
 
 	*(((BYTE*)&qwElementLength)+i-1) &= ~(1 << (8-i));
 
@@ -265,6 +363,16 @@ __int64 EBMLElement::ReadLength()
 	return qwElementLength;
 }
 
+bool EBMLElement::IsLengthUndefined()
+{
+	if (bLengthUndefined == -1) {
+		DetermineLength();
+		return IsLengthUndefined();
+	}
+
+	return !!bLengthUndefined;
+}
+
 void EBMLElement::DetermineLength()
 {
 	qwElementLength = ReadLength();
@@ -273,12 +381,21 @@ void EBMLElement::DetermineLength()
 
 __int64 EBMLElement::GetLength()
 {
+/*	if (IsLengthUndefined()) {
+		return (__int64)INT_MAX * INT_MAX;
+	} else*/
 	return qwElementLength;
 }
 
 __int64 EBMLElement::GetParentLength()
 {
-	return (GetParent()?GetParent()->GetLength():GetSource()?GetSource()->GetSize():0);
+	if (!GetParent())
+		return 0;
+
+	if (GetParent()->IsLengthUndefined())
+		return GetParent()->GetSource()->GetSize();
+
+	return (GetParent()->GetLength());
 }
 
 
@@ -310,7 +427,7 @@ int EBMLElement::ReadID(char** iID)
 	STREAM* s = GetSource();
 
 	if (!s->Read(&c,1)) {
-		printf("Fehler beim Lesen!\n");
+	//	printf("Could not read element ID!\n");
 		*iID = (char*)calloc(sizeof(char),6);
 		(*iID)[0] = 10; (*iID)[1] = 0; (*iID)[2] = 0; (*iID)[3] = 0; (*iID)[4] = 0;
 		return 0;
@@ -341,7 +458,7 @@ int EBMLElement::ReadID(char* iID)
 	STREAM* s = GetSource();
 
 	if (!s->Read(&c,1)) {
-		printf("Fehler beim Lesen!\n");
+//		printf("Could not read element ID!\n");
 		iID[0] = 10; iID[1] = 0; iID[2] = 0; iID[3] = 0; iID[4] = 0;
 
 		return 0;
@@ -408,6 +525,8 @@ EBMLElement* EBMLElement::Create(EBMLElement** p,char* ID)
 	(*p)->SetHeaderPos(i);
 	if (bAlloced) delete iID;
 
+	(*p)->AutoCheckCRC32();
+
 	return *p;
 }
 
@@ -423,6 +542,8 @@ EBMLElement* EBMLElement::Create(EBMLElement** p,char** ID)
 		*p = new EBML_UNKNOWN(GetSource(),this);
 	}
 	(*p)->SetHeaderPos(i);
+
+	(*p)->AutoCheckCRC32();
 
 	return *p;
 }
@@ -449,8 +570,8 @@ int EBMLElement::Search(void** dest,char* iID2Find,char* iID2stopAt)
 	EBMLELEMENTLIST** elements = (EBMLELEMENTLIST**)dest;
 	int				iMaxCurrSize = 0;
 	GetSource()->Seek(GetStreamPos());
-	char*			ID=NULL;
 	bool			bStop = false;
+	char*			ID=NULL;
 
 
 	if (*elements) DeleteElementList(elements);
@@ -474,10 +595,65 @@ int EBMLElement::Search(void** dest,char* iID2Find,char* iID2stopAt)
 		}
 		GetSource()->Seek(GetSource()->GetPos()+qwLen);
 	}
-	while (!bStop && GetSource()->GetPos()-qwCurrentPos<GetLength() && (*elements)->iCount < GetSearchLimit());
+	while (!bStop && 
+		    ( (GetSource()->GetPos()-qwCurrentPos<GetLength()) || IsLengthUndefined()) && 
+		    (*elements)->iCount < GetSearchLimit() &&
+		   !GetSource()->IsEndOfStream());
 	delete ID;
 
 	return !!(*elements)->iCount;
+}
+
+int	EBMLElement::Search(std::vector<EBMLElement*> &dest,char* iID2Find,char* iID2stopAt)
+{
+	char*		ID=NULL;
+	__int64		qwLen;
+	bool		bStop = false;
+	__int64		qwCurrentPos = GetStreamPos();
+
+	GetSource()->Seek(GetStreamPos());
+
+	if (GetLength()) do
+	{
+		if (!ReadID(&ID)) return 0;
+		if (CompIDs(ID,iID2Find)) {
+			EBMLElement* element = NULL;
+			qwLen = Create(&element, ID)->GetLength();
+			dest.push_back(element);
+		} else {
+			qwLen=ReadLength();
+		}
+		
+		if (CompIDs(ID,iID2stopAt)) 
+			bStop = true;
+		
+		GetSource()->Seek(GetSource()->GetPos()+qwLen);
+	}
+	while (!bStop && 
+		    ( (GetSource()->GetPos()-qwCurrentPos<GetLength()) || IsLengthUndefined()) && 
+		    dest.size() < GetSearchLimit() &&
+		   !GetSource()->IsEndOfStream());
+
+	delete ID;
+
+	return !!dest.size();
+}
+
+int EBMLElement::Search(std::vector<EBMLElement*> &dest,char* iID2Find,char* iID2stopAt, int occurence, __int64* pTarget)
+{
+	char* ids[] = { iID2Find, NULL };
+	void* targets[] = { pTarget, NULL };
+	int occ_restr[] = { occurence, 0 };
+
+	SEARCHMULTIEX sme = { ids, targets, occ_restr };
+
+	EBMLElementVectors result;
+
+	int r = SearchMulti(result, sme, iID2stopAt);
+
+	dest = result[0];
+	
+	return r;
 }
 
 int EBMLElement::SearchMulti(void*** dest, char **iIDs, int iIDCount, char* iID2stopAt)
@@ -504,7 +680,7 @@ int EBMLElement::SearchMulti(void*** dest, char **iIDs, int iIDCount, char* iID2
 
 		// find index
 		iIndex = -1;
-		for (i=0;i<iIDCount;i++) {
+		for (i=0;i<iIDCount && iIndex == -1;i++) {
 			if (CompIDs(ID, iIDs[i])) {
 				iIndex = i;
 			}
@@ -517,6 +693,9 @@ int EBMLElement::SearchMulti(void*** dest, char **iIDs, int iIDCount, char* iID2
 					(elements)->pElement,sizeof(EBMLElement*)*(iMaxCurrSize[iIndex]+=10));
 			}
 			qwLen=Create(&(elements)->pElement[(elements)->iCount++],ID)->GetLength();
+			if ((elements)->pElement[(elements)->iCount-1]->IsLengthUndefined())
+				qwLen = (__int64)INT_MAX * INT_MAX;
+
 		}
 		else {
 			qwLen=ReadLength();
@@ -527,7 +706,10 @@ int EBMLElement::SearchMulti(void*** dest, char **iIDs, int iIDCount, char* iID2
 
 		GetSource()->Seek(GetSource()->GetPos()+qwLen);
 	}
-	while (GetSource()->GetPos()-qwCurrentPos<GetLength() && !bStop);
+	while (!bStop &&
+		   !GetSource()->IsEndOfStream() &&
+	   		(GetSource()->GetPos()-qwCurrentPos<GetLength() || IsLengthUndefined())
+		   );
 
 	delete ID;
 	delete iMaxCurrSize;
@@ -535,6 +717,153 @@ int EBMLElement::SearchMulti(void*** dest, char **iIDs, int iIDCount, char* iID2
 	if (!elements) return 0;
 	return !!(elements)->iCount;
 }
+
+int EBMLElement::SearchMulti(std::vector<std::vector<EBMLElement*> > &dest, char** ids, char* iID2stopAt)
+{
+	__int64				qwLen;
+	__int64				qwCurrentPos = GetStreamPos();
+	GetSource()->Seek(GetStreamPos());
+	char*				ID=NULL;
+	int					iIndex = -1;
+	int					i;
+	bool				bStop = false;
+	
+	// create number of entries
+	int count = 0;
+	while (ids[count]) {
+		std::vector<EBMLElement*>	list;
+		dest.push_back(list);
+		count++;
+	}
+		
+	//
+	if (GetLength()) do
+	{
+		__int64 q = GetSource()->GetPos();
+		if (!ReadID(&ID)) return 0;
+
+		// find index
+		iIndex = -1;
+		for (i=0;i<count && iIndex == -1;i++) {
+			if (CompIDs(ID, ids[i])) {
+				iIndex = i;
+			}
+		}
+
+		if (iIndex!=-1) {
+			EBMLElement* element = NULL;
+			qwLen = Create(&element, ID)->GetLength();
+			dest[iIndex].push_back(element);
+		}
+		else {
+			qwLen=ReadLength();
+		}
+		
+		if (CompIDs(ID,iID2stopAt))
+			bStop = true;
+
+		GetSource()->Seek(GetSource()->GetPos()+qwLen);
+	}
+	while (!bStop &&
+		   !GetSource()->IsEndOfStream() &&
+   			(GetSource()->GetPos()-qwCurrentPos<GetLength() || IsLengthUndefined())
+		   );
+
+	delete ID;
+
+	return count;
+}
+
+int EBMLID2string(char* id, char* dest)
+{
+	int len = VSizeInt_Len[(unsigned char)id[0]];
+	dest[0]=0;
+
+	for (int i=0;i<len;i++) {
+		sprintf(dest," %02X", id[i] & 0xFF);
+		dest+=strlen(dest);
+	}
+
+	return 1;		
+}
+
+int EBMLElement::SearchMulti(std::vector<std::vector<EBMLElement*> > &dest, SEARCHMULTIEX& search, char* iID2stopAt)
+{
+	int error = 0;
+	int count = SearchMulti(dest, search.ids, iID2stopAt);
+
+	if (!count)
+		return count;
+
+	if (search.dests) {
+		for (int i=0;i<count;i++) {
+			if (dest[i].size() && search.dests[i]) {
+				if (dest[i][0]->GetDataType() == EBMLDATATYPE_INT ||
+					dest[i][0]->GetDataType() == EBMLDATATYPE_HEX) {
+
+					if (dest[i][0]->GetLength() > 9)
+						memcpy(search.dests[i], dest[i][0]->AsString(), 16);
+					else {
+						unsigned __int64 v = dest[i][0]->AsInt();
+						if (v > UINT_MAX) 
+							* ((__int64*)search.dests[i]) = dest[i][0]->AsInt();
+						else
+							* ((int*)search.dests[i]) = dest[i][0]->AsInt();
+					}
+				} else
+				if (dest[i][0]->GetDataType() == EBMLDATATYPE_FLOAT) 
+					* ((double*)search.dests[i]) = dest[i][0]->AsFloat();
+				else
+				if (dest[i][0]->GetDataType() == EBMLDATATYPE_UTF8 ||
+					dest[i][0]->GetDataType() == EBMLDATATYPE_ASCII) {
+					if (*((char**)search.dests[i])) {
+						memcpy(*((char**)search.dests[i]), dest[i][0]->GetData(), dest[i][0]->GetLength());
+						*((char**)search.dests[i])[strlen((char*)*((char**)search.dests[i]))] = 0;
+					} else {
+						*((char**)search.dests[i]) = strdup(dest[i][0]->AsString());
+					}
+				}
+					
+
+			}
+		}
+	}
+
+	if (search.occ) {
+		for (int i=0;i<count;i++) {
+			if ((search.occ[i] & 1) && (dest[i].empty())) { // mandatory element missing
+				char c[256]; c[0]=0;
+				char id[32]; id[0]=0;
+				EBMLID2string(search.ids[i], id);
+				sprintf(c, "Missing mandatory element %s in %s", id, GetTypeString());
+				B0rked(c, GetStreamPos());
+				error = 1;
+			}
+			if ((search.occ[i] & 4) && (dest[i].empty())) { // almost-mandatory element missing
+				char c[256]; c[0]=0;
+				char id[32]; id[0]=0;
+				EBMLID2string(search.ids[i], id);
+				sprintf(c, "Element %s should be present in %s, but wasn't found", id, GetTypeString());
+				Warning(c, GetStreamPos());
+				error = 1;
+			}
+			if ((search.occ[i] & 2) && (dest[i].size() > 1)) { // unique element more than once
+				char c[256]; c[0]=0;
+				char id[32]; id[0]=0;
+				EBMLID2string(search.ids[i], id);
+				sprintf(c, "Multiple occurences of unique element %s in %s", id, GetTypeString());
+				B0rked(c, GetStreamPos());
+			}
+		}
+	}
+
+	if (error)
+		return EBML_MANDATORY_ELEMENT_NOT_FOUND;
+
+	return count;
+}
+
+
 
 EBMLElement* EBMLElement::FindNext(char* iID2Find)
 {
@@ -545,9 +874,13 @@ EBMLElement* EBMLElement::FindNext(char* iID2Find)
 	EBMLElement*	res = NULL;
 	char*			ID = NULL;
 
+	__int64 parent_size = (GetParent())?GetParent()->GetLength():0;
+
 	do
 	{
-		ReadID(&ID);
+		if (!ReadID(&ID))
+			return NULL;
+
 		if (CompIDs(ID,iID2Find)) {
 			qwLen=GetParent()->Create(&res,ID)->GetLength();
 		}
@@ -556,7 +889,7 @@ EBMLElement* EBMLElement::FindNext(char* iID2Find)
 		}
 		GetSource()->Seek(GetSource()->GetPos()+qwLen);
 	}
-	while (GetSource()->GetPos()-qwCurrentPos<GetLength() && !res);
+	while (GetSource()->GetPos()-qwCurrentPos<parent_size && !res);
 	delete ID;
 	return res;
 }
@@ -602,6 +935,11 @@ __int64 EBMLElement::AsInt()
 	return (GetData()->AsInt());
 }
 
+char* EBMLElement::AsString()
+{
+	return GetData()->AsString();
+}
+
 __int64 EBMLElement::AsSInt()
 {
 	return 0;
@@ -610,6 +948,48 @@ __int64 EBMLElement::AsSInt()
 double EBMLElement::AsFloat()
 {
 	return (GetData()->AsBSWFloat());
+}
+
+// perform a CRC check on an element
+int EBMLElement::CheckCRC()
+{
+	EBMLELEMENTLIST* e_CRC = NULL;
+	EBMLElement* pCRC;
+
+	if (!iCRCcalculated) {
+		iCRCcalculated = 1;
+		Search((void**)&e_CRC, (char*)MID_CRC32, (char*)MID_CRC32);
+		if (!e_CRC->iCount)
+			return (iCRCresult = EBML_CRC_NOT_PRESENT);
+
+		pCRC = e_CRC->pElement[0];
+		if (pCRC->GetLength() != 4)
+			return (iCRCresult = EBML_CRC_NOT_CRC32);
+
+		if (pCRC->GetRelPos() != pCRC->GetHeaderSize()) 
+			return (iCRCresult = EBML_CRC_NOT_CHECKED);
+	
+		int i = !!buffer;
+		unsigned __int32 crc = CRC32((unsigned char*)(GetData()->AsString()+6), (int)(GetLength()-6));
+		memcpy(&iCRC, pCRC->GetData()->GetData(), 4);
+
+//		CBuffer* b = GetData();
+		if (!i) DecBufferRefCount(&buffer);
+
+		if (crc != iCRC)
+			return (iCRCresult = EBML_CRC_FAILED);
+
+		DeleteElementList(&e_CRC);
+
+		return (iCRCresult = EBML_CRC_OK);
+	} else
+		return iCRCresult;
+}
+
+// returns true if the element is definitely OK
+int EBMLElement::Verify()
+{
+	return (CheckCRC() == EBML_CRC_OK || (GetParent() && GetParent()->Verify()));
 }
 
 ////////////////
@@ -830,3 +1210,35 @@ char* EBML_DocTypeReadVersion:: GetTypeString()
 	return "DocTypeReadVersion";
 }
 
+EBMLElement* EBMLELEMENTLIST::operator ()(int index)
+{
+	if (index < 0 || index >= iCount)
+		return 0;
+
+	return pElement[index];
+}
+
+__int64 EBMLELEMENTLIST::operator [](int index)
+{
+	if (index == -1)
+		return iCount;
+
+	if (index < 0 || index >= iCount)
+		return -1;
+
+	return pElement[index]->AsInt();
+}
+
+__int64 EBMLELEMENTLIST::operator ^(__int64 _default)
+{
+	if (iCount == 0)
+		return _default;
+
+
+	return pElement[0]->AsInt();
+}
+
+bool EBMLElement::operator <(EBMLElement& first)
+{
+	return GetStreamPos() < first.GetStreamPos();
+}

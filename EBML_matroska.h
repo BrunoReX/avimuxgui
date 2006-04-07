@@ -65,6 +65,7 @@ if (CompIDs(iID,(char*)a)) { \
 DECL_CLASSCID(EBMLM_Seekhead);
 DECL_CLASSCID(EBMLM_SIInfo);
 DECL_CLASS(EBMLM_SISegmentUID);
+DECL_CLASS(EBMLM_SISegmentFamily);
 DECL_CLASS(EBMLM_SISegmentFilename);
 DECL_CLASS(EBMLM_SIPrevUID);
 DECL_CLASS(EBMLM_SIPrevFilename);
@@ -85,6 +86,8 @@ DECL_CLASS(EBMLM_TRTrackType);
 DECL_CLASS(EBMLM_TRFlagEnabled);
 DECL_CLASS(EBMLM_TRFlagDefault);
 DECL_CLASS(EBMLM_TRFlagLacing);
+DECL_CLASS(EBMLM_TRFlagForced);
+DECL_CLASS(EBMLM_TRTrackOffset);
 DECL_CLASS(EBMLM_TRMinCache);
 DECL_CLASS(EBMLM_TRMaxCache);
 DECL_CLASS(EBMLM_TRDefaultDuration);
@@ -100,12 +103,17 @@ DECL_CLASS(EBMLM_TRCodecDownloadURL);
 DECL_CLASS(EBMLM_TRCodecDecodeAll);
 DECL_CLASS(EBMLM_TRTrackOverlay);
 DECL_CLASS(EBMLM_TRSampleScale);
+DECL_CLASS(EBMLM_TRMaxBlockAdditionID);
 
 DECL_CLASSCID(EBMLM_TRVideo);
 DECL_CLASS(EBMLM_TRVFlagInterlaced);
 DECL_CLASS(EBMLM_TRVStereoMode);
 DECL_CLASS(EBMLM_TRVPixelWidth);
 DECL_CLASS(EBMLM_TRVPixelHeight);
+DECL_CLASS(EBMLM_TRVPixelCropLeft);
+DECL_CLASS(EBMLM_TRVPixelCropRight);
+DECL_CLASS(EBMLM_TRVPixelCropTop);
+DECL_CLASS(EBMLM_TRVPixelCropBottom);
 DECL_CLASS(EBMLM_TRVDisplayWidth);
 DECL_CLASS(EBMLM_TRVDisplayHeight);
 DECL_CLASS(EBMLM_TRVDisplayUnit);
@@ -124,6 +132,7 @@ DECL_CLASS(EBMLM_TRCEContentEncodingOrder);
 DECL_CLASS(EBMLM_TRCEContentEncodingScope);
 DECL_CLASS(EBMLM_TRCEContentEncodingType);
 DECL_CLASSCID(EBMLM_TRCEContentCompression);
+DECL_CLASS(EBMLM_TRCEContentCompressionSettings);
 DECL_CLASS(EBMLM_TRCEContentCompAlgo);
 
 
@@ -153,6 +162,17 @@ DECL_CLASS(EBMLM_ATFileUID);
 
 DECL_CLASSCID(EBMLM_Chapters);
 DECL_CLASSCID(EBMLM_CHEditionEntry);
+DECL_CLASS(EBMLM_CHEditionUID);
+DECL_CLASS(EBMLM_CHEditionFlagDefault);
+DECL_CLASS(EBMLM_CHEditionFlagHidden);
+DECL_CLASS(EBMLM_CHEditionFlagOrdered);
+
+DECL_CLASSCID(EBMLM_CHChapProcess);
+DECL_CLASSCID(EBMLM_CHChapProcessCommand);
+DECL_CLASS(EBMLM_CHChapProcessCodecID);
+DECL_CLASS(EBMLM_CHChapProcessPrivate);
+DECL_CLASS(EBMLM_CHChapProcessTime);
+DECL_CLASS(EBMLM_CHChapProcessData);
 
 DECL_CLASSCID(EBMLM_CHChapterAtom);
 DECL_CLASS(EBMLM_CHChapterUID);
@@ -160,6 +180,8 @@ DECL_CLASS(EBMLM_CHChapterTimeStart);
 DECL_CLASS(EBMLM_CHChapterFlagEnabled);
 DECL_CLASS(EBMLM_CHChapterFlagHidden);
 DECL_CLASS(EBMLM_CHChapterTimeEnd);
+DECL_CLASS(EBMLM_CHChapterPhysicalEquiv);
+DECL_CLASS(EBMLM_CHChapterSegmentUID);
 DECL_CLASSCID(EBMLM_CHChapterTrack);
 DECL_CLASS(EBMLM_CHChapterTrackNumber);
 DECL_CLASSCID(EBMLM_CHChapterDisplay);
@@ -174,10 +196,14 @@ DECL_CLASS(EBMLM_TGBitsPS);
 DECL_CLASS(EBMLM_TGFramesPS);
 DECL_CLASS(EBMLM_TGTrackUID);
 DECL_CLASS(EBMLM_TGChapterUID);
+DECL_CLASS(EBMLM_TGEditionUID);
+DECL_CLASS(EBMLM_TGAttachementUID);
 DECL_CLASSCID(EBMLM_TGSimpleTag);
 DECL_CLASS(EBMLM_TGTagName);
 DECL_CLASS(EBMLM_TGTagString);
 DECL_CLASS(EBMLM_TGTagBinary);
+DECL_CLASS(EBMLM_TGTargetTypeValue);
+DECL_CLASS(EBMLM_TGTagLanguage);
 
 
 // Tags
@@ -205,138 +231,32 @@ class EBMLM_CRC32 : public EBML_MatroskaElement
 };
 
 // Seek
-class EBMLM_Seek : public EBML_MatroskaElement
-{
-	public:
-		bool			virtual CheckIDs(char* iID,EBMLElement** p);
-	public:
-		EBMLM_Seek(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
+DECL_CLASSCID(EBMLM_Seek);
+DECL_CLASS(EBMLM_SeekID);
+DECL_CLASS(EBMLM_SeekPosition);
 
-// SeekID
-class EBMLM_SeekID : public EBML_MatroskaElement
-{
-	public:
-		EBMLM_SeekID(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
+DECL_CLASS(EBMLM_CLTimeCode);
+DECL_CLASS(EBMLM_CLPosition);
+DECL_CLASS(EBMLM_CLPrevSize);
+DECL_CLASSCID(EBMLM_CLBlockGroup);
 
-// Seek
-class EBMLM_SeekPosition : public EBML_MatroskaElement
-{
-	public:
-		EBMLM_SeekPosition(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
-
-// Cluster Timecode
-class EBMLM_CLTimeCode : public EBML_MatroskaElement
-{
-	public:
-		EBMLM_CLTimeCode(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
-
-// Cluster Position
-class EBMLM_CLPosition : public EBML_MatroskaElement
-{
-	public:
-		EBMLM_CLPosition(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
-
-// Cluster Prevsize
-class EBMLM_CLPrevSize : public EBML_MatroskaElement
-{
-	public:
-		EBMLM_CLPrevSize(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
-
-// Cluster BlockGroup
-class EBMLM_CLBlockGroup : public EBML_MatroskaElement
-{
-	private:
-		CHECKIDs;
-	public:
-		EBMLM_CLBlockGroup(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
+// no separate class for simple block!
+//DECL_CLASS(EBMLM_CLSimpleBlock);
 
 
-
-
-
-// Cluster BlockVirtual
-class EBMLM_CLBlockVirtual : public EBML_MatroskaElement
-{
-	public:
-		EBMLM_CLBlockVirtual(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
+DECL_CLASS(EBMLM_CLBlockVirtual);
+DECL_CLASSCID(EBMLM_CLBlockAdditions);
+DECL_CLASSCID(EBMLM_CLBlockMore);
+DECL_CLASS(EBMLM_CLBlockAddID);
+DECL_CLASS(EBMLM_CLBlockAdditional);
+DECL_CLASS(EBMLM_CLBlockDuration);
+DECL_CLASS(EBMLM_CLReferencePriority);
+DECL_CLASS(EBMLM_CLReferenceBlock);
+DECL_CLASSCID(EBMLM_CLSilentTracks);
+DECL_CLASS(EBMLM_CLSilentTrackNumber);
 
 DECL_CLASS(EBMLM_CLBlockSamples)
 
-// Cluster BlockAdditions
-class EBMLM_CLBlockAdditions : public EBML_MatroskaElement
-{
-	private:
-		CHECKIDs;
-	public:
-		EBMLM_CLBlockAdditions(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
-
-// Cluster BlockMore
-class EBMLM_CLBlockMore : public EBML_MatroskaElement
-{
-	private:
-		CHECKIDs
-	public:
-		EBMLM_CLBlockMore(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
-
-// Cluster BlockAddID
-class EBMLM_CLBlockAddID : public EBML_MatroskaElement
-{
-	public:
-		EBMLM_CLBlockAddID(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
-
-// Cluster AdditionalBlock
-class EBMLM_CLAdditionalBlock : public EBML_MatroskaElement
-{
-	public:
-		EBMLM_CLAdditionalBlock(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
-
-// Cluster BlockDuration
-class EBMLM_CLBlockDuration : public EBML_MatroskaElement
-{
-	public:
-		EBMLM_CLBlockDuration(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
-
-// Cluster ReferencePriority
-class EBMLM_CLReferencePriority : public EBML_MatroskaElement
-{
-	public:
-		EBMLM_CLReferencePriority(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
-
-// Cluster ReferenceBlock
-class EBMLM_CLReferenceBlock : public EBML_MatroskaElement
-{
-	public:
-		EBMLM_CLReferenceBlock(STREAM* s,EBMLElement* p);
-		GETTYPSTR;
-};
 
 // Cluster ReferenceVirtual
 class EBMLM_CLReferenceVirtual : public EBML_MatroskaElement

@@ -12,7 +12,6 @@ void FillAC3_ASI (AUDIO_STREAM_INFO** asi,AC3SOURCE* ac3source)
 		(*asi)->dwFlags=ASIF_ALLOCATED;
 	}
 	(*asi)->dwType=AUDIOTYPE_AC3;
-//	(*asi)->iDelay=0;
 	if (!(*asi)->lpASH)
 	{
 		(*asi)->lpASH=new AVIStreamHeader;
@@ -130,6 +129,7 @@ void FillDTS_ASI (AUDIO_STREAM_INFO** asi,DTSSOURCE* dtssource)
 	(*asi)->audiosource=dtssource;
 }
 
+
 typedef struct {
   WAVEFORMATEX  Format;
   union {
@@ -171,6 +171,7 @@ void FillVorbis_ASI (AUDIO_STREAM_INFO** asi,VORBISFROMOGG* vorbis)
 void FillMP3_ASI (AUDIO_STREAM_INFO** asi,MP3SOURCE* mp3source)
 {
 	MPEGLAYER3WAVEFORMAT*	lpmp3;
+	MPEG1WAVEFORMAT*		lpmpg;
 	WAVEFORMATEX*			lpwfe;
 
 	if (!(*asi)) 
@@ -186,28 +187,72 @@ void FillMP3_ASI (AUDIO_STREAM_INFO** asi,MP3SOURCE* mp3source)
 		(*asi)->lpASH->dwScale = (mp3source->GetLayerVersion()==1)?384:(((mp3source->GetMPEGVersion()==1)?1152:576));
 	}
 //	(*asi)->iDelay=0;
-	(*asi)->lpFormat=malloc(sizeof(MPEGLAYER3WAVEFORMAT));
-	lpmp3=(MPEGLAYER3WAVEFORMAT*)((*asi)->lpFormat);
-	ZeroMemory((*asi)->lpFormat,sizeof(MPEGLAYER3WAVEFORMAT));
+
+	if (mp3source->GetLayerVersion() == 3)  {
+		(*asi)->lpFormat=malloc(sizeof(MPEGLAYER3WAVEFORMAT));
+		lpmp3=(MPEGLAYER3WAVEFORMAT*)((*asi)->lpFormat);
+		ZeroMemory((*asi)->lpFormat,sizeof(MPEGLAYER3WAVEFORMAT));
+		lpwfe=&(lpmp3->wfx);
+	} else {
+		(*asi)->lpFormat=malloc(sizeof(MPEG1WAVEFORMAT));
+		lpmpg=(MPEG1WAVEFORMAT*)((*asi)->lpFormat);
+		ZeroMemory((*asi)->lpFormat,sizeof(MPEG1WAVEFORMAT));
+		lpwfe=&(lpmpg->wfx);
+	}
+
+
 
 	(*asi)->lpASH->fccType=MakeFourCC("auds");
 	(*asi)->lpASH->dwRate=mp3source->GetFrequency();
 	(*asi)->dwType=(mp3source->IsCBR())?AUDIOTYPE_MP3CBR:AUDIOTYPE_MP3VBR;
 
-	lpwfe=&(lpmp3->wfx);
-	lpwfe->wFormatTag=0x55;
-	lpwfe->nChannels=mp3source->GetChannelCount();
-	lpwfe->nBlockAlign=(mp3source->IsCBR())?1:
-		(
+	if (mp3source->GetLayerVersion() == 3)  {
+		lpwfe->wFormatTag=0x55;
+		lpwfe->cbSize=12;
+		lpmp3->wID=1;
+		lpmp3->nBlockSize=mp3source->GetFrameSize();
+		lpwfe->nBlockAlign=(mp3source->IsCBR())?1:
 			(
-				(mp3source->GetLayerVersion()==1)?384:(((mp3source->GetMPEGVersion()==1)?1152:576))
-			)
-		);
-	lpwfe->cbSize=12;
-	lpmp3->wID=1;
-	lpmp3->nBlockSize=mp3source->GetFrameSize();
+				(
+					(mp3source->GetLayerVersion()==1)?384:(((mp3source->GetMPEGVersion()==1)?1152:576))
+				)
+			);
+		(*asi)->lpASH->dwScale = lpwfe->nBlockAlign;
+	} else {
+		// layer
+		switch (mp3source->GetLayerVersion()) {
+			case 1: lpmpg->fwHeadLayer = ACM_MPEG_LAYER1; break;
+			case 2: lpmpg->fwHeadLayer = ACM_MPEG_LAYER2; break;
+		}
+
+		switch (mp3source->GetMode()) {
+			case 0: lpmpg->fwHeadMode |= ACM_MPEG_STEREO; break;
+			case 1: lpmpg->fwHeadMode |= ACM_MPEG_JOINTSTEREO; break;
+			case 2: lpmpg->fwHeadMode |= ACM_MPEG_DUALCHANNEL; break;
+			case 3: lpmpg->fwHeadMode |= ACM_MPEG_SINGLECHANNEL; break;
+		}
+
+		lpmpg->fwHeadModeExt= 0x0F;
+		
+		if (mp3source->HasCRC())
+			lpmpg->fwHeadFlags  |= ACM_MPEG_PROTECTIONBIT;
+		if (mp3source->GetMPEGVersion() == 1)
+			lpmpg->fwHeadFlags	|= ACM_MPEG_ID_MPEG1;
+		if (mp3source->IsOriginal()) 
+			lpmpg->fwHeadFlags	|= ACM_MPEG_ORIGINALHOME;
+		if (mp3source->IsCopyrighted())
+			lpmpg->fwHeadFlags	|= ACM_MPEG_COPYRIGHT;
+
+
+		lpmpg->dwHeadBitrate	= 0;
+		lpmpg->wHeadEmphasis	= 1 + mp3source->GetEmphasis();
+		lpwfe->cbSize = sizeof(MPEG1WAVEFORMAT)-sizeof(WAVEFORMATEX);
+		lpwfe->wFormatTag = 0x0050;
+		lpwfe->nBlockAlign= 1;
+	}
+
 	lpwfe->nSamplesPerSec=mp3source->GetFrequency();
+	lpwfe->nChannels=mp3source->GetChannelCount();
 
 	(*asi)->audiosource=mp3source;
-	
 }

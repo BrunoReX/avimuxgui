@@ -38,6 +38,7 @@ class AUDIOSOURCEFROMAVI: public AUDIOSOURCE
 		int		virtual Read(void* lpDest,DWORD dwMicrosecDesired,DWORD* lpdwMicrosecRead,
 							__int64* lpqwNanosecRead,__int64* lpiTimeocde = NULL, ADVANCEDREAD_INFO* lpAARI = NULL);
 		int		virtual Seek(__int64 iPos);
+		void	virtual ReInit();
 };
 
 #endif

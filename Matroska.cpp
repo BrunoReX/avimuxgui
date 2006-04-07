@@ -7,11 +7,21 @@
 #include "integers.h"
 #include "ebml.h"
 #include "stdio.h"
-//#include "stdlib.h"
+
+#ifdef DEBUG_NEW
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+#endif
 
 const int iSizeOfSeekhead = 1024;
 const int iBufsPerStream = 32;
 char debugmsg[1024];
+
+char* MKV_LINKTYPE_NAMES[] = { "medium linking", "hard linking", "" };
+char* MKV_UID_NAMES[] = { "SegmentUID", "PrevUID", "NextUID", "SegmentFamily" };
 
 int matroska_guess_overhead(MGO_DESCR* lpMGO)
 {
@@ -24,8 +34,24 @@ int matroska_guess_overhead(MGO_DESCR* lpMGO)
 	int iOvhPC;
 	int	iPrevSize;
 	float fLaceDur;
+	int basic_block_overhead = 8;
+	int overhead_per_keyframe = 10;
+	int overhead_per_deltaframe = 13;
+	int frame_type_overhead_difference = 3;
+	int audio_frame_base_overhead = 8;
+	int audio_frame_incremental_overhead = 2;
 
 	MGO_STREAMDESCR* d;
+	if (lpMGO->iMatroskaVersion == 2) {
+		basic_block_overhead = 5;
+		overhead_per_keyframe = 7;
+		overhead_per_deltaframe = 7;
+		frame_type_overhead_difference = 0;
+		audio_frame_base_overhead = 6;
+		audio_frame_incremental_overhead = 1;
+	}
+
+//	iRes = 20*1024;
 
 	iOvhPC = 0;
 // clusters
@@ -47,14 +73,22 @@ int matroska_guess_overhead(MGO_DESCR* lpMGO)
 		if (lpMGO->iFlags & MGOF_CLUSTERS_PREVSIZE) iOvhPC += iPrevSize;
 		if (lpMGO->iFlags & MGOF_CLUSTERS_POSITION) iOvhPC += 6;
 
-		iRes += iOvhPC * iClCount;
+		int iClusterOverhead = iOvhPC * iClCount;
+
+		iRes += iClusterOverhead;
+		printf("predicted cluster overhead: %d bytes\n", iClusterOverhead);
 
 // cues
-	iCueCount = int(lpMGO->iDuration * lpMGO->fFPS / lpMGO->iKeyframeInterval);
-	iRes += 18 * iCueCount;
+	if (!(lpMGO->iFlags & MGOF_NOCUEOVERHEAD)) {
+		iCueCount = int(lpMGO->iDuration * lpMGO->fFPS / lpMGO->iKeyframeInterval);
+		iRes += 18 * iCueCount;
+
+		printf("cue points: %d predicted using %d bytes", iCueCount, 18*iCueCount);
+	}
 
 // video stream
-	iRes += (int)(lpMGO->fFPS * lpMGO->iDuration * 13 - 3* lpMGO->fFPS * lpMGO->iDuration / lpMGO->iKeyframeInterval);
+	iRes += (int)(lpMGO->fFPS * lpMGO->iDuration * overhead_per_deltaframe - 
+		frame_type_overhead_difference * lpMGO->fFPS * lpMGO->iDuration / lpMGO->iKeyframeInterval);
 // audio streams
 	for (int i=0;i<lpMGO->iStreamCount;i++) {
 		d = &lpMGO->pStreams[i];
@@ -91,7 +125,8 @@ int matroska_guess_overhead(MGO_DESCR* lpMGO)
 			iLaceOvh = 1;
 
 			// blockgroup, block etc
-			iLaceOvh += 8 + 2*!!(iLaceSize > 250) + 2*!!(iLaceSize > 16375);
+			iLaceOvh += audio_frame_base_overhead + 
+				audio_frame_incremental_overhead*!!(iLaceSize > 125) + 2*!!(iLaceSize > 16375);
 			
 			if (d->iLaceStyle == LACESTYLE_XIPH) {
 				iLaceOvh += (int)(d->fFrameCountPerLace * ( 1+ d->iFramesize/255));
@@ -111,7 +146,8 @@ int matroska_guess_overhead(MGO_DESCR* lpMGO)
 		// no laced audio
 
 			// blockgroup, block etc
-			iOvhPF = 8 + 2*(!!(d->iFramesize > 250) + !!(d->iFramesize > 16375));
+			iOvhPF = audio_frame_base_overhead + 
+				audio_frame_incremental_overhead *(!!(d->iFramesize > 125) + !!(d->iFramesize > 16375));
 			iRes += int(lpMGO->iDuration * 1000 * iOvhPF / d->fFrameDuration);
 
 		}
@@ -130,91 +166,6 @@ char* matroska_GetCompileDate() {
 }
 
 
-
-/*
-/////////////////////////
-// binomial heap stuff //
-/////////////////////////
-
-typedef struct
-{
-	__int64 key;
-	void*   pData;
-	void*	pChildren;
-} BINHEAP_ELEMENT;
-
-typedef struct
-{
-	int					iCount;
-	int					iMinIndex;
-	int					iAllocatedSize;
-	int					iLastInUse;
-	BINHEAP_ELEMENT**	pElements;
-} BINOMIAL_HEAP;
-
-void binheap_Init(BINOMIAL_HEAP** lpbh)
-{
-	*lpbh = new BINOMIAL_HEAP;
-	ZeroMemory(*lpbh, sizeof(BINOMIAL_HEAP));
-
-	(*lpbh)->iLastInUse = -1;
-	(*lpbh)->pElements = new BINHEAP_ELEMENT*[20];
-	(*lpbh)->iAllocatedSize = 20;
-	ZeroMemory((*lpbh)->pElements, (*lpbh)->iAllocatedSize*sizeof(BINHEAP_ELEMENT*));
-}
-
-void binheap_join_left(BINOMIAL_HEAP* h1, int index)
-{
-	if (h1->pElements[index]) {
-		if (!h1->pElements[index+1]) {
-			h1->pElements[index+1] = h1->pElements[index];
-			h1->pElements[index] = NULL;
-		} else {
-			BINOMIAL_HEAP* ch1 = (BINOMIAL_HEAP*)h1->pElements[index]->pChildren;
-			ch1->pElements[ch1->iLastInUse+1] = h1->pElements[index];
-			h1->pElements[index] = NULL;
-			binheap_join_left(h1, index+1);
-		}
-	}
-}
-
-
-void binheap_merge_element(BINOMIAL_HEAP* h1, BINOMIAL_HEAP* h2, int index)
-{
-	int i = index;
-	int j = i;
-	__int64 m1 = h1->pElements[h1->iMinIndex]->key;
-	__int64 m2 = h2->pElements[h2->iMinIndex]->key;
-
-	if (!h1->pElements[i]) {
-		h1->pElements[i] = h2->pElements[i];
-		if (m2 < m1) h1->iMinIndex = h2->iMinIndex;
-	} else {
-
-		BINOMIAL_HEAP* ch1 = (BINOMIAL_HEAP*)h1->pElements[j]->pChildren;
-		ch1->pElements[++ch1->iLastInUse] = h2->pElements[j];
-		binheap_join_left(h1, j);
-	}
-}
-
-void binheap_merge(BINOMIAL_HEAP* h1, BINOMIAL_HEAP* h2)
-{
-	__int64 m1 = h1->pElements[h1->iMinIndex]->key;
-	__int64 m2 = h2->pElements[h2->iMinIndex]->key;
-	int		j;
-	// merge h2 into h1
-	for (int i=h2->iLastInUse;i>=0;i--) {
-		if (h2->pElements[i]) {	
-			binheap_merge_element(h1, h2, i);
-		}
-	}
-
-	h2->iLastInUse = max(h1->iLastInUse, h2->iLastInUse);
-
-}
-
-  */
-
 MATROSKA::MATROSKA()
 {
 	e_EBML = NULL;
@@ -231,7 +182,7 @@ MATROSKA::MATROSKA()
 	e_Header = NULL;
 	iTrackCount = 0;
 	ZeroMemory(&ws,sizeof(ws));
-	iAVImode = 1;
+//	iAVImode = 1;
 	e_Cluster = NULL;
 	e_PrimarySeekhead = NULL;
 	e_SecondarySeekhead = NULL;
@@ -245,6 +196,18 @@ MATROSKA::MATROSKA()
 
 MATROSKA::~MATROSKA()
 {
+}
+
+READ_INFO::READ_INFO()
+{
+	iTrack = 0;
+	qwTimecode = 0;
+	qwDuration = NULL;
+	iFlags = 0;
+	iLength = 0;
+	reference_types = 0;
+
+	pData = NULL;
 }
 
 __int64 MATROSKA::GetTrackDuration(int iTrack)
@@ -302,10 +265,12 @@ int MATROSKA::GetActiveSegment()
 
 void MATROSKA::FlushQueues()
 {
-	int i;
-	if (queue) {
-		for (i=0;i<GetTrackCount();i++) {
-			QUEUE_kill(&queue[i]);
+	for (int j=0;j<GetSegmentCount();j++) {
+		SetActiveSegment(j);
+		if (queue) {
+			for (int i=0;i<GetTrackCount();i++) {
+				QUEUE_kill(&queue[i]);
+			}
 		}
 	}
 }
@@ -313,10 +278,15 @@ void MATROSKA::FlushQueues()
 int MATROSKA::SetActiveSegment(int iSegment)
 {
 	if (iSegment<GetSegmentCount() && iSegment > -1) {
-		if (pActiveSegInfo) pActiveSegInfo->queue = (void**)queue;
-		queue = (QUEUE**)SegmentInfo[iSegment]->queue;
+		if (pActiveSegInfo) 
+			pActiveSegInfo->queue = (void**)queue;
+		
+		if (SegmentInfo)
+			queue = (QUEUE**)SegmentInfo[iSegment]->queue;
+		
 		info->iActiveSegment = iSegment;
-		pActiveSegInfo = SegmentInfo[iSegment];
+		if (SegmentInfo)
+			pActiveSegInfo = SegmentInfo[iSegment];
 		return 0;
 	} else {
 		return -1;
@@ -348,15 +318,15 @@ int MATROSKA::TrackNumber2Index(int iNbr)
 		seg = pActiveSegInfo;
 		tra = seg->tracks;
 	}
-	int			  i;
+	size_t	i;
 
 	if (info->mode == MMODE_READ && tra->iTable[iNbr-1] == iNbr) return iNbr-1;
 	if (info->mode == MMODE_WRITE && tracks[iNbr-1]->iTrackNbr == iNbr) return iNbr-1;
 
 	for (i=0;i<tra->iCount;i++) {
 		if (info->mode == MMODE_READ) {
-			if (tra->iTable[i] == iNbr) return i;
-		} else if (tracks[i]->iTrackNbr == iNbr) return i; 
+			if (tra->iTable[i] == iNbr) return (int)i;
+		} else if (tracks[i]->iTrackNbr == iNbr) return (int)i; 
 	}
 
 	return TN2I_INVALID;
@@ -383,35 +353,35 @@ int MATROSKA::IsEndOfSegment()
 
 int MATROSKA::ReadBlock()
 {
-	READBLOCK_INFO		rbi;
+	READBLOCK_INFO*		rbi = new READBLOCK_INFO;
 	EBMLM_Segment*		seg = (EBMLM_Segment*)e_Segments->pElement[GetActiveSegment()];
 	int					iStreamIndex, i;
 	char*				laceelement;
 	CBuffer*			c;
 
-	ZeroMemory(&rbi,sizeof(rbi));
+//	ZeroMemory(&rbi,sizeof(rbi));
 
 	if (pActiveSegInfo->iEndReached == 1) {
+		delete rbi;
 		return READBL_ENDOFSEGMENT;
 	}
 
-	if (seg->ReadBlock(&rbi)==READBL_ENDOFSEGMENT) {
+	if (seg->ReadBlock(rbi)==READBL_ENDOFSEGMENT) {
 		pActiveSegInfo->iEndReached = 1;
+		delete rbi;
 		return READBL_ENDOFSEGMENT;
 	}
 
-/*	if (rbi.qwTimecode<0) {
-		Sleep(1);
-	}
-*/
 	if (iDebugLevel > 1) {
 		sprintf(debugmsg, "ReadBlock: stream %d, timecode %I64d, duration: %d",
-			rbi.iStream, rbi.qwTimecode, (int)rbi.qwDuration);
+			rbi->iStream, rbi->qwTimecode, (int)rbi->qwDuration);
 		fprintf(stderr, "%s%c",debugmsg, '\n');
 	}
 
-	if ((iStreamIndex = TrackNumber2Index(rbi.iStream)) == TN2I_INVALID) {
+	if ((iStreamIndex = TrackNumber2Index(rbi->iStream)) == TN2I_INVALID) {
 		B0rked("Block belongs to stream which is not described in 'Tracks'");
+		DecBufferRefCount(&rbi->cData);
+		delete rbi;
 		return READBL_FILEB0RKED;
 	}
 
@@ -427,47 +397,45 @@ int MATROSKA::ReadBlock()
 		}
 	}
 
-	if (rbi.qwTimecode < GetMinTimecode()) {
+	if (rbi->qwTimecode < GetMinTimecode()) {
+		DecBufferRefCount(&rbi->cData);
+		delete rbi;
 		return READBL_OK;
 	}
 
 	if (iSingleStream>-1) {
 		if (iSingleStream !=iStreamIndex) {
-			DecBufferRefCount(&rbi.cData);
-			if (rbi.iFrameCountInLace) DecBufferRefCount(&rbi.cFrameSizes);
+			DecBufferRefCount(&rbi->cData);
+			delete rbi;
 			return READBL_OK;
 		}
 	}
 	
 	if (!IsStreamQueued(iStreamIndex)) {
-		DecBufferRefCount(&rbi.cData);
-		if (rbi.iFrameCountInLace) {
-			DecBufferRefCount(&rbi.cFrameSizes);
-		}
+		DecBufferRefCount(&rbi->cData);
+		delete rbi;
 		return READBL_OK;
 	}
 
-	rbi.iEnqueueCount = iEnqueueCount++;
-	if (rbi.iFlags & BLKHDRF_LACING) {
-		laceelement = rbi.cData->AsString();
+	rbi->iEnqueueCount = iEnqueueCount++;
+	if (rbi->iFlags & BLKHDRF_LACING) {
+		laceelement = rbi->cData->AsString();
 		c = new CBuffer;
-		c->SetSize(sizeof(READBLOCK_INFO));
-		c->SetData(&rbi);
+		c->SetExternal(rbi, sizeof(*rbi));
 		c->IncRefCount();
 		QUEUE_enter(&queue[iStreamIndex],c);
 
 	} else {
 		c = new CBuffer;
-		rbi.qwTimecode = (__int64)((double)(rbi.qwTimecode) * pActiveSegInfo->tracks->track_info[iStreamIndex]->fTimecodeScale);
+		rbi->qwTimecode = (__int64)((double)(rbi->qwTimecode) * pActiveSegInfo->tracks->track_info[iStreamIndex]->fTimecodeScale);
 		
-		c->SetSize(sizeof(READBLOCK_INFO));
-		c->SetData(&rbi);
+		c->SetExternal(rbi,sizeof(*rbi));
 		c->IncRefCount();
 		QUEUE_enter(&queue[iStreamIndex],c);
 	}
 
-	__int64 idq = pActiveSegInfo->tracks->track_info[iStreamIndex]->iDataQueued += rbi.cData->GetSize();
-	__int64 iTimecode = rbi.qwTimecode;
+	__int64 idq = pActiveSegInfo->tracks->track_info[iStreamIndex]->iDataQueued += rbi->cData->GetSize();
+	__int64 iTimecode = rbi->qwTimecode;
 	return READBL_OK;
 
 /*	rbi2 = (READBLOCK_INFO*)queue[iStreamIndex]->buffer->GetData();
@@ -505,7 +473,7 @@ CHAPTERS* MATROSKA::GetChapterInfo()
 
 CUES* MATROSKA::GetCues()
 {
-	return ((EBMLM_Segment*)(e_Segments->pElement[GetActiveSegment()]))->GetCues();
+	return ((EBMLM_Segment*)(e_Segments->pElement[GetActiveSegment()]))->GetCues(0, -1);
 }
 
 __int64 MATROSKA::GetQueuedDataSize(int iTrack)
@@ -595,51 +563,92 @@ int MATROSKA::Read(READ_INFO* pInfo, int iFlags)
 		}
 		
 		// if all queues are still empty -> end of segment
-		if (bEmpty) return READBL_ENDOFSEGMENT;
+		if (bEmpty) 
+			return READBL_ENDOFSEGMENT;
 
 		iTrack = iIndex;
 
 	} else {
 		// if a block shall be read, look for one
+		bEmpty = true;
 		iRes = FillQueue(iTrack);
+
+		for (int i=0;i<GetTrackCount();i++) 
+			if (!QUEUE_empty(queue[i])) 
+				bEmpty = false;
+
+		if (bEmpty) 
+			return READBL_ENDOFSEGMENT;
+
 	}
 	
-	if (iRes==READBL_ENDOFSEGMENT) return READBL_ENDOFSEGMENT;
+	if (QUEUE_empty(queue[iTrack])) {
+		return READBL_ENDOFTRACK;
+	}
+
 	CBuffer* b = QUEUE_read(&queue[iTrack]);
-	
 	READBLOCK_INFO*	rbi = (READBLOCK_INFO*)b->GetData();
 
 	pInfo->iLength = rbi->cData->GetSize();
 
-	if (rbi->iFrameCountInLace && (!IsLaced(iTrack))) {
+	if (rbi->frame_sizes.size() > 1 && (!IsLaced(iTrack)))
 		B0rked("Lacing used, but lacing flag is not set");
-	}
 
-	if (rbi->iFrameCountInLace) {
-		pInfo->iFrameCount = rbi->iFrameCountInLace;
-		newz(int, rbi->iFrameCountInLace, pInfo->iFrameSizes);
-		memcpy(pInfo->iFrameSizes,rbi->cFrameSizes->GetData(),sizeof(int)*rbi->iFrameCountInLace);
-		
-		DecBufferRefCount(&rbi->cFrameSizes);
-	} else {
-		pInfo->iFrameSizes = 0;
-	}
 	pInfo->qwTimecode = rbi->qwTimecode;
 	pInfo->pData = rbi->cData;
-	pInfo->iReferences = rbi->iReferences;
+
+	pInfo->reference_types = rbi->reference_types;
 	pInfo->iFlags = 0;
 	pInfo->iTrack = iTrack;
 
-	if (rbi->iFlags & RBIDUR_INDICATED) {
+	if (rbi->iFlags & RBIF_DURATION) {
 		pInfo->iFlags |= RIF_DURATION;
 		pInfo->qwDuration = rbi->qwDuration;
 	}
-	if (rbi->iFlags & BLKHDRF_LACINGMASK) {
-		pInfo->iFlags = RIF_LACING;
+
+	if (rbi->iFlags & RBIF_DISCARDABLE) {
+		pInfo->iFlags |= RIF_DISCARDABLE;
+	}
+	
+//	if (rbi->iFlags & BLKHDRF_LACINGMASK)
+//		pInfo->iFlags = RIF_LACING;
+
+	pInfo->references = rbi->references;
+
+	__int64 idq = pActiveSegInfo->tracks->track_info[iTrack]->iDataQueued -= rbi->cData->GetSize();
+
+	int last_compression = GetTrackCompressionDescriptorCount(iTrack) - 1;
+
+	if (GetTrackCompression(iTrack, last_compression) == COMPRESSION_HDRSTRIPING) {
+		
+		if (rbi->frame_sizes.empty()) {
+			rbi->cData->Prepend(0, GetTrackCompressionPrivate(iTrack, last_compression),
+				GetTrackCompressionPrivateSize(iTrack, 0));
+		} else {
+			int hdr_size = GetTrackCompressionPrivateSize(iTrack, last_compression);
+			int total_hdr_size = 0;
+			int total_pos = 0;
+			void* hdr = GetTrackCompressionPrivate(iTrack, last_compression);
+			std::vector<int>::iterator frame_sizes = rbi->frame_sizes.begin();
+	
+			for (; frame_sizes != rbi->frame_sizes.end(); frame_sizes++) {
+				rbi->cData->Prepend(total_pos, hdr, hdr_size);
+
+				total_hdr_size += hdr_size;
+				(*frame_sizes) += hdr_size;
+
+				total_pos += *frame_sizes;
+			}
+		}
 	}
 
-	memcpy(pInfo->iReferencedFrames,rbi->iReferencedFrames,2*sizeof(int));
-	__int64 idq = pActiveSegInfo->tracks->track_info[iTrack]->iDataQueued -= rbi->cData->GetSize();
+	if (rbi->frame_sizes.size() > 1) {
+		pInfo->frame_sizes = rbi->frame_sizes;
+//		pInfo->iFlags |= BLKHDRF_LACING;
+	} else {
+		pInfo->frame_sizes.clear();
+	}
+
 
 	DecBufferRefCount(&b);
 
@@ -672,7 +681,7 @@ bool MATROSKA::IsKeyframe()
 	CBuffer* b = QUEUE_read(&queue[iTrack],QR_DONTREMOVE);
 	READBLOCK_INFO*	rbi = (READBLOCK_INFO*)b->GetData();
 
-	return !rbi->iReferences;
+	return !rbi->references.size();
 }
 
 __int64 MATROSKA::GetNextTimecode(int iTrack)
@@ -721,49 +730,138 @@ __int64 MATROSKA::GetSize()
 	return GetSource()->GetSize();
 }
 
+__int64 MATROSKA::GetSegmentFilePos() 
+{
+	return e_Segments->pElement[GetActiveSegment()]->GetStreamPos();
+}
+
+bool MATROSKA::CanRead()
+{
+	if (info->mode & MMODE_READ)
+		return true;
+	else
+		return false;
+}
+
+bool MATROSKA::CanWrite()
+{
+	if (info->mode & MMODE_WRITE)
+		return true;
+	else
+		return false;
+}
+
+bool MATROSKA::ParseEBMLHeader(EBML_INFO& ebml_info, EBMLElement* parent)
+{
+	if (!parent)
+		return false;
+
+	/* parse EBML header */
+//	EBML_INFO	ebml_info;
+	char* ebml_ids[] = { (char*)EID_EBMLVersion, (char*)EID_EBMLReadVersion,
+		(char*)EID_EBMLMaxIDLength, (char*)EID_EBMLMaxSizeLength,
+		(char*)EID_DocType, (char*)EID_DocTypeVersion, (char*)EID_DocTypeReadVersion,NULL };
+	void* ebml_target[] = {
+		&ebml_info.EBMLVersion, &ebml_info.EBMLReadVersion, &ebml_info.EBMLMaxIDLengh, 
+		&ebml_info.EBMLMaxSizeLength, &ebml_info.DocType, &ebml_info.DocTypeVersion,
+		&ebml_info.DocTypeReadVersion, NULL };
+	int ebml_occ_restr[] = {
+		2, 2, 2, 2, 3, 2, 2, NULL };
+	SEARCHMULTIEX ebml_sme = { ebml_ids, ebml_target, ebml_occ_restr };
+	EBMLElementVectors ebml_srch;
+	int result = parent->SearchMulti(ebml_srch, ebml_sme);
+//	DeleteEBML(&e_next);
+	DeleteVectors(ebml_srch);
+
+	if (result < 0)
+		return false;
+
+	return true;
+}
+
 int MATROSKA::Open(STREAM* s, int iMode)
 {
-	int i;
+	size_t i;
 	stream = s;
 	EBMLElement*		e_next=NULL;
 	EBMLElement*		e_SIInfo = NULL;
 	EBMLM_Segment*		segment;
 	CBuffer*			cb=NULL;
 
-	newz(MATROSKA_INFO, 1, info);
+	info = new MATROSKA_INFO;
+	memset(info, 0, sizeof(MATROSKA_INFO));
+//	newz(MATROSKA_INFO, 1, info);
 	
 	if (iMode & MMODE_READ) {
 		info->mode = iMode;
 		e_Main = new EBML_Matroska(s,NULL);
+		
+		/* first EBML element must be an EBML header */
 		e_Main->Create1stSub(&e_next);
 		if (!e_next || e_next->GetType()!=EBMLTYPE_EBML) {
-			delete info;
+			Close();
 			DeleteEBML(&e_next);
 			DeleteEBML((EBMLElement**)&e_Main);
 			return MOPEN_ERR;
 		}
-		DeleteEBML(&e_next);
 
+		/* parse EBML header */
+/*		EBML_INFO	ebml_info;
+		char* ebml_ids[] = { (char*)EID_EBMLVersion, (char*)EID_EBMLReadVersion,
+			(char*)EID_EBMLMaxIDLength, (char*)EID_EBMLMaxSizeLength,
+			(char*)EID_DocType, (char*)EID_DocTypeVersion, (char*)EID_DocTypeReadVersion,NULL };
+		void* ebml_target[] = {
+			&ebml_info.EBMLVersion, &ebml_info.EBMLReadVersion, &ebml_info.EBMLMaxIDLengh, 
+			&ebml_info.EBMLMaxSizeLength, &ebml_info.DocType, &ebml_info.DocTypeVersion,
+			&ebml_info.DocTypeReadVersion, NULL };
+		int ebml_occ_restr[] = {
+			2, 2, 2, 2, 3, 2, 2, NULL };
+		SEARCHMULTIEX ebml_sme = { ebml_ids, ebml_target, ebml_occ_restr };
+		EBMLElementVectors ebml_srch;
+		e_next->SearchMulti(ebml_srch, ebml_sme);
+		DeleteEBML(&e_next);
+		DeleteVectors(ebml_srch);
+*/
+		EBML_INFO ebml_info;
+		ParseEBMLHeader(ebml_info, e_next);
+		DeleteEBML(&e_next);
 		char* cid_Level0[] = { (char*)EID_EBML, (char*)MID_SEGMENT };
 		void** pe_Level0 = NULL;
 		e_Main->SearchMulti(&pe_Level0, cid_Level0, 2);
 		e_EBML		= (EBMLELEMENTLIST*)pe_Level0[0];
 		e_Segments	= (EBMLELEMENTLIST*)pe_Level0[1];
 		delete pe_Level0;
-
-		if (iMode & MMODE_DUMMY) {
-			return MOPEN_OK;
-		}
-		if (!e_Segments->iCount) {
-			FatalError("No Segment found!");
+		if (strcmp("matroska", ebml_info.DocType)) {
+			FatalError("Unknown DocType");
+			DeleteElementList(&e_EBML);
 			return MOPEN_ERR;
 		}
 
-		newz(SEGMENT_INFO*,e_Segments->iCount, SegmentInfo);
+		if (iMode & MMODE_DUMMY) {
+			DeleteElementList(&e_EBML);
+			return MOPEN_OK;
+		}
+
+		if (!e_Segments->iCount) {
+			FatalError("No Segment found!");
+			DeleteElementList(&e_EBML);
+			return MOPEN_ERR;
+		}
+
+		char ver[32]; ver[0]=0; 
+		sprintf(ver, "File type: Matroska v%d", ebml_info.DocTypeVersion);
+		Note(ver);
+
+		if (ebml_info.DocTypeVersion > 2) {
+			FatalError("This matroska version is not supported");
+			return MOPEN_ERR;
+		}
+//		newz(SEGMENT_INFO*,e_Segments->iCount, SegmentInfo);
+		SegmentInfo = new SEGMENT_INFO*[e_Segments->iCount];
 	
 		for (i=0;i<e_Segments->iCount;i++) {
 			segment = ((EBMLM_Segment*)e_Segments->pElement[i]);
-			segment->AllowObfuscatedSegments(bAllowObfuscatedFiles);
+//			segment->AllowObfuscatedSegments(bAllowObfuscatedFiles);
 			if (!(SegmentInfo[i]=segment->GetSegmentInfo())) {
 				printf("Error trying to read SegmentInfo!\n");
 				return MOPEN_ERR;
@@ -780,6 +878,15 @@ int MATROSKA::Open(STREAM* s, int iMode)
 					segment->EnableShiftFirstClusterTimecode2Zero(!!info->bShiftFirstClusterTimecode2Zero);
 			}
 
+			size_t count = e_EBML->iCount - 1;
+			bool found = false;
+			for (; count >= 0 && !found; count-- )
+				if (e_EBML->pElement[count]->GetStreamPos() <
+					segment->GetStreamPos())
+					found = true;
+
+			count++;
+			ParseEBMLHeader(segment->GetSegmentInfo()->ebml_info, e_EBML->pElement[count]);
 		}
 
 		// gather info
@@ -805,8 +912,10 @@ int MATROSKA::Open(STREAM* s, int iMode)
 		SetActiveSegment(0);
 		SetActiveTrack(0);
 		SetMinTimecode(-40000);
-		if (e) DeleteEBML(&e);
+		if (e) 
+			DeleteEBML(&e);
 		iEnqueueCount = 0;
+		DeleteElementList(&e_EBML);
 
 		return MOPEN_OK;
 	}
@@ -814,7 +923,8 @@ int MATROSKA::Open(STREAM* s, int iMode)
 	if (iMode & MMODE_WRITE) {
 		srand((int)rdtsc());
 		info->mode = iMode;
-		ZeroMemory(&ws,sizeof(ws));
+		ZeroMemory(&ws,sizeof(ws)-sizeof(ws.cues));
+		memset(&write_buffer, 0, sizeof(write_buffer));
 
 		e_Cluster = NULL;
 		e_Header = new EBMLHeader_Writer(GetDest());
@@ -832,14 +942,15 @@ int MATROSKA::Open(STREAM* s, int iMode)
 		e_SegInfo = new EBMLMSegmentInfo_Writer(GetDest());
 	
 		ws.iTimecodeScale = 1000000;
-		ws.iMinimumCuePointInterval = 1995000000;
+		ws.min_cue_point_interval = 1995000000; // 2 seconds
 		
 		ws.iMaxClusterSize = 524288;
 		ws.iMaxClusterTime = 30000;
 		ws.iLaceStyle = LACESTYLE_XIPH;
 		ws.iClusterCount = 0;
 		ws.iClusterOverhead = 0;
-		ws.iCuePoints = 0;
+		ws.iCuePointsCreated = 0;
+		ws.iCuePointsWritten = 0;
 		ws.iSeekheadSize = 0;
 		ws.bDisplayWidth_Height = 1;
 		ws.bCueBlockNumber = 1;
@@ -850,12 +961,20 @@ int MATROSKA::Open(STREAM* s, int iMode)
 		ws.iTracksCopies = 1;
 		ws.bClusterIndex = 1;
 		ws.iLatestTimecode = -1;
+		ws.iEarliestTimecode = (__int64)INT_MAX * INT_MAX;
+		ws.iTargetSeekhead = 1;
 		ws.bRandomizeElementOrder = 0;
+		ws.iSizeOfReservedSpace = 16384;
+		ws.iCueAutosize = 0;
+		ws.max_cue_point_interval = 30005000000; // 30 seconds
+		ws.iCueTargetSizeRatio = 0.98;
+		memset(ws.bUIDs, 0, sizeof(ws.bUIDs));
 		
 		// set default behaviour for Duration elements
 		ws.duration_default.iVideo = MATROSKA_TDDM_GAP;
 		ws.duration_default.iAudio = MATROSKA_TDDM_GAP;
 		ws.duration_default.iSubtitles = MATROSKA_TDDM_ALWAYS;
+		ws.matroska_version = 1;
 	
 		return MOPEN_OK;
 	}
@@ -863,9 +982,23 @@ int MATROSKA::Open(STREAM* s, int iMode)
 	return MOPEN_ERR;
 }
 
+void MATROSKA::SetUID(int uid_type, char* cUID)
+{
+	if (cUID) {
+		ws.bUIDs[uid_type] = true;
+		memcpy(ws.cUIDs[uid_type], cUID, 16);
+	} else
+		ws.bUIDs[uid_type] = false;
+}
+
 void MATROSKA::SetTimecodeScale(__int64 iScale)
 {
 	ws.iTimecodeScale = iScale;
+}
+
+void MATROSKA::SetInitialHeaderSize(int size)
+{
+	ws.iSizeOfReservedSpace = size;
 }
 
 void MATROSKA::EnableClusterIndex(int bEnable)
@@ -937,6 +1070,7 @@ void MATROSKA::EnableCueBlockNumber(int bEnabled)
 
 int MATROSKA::BeginWrite()
 {
+	e_Header->SetDocTypeVersion((int)ws.matroska_version);
 	e_Header->Write();
 	DeleteEBML(&e_Header);
 
@@ -949,12 +1083,15 @@ int MATROSKA::BeginWrite()
 	ws.i1stElementInFile = ws.iSeekheadPosInFile;
 
 	// write dummy seek head
+	if (!ws.bClusterIndex)
+		e_PrimarySeekhead->SetFixedSize(512);
+
 	ws.iPosInSegment += e_PrimarySeekhead->Write();
 	e_PrimarySeekhead->AddEntry((char*)MID_TRACKS,ws.iPosInSegment);
 	e_Seekhead = e_PrimarySeekhead;
 
 	// write track info
-	int iSize = GetTrackCount()*256; 
+	int iSize = GetTrackCount()*192; 
 	for (int i=0;i<GetTrackCount();i++) {
 		if (tracks[i]->cCodecPrivate) iSize+=tracks[i]->cCodecPrivate->GetSize();
 		if (tracks[i]->cName) iSize+=tracks[i]->cName->GetSize();
@@ -976,16 +1113,24 @@ int MATROSKA::BeginWrite()
 	e_SegInfo->SetMuxingApp(new CStringBuffer(cVersion));
 	e_SegInfo->SetWritingApp(new CStringBuffer("<not indicated>",0));
 
-	e_SegInfo->SetFixedSize(2048);
+	int title_len = (int)strlen(e_SegInfo->GetTitle());
+	e_SegInfo->SetFixedSize(256 + strlen(cVersion) + 128
+		+ title_len 
+		+ 20 * (!!ws.bUIDs[0] + !!ws.bUIDs[1] + !!ws.bUIDs[2] + !!ws.bUIDs[3])); 
+	// 256+128 = <normal stuff> + muxing app + 20 for each 128 bit UID
 
 	e_Cues = new EBMLMCue_Writer(GetDest());
 
 	ws.iPosInSegment += e_SegInfo->Write();
 	ws.iPosOfReservedSpace = GetDest()->GetPos();
-	ws.iSizeOfReservedSpace = 16384;
 	e_ReservedSpace = new EBMLElement_Writer(GetDest());
 	e_ReservedSpace->SetID((char*)MID_VOID);
-	e_ReservedSpace->SetFixedSize(ws.iSizeOfReservedSpace);
+
+	__int64 k = ws.iSizeOfReservedSpace - e_SegInfo->GetSize() - e_Tracks->GetSize() - e_PrimarySeekhead->GetSize();
+	k = max(k, 16);
+
+	ws.iSizeOfReservedSpace = k;
+	e_ReservedSpace->SetFixedSize(k);
 	ws.iPosInSegment += e_ReservedSpace->Write();
 
 	ws.iAccumulatedOverhead = GetDest()->GetPos();
@@ -1008,6 +1153,34 @@ STREAM* MATROSKA::GetDest()
 	return stream;
 }
 
+void MATROSKA::RenderChapterSegmentUIDTags(EBMLElement_Writer* pParent, CChapters* c)
+{
+	for (int k=0;k<c->GetChapterCount();k++) {
+		SINGLE_CHAPTER_DATA scd; memset(&scd, 0, sizeof(scd));
+		
+		c->GetChapter(k, &scd);
+		if (scd.bSegmentUIDValid) {
+			EBMLElement_Writer* pTag = pParent->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_TG_TAG));
+			pTag->AppendChild(new EBMLElement_Writer(GetDest(), (char*)MID_TG_TARGET))
+				->AppendChild_UInt((char*)MID_TG_CHAPTERUID, c->GetUID(k));
+
+			EBMLElement_Writer* pSimpleTag = pTag->AppendChild(new EBMLElement_Writer(GetDest(), 
+				(char*)MID_TG_SIMPLETAG));
+			pSimpleTag->AppendChild_String((char*)MID_TG_TAGNAME, "SegmentUID");
+			char uid[64]; memset(uid,0,sizeof(uid));
+			__int128hex(scd.cSegmentUID, uid, 1, 0);
+			pSimpleTag->AppendChild_String((char*)MID_TG_TAGSTRING, uid);
+
+			pTag->EnableCRC32();
+		}
+
+		if (c->HasSubChapters(k))
+			RenderChapterSegmentUIDTags(pParent, c->GetSubChapters(k));
+	}
+
+
+}
+
 int MATROSKA::Close()
 {
 	int i;
@@ -1015,6 +1188,7 @@ int MATROSKA::Close()
 	int	iTrash;
 
 	for (i=0;i<j;i++) {
+		SetActiveSegment(i);
 		if (SegmentInfo && SegmentInfo[i]->queue) {
 			queue = (QUEUE**)SegmentInfo[i]->queue;
 			FlushQueues();
@@ -1028,9 +1202,16 @@ int MATROSKA::Close()
 	if (SegmentInfo) delete SegmentInfo;
 //	if (chapters);
 
-	if (info->mode == MMODE_WRITE) {
+	//if (info && info->mode == MMODE_WRITE) {
+	if (CanWrite()) {
+		EBMLMSeekhead_Writer* e_TargetSeekhead = NULL;
+		e_TargetSeekhead = e_PrimarySeekhead;
+
+		if (ws.iTargetSeekhead == 0 && e_SecondarySeekhead)
+			e_TargetSeekhead = e_SecondarySeekhead;		
+
 		FlushWriteBuffer();
-		SetSegmentDuration((float)ws.iLatestTimecode);
+		SetSegmentDuration((float)ws.iLatestTimecode - (float)ws.iEarliestTimecode);
 		if (e_Cluster) {
 			if (IsClusterIndexEnabled()) {
 				e_Seekhead->AddEntry((char*)MID_CLUSTER,ws.iPosInSegment,1);
@@ -1038,14 +1219,13 @@ int MATROSKA::Close()
 			ws.iPosInSegment += e_Cluster->Write();
 			ws.iAccumulatedOverhead += e_Cluster->GetWriteOverhead();
 			DeleteEBML(&e_Cluster);
-		}
-
-		if (e_Cues && e_Cues->GetSize()>8) {
-			e_PrimarySeekhead->AddEntry((char*)MID_CUES,ws.iPosInSegment,1);
-			e_Cues->EnableCRC32();
-			ws.iPosInSegment += (i=(int)e_Cues->Write());
-			ws.iAccumulatedOverhead += i;
-			DeleteEBML(&e_Cues);
+		} else {
+			e_Cluster = new EBMLMCluster_Writer(GetDest(), this, 0, 0, 0);
+			ws.iPosInSegment += e_Cluster->Write();
+			ws.iAccumulatedOverhead = e_Cluster->GetWriteOverhead();
+			e_Cluster->Delete();
+			delete e_Cluster;
+			e_Cluster = NULL;
 		}
 
 		// write chapters
@@ -1057,17 +1237,18 @@ int MATROSKA::Close()
 			}
 
 			EBMLMChapter_Writer* e_Chapters = new EBMLMChapter_Writer(GetDest(),chapters,
-				(max_chapter_duration==-1)?(__int64)(ws.fSetDuration * GetTimecodeScale()):max_chapter_duration);
+				(max_chapter_duration==-1)?(__int64)(ws.fSetDuration * GetTimecodeScale()):max_chapter_duration,
+				(max_chapter_duration==-2)?0:1);
 
 			if (e_Chapters->GetSize() > ws.iSizeOfReservedSpace) {
-				e_PrimarySeekhead->AddEntry((char*)MID_CHAPTERS,ws.iPosInSegment,1);
+				e_TargetSeekhead->AddEntry((char*)MID_CHAPTERS,ws.iPosInSegment,1);
 				ws.iPosInSegment += (i=(int)e_Chapters->Write());
 				ws.iAccumulatedOverhead += i;
 				DeleteEBML(&e_Chapters);
 			} else {
 				__int64 q = GetDest()->GetPos();
 				GetDest()->Seek(ws.iPosOfReservedSpace);
-				e_PrimarySeekhead->AddEntry((char*)MID_CHAPTERS,ws.iPosOfReservedSpace - ws.iSegClientDataBegin,1);
+				e_TargetSeekhead->AddEntry((char*)MID_CHAPTERS,ws.iPosOfReservedSpace - ws.iSegClientDataBegin,1);
 				i=(int)e_Chapters->Write();
 				ws.iPosOfReservedSpace += i;
 				ws.iSizeOfReservedSpace -= i;
@@ -1084,20 +1265,22 @@ int MATROSKA::Close()
 		e_Tracks->EnableCRC32();
 
 		if (GetTracksCopiesCount() == 2) {
-			e_PrimarySeekhead->AddEntry((char*)MID_TRACKS,ws.iPosInSegment,1);
+			e_TargetSeekhead->AddEntry((char*)MID_TRACKS,ws.iPosInSegment,1);
 			ws.iPosInSegment += (i=(int)e_Tracks->Write());
 			ws.iAccumulatedOverhead += i;
 		}
 
 		// compose tags
 		EBMLElement_Writer*	e_Tags = new EBMLElement_Writer(GetDest(),(char*)MID_TAGS);
-
-		for (int k=0;k<iTrackCount;k++) {
+		int k;
+		for (k=0;k<iTrackCount;k++) {
 			__int64 iBitsPS = (__int64)((double)tracks[k]->iTotalSize * 8000000000 / ws.fSetDuration / GetTimecodeScale());
-			double dFPS = (double)((double)tracks[k]->iTotalFrameCount * 1000000000 / ws.fSetDuration / GetTimecodeScale());
+			double  dFPS    = (double) ((double)tracks[k]->iTotalFrameCount * 1000000000 / ws.fSetDuration / GetTimecodeScale());
+
 			EBMLElement_Writer* e_Tag = e_Tags->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_TG_TAG));
 			EBMLElement_Writer* e_Target = e_Tag->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_TG_TARGET));
 			e_Target->AppendChild_UInt((char*)MID_TG_TRACKUID,tracks[k]->iTrackUID,-1);
+			
 			EBMLElement_Writer* e_SimpleTag = e_Tag->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_TG_SIMPLETAG));
 			char cSize[20]; cSize[0]=0; itoa((int)iBitsPS, cSize, 10);
 			e_SimpleTag->AppendChild_String((char*)MID_TG_TAGNAME,"BITSPS");
@@ -1111,18 +1294,56 @@ int MATROSKA::Close()
 			e_SimpleTag->AppendChild_String((char*)MID_TG_TAGNAME,"FPS");
 			sprintf(cSize, "%7.4f", dFPS);
 			e_SimpleTag->AppendChild_String((char*)MID_TG_TAGSTRING,cSize);
+			e_SimpleTag->EnableCRC32();
+			e_Tag->EnableCRC32();
 		}
+
+		for (k=0;k<chapters->GetChapterCount();k++) {
+			int l;
+			EBMLElement_Writer* e_Tag = NULL;
+			
+			if (chapters->GetChapterDisplayCount(k)) {
+
+				e_Tag = e_Tags->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_TG_TAG),
+					APPEND_END | APPEND_DONT_RANDOMIZE);
+				EBMLElement_Writer* e_Target = e_Tag->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_TG_TARGET));
+				e_Target->AppendChild_UInt((char*)MID_TG_EDITIONUID,chapters->GetUID(k),-1);
+			}
+
+			for (l=0;l<chapters->GetChapterDisplayCount(k);l++) {
+
+				char* cTitle = NULL; cTitle = chapters->GetChapterText(k, l);
+				char* cLng   = NULL; cLng   = chapters->GetChapterLng (k, l);
+				if (cTitle && *cTitle || cLng && *cLng) {
+
+					if (cTitle && *cTitle) {
+						EBMLElement_Writer* e_SimpleTag = e_Tag->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_TG_SIMPLETAG),
+							APPEND_END | APPEND_DONT_RANDOMIZE);
+						e_SimpleTag->AppendChild_String((char*)MID_TG_TAGNAME,"TITLE");
+						e_SimpleTag->AppendChild_String((char*)MID_TG_TAGSTRING,cTitle);
+						if (cLng && *cLng)
+							e_SimpleTag->AppendChild_String((char*)MID_TG_TAGLANGUAGE,cLng);
+						e_SimpleTag->EnableCRC32();
+					}
+				}
+			}
+
+			if (e_Tag)
+				e_Tag->EnableCRC32();
+		}
+
+		RenderChapterSegmentUIDTags(e_Tags, chapters);
 
 		e_Tags->EnableCRC32();
 
 		if (ws.iSizeOfReservedSpace < e_Tags->GetSize()) {
-			e_PrimarySeekhead->AddEntry((char*)MID_TAGS,ws.iPosInSegment,1);
+			e_TargetSeekhead->AddEntry((char*)MID_TAGS,ws.iPosInSegment,1);
 			ws.iAccumulatedOverhead += (i=(int)e_Tags->Write());
 			ws.iPosInSegment += i;
 		} else {
 			__int64 q = GetDest()->GetPos();
 			GetDest()->Seek(ws.iPosOfReservedSpace);
-			e_PrimarySeekhead->AddEntry((char*)MID_TAGS,ws.iPosOfReservedSpace - ws.iSegClientDataBegin,1);
+			e_TargetSeekhead->AddEntry((char*)MID_TAGS,ws.iPosOfReservedSpace - ws.iSegClientDataBegin,1);
 			i=(int)e_Tags->Write();
 			ws.iPosOfReservedSpace += i;
 			ws.iSizeOfReservedSpace -= i;
@@ -1131,23 +1352,99 @@ int MATROSKA::Close()
 			GetDest()->Seek(q);
 		}
 
+		/* if Cue size is set to auto, try to fill the space reserved before
+		   the first cluster with cues. If it is not set to auto, use all Cue
+		   points and store them whereever possible */
+		if (ws.iCueAutosize) {	
+			int available_size = (int)((double)ws.iSizeOfReservedSpace  * ws.iCueTargetSizeRatio);
+
+			/* randomly select as many cue points as probably necessary to
+			   create Cues which use the reserved space without being too large */
+			do {
+				if (e_Cues) {
+					e_Cues->Delete();
+					delete e_Cues;
+				}
+				e_Cues = new EBMLMCue_Writer(GetDest());
+
+				ws.iCuePointsWritten = 0;
+
+				int total_size = 0;
+				for (int i=(int)ws.cues.size()-1;i>=0;i--) 
+					total_size += ws.cues[i].GetSize();
+
+				float point_ratio = (float)available_size / (float)total_size;
+
+				/* if cue points don't fit, drop enough of them to fill the space
+				   before the 1st cluster, otherwise use all of them */
+				if (total_size > available_size /*&& minmax_ratio < point_ratio*/) {
+			
+					std::vector<CUE_POINT>::iterator cue_point = ws.cues.begin();
+
+					for (; cue_point != ws.cues.end(); cue_point++) {
+						int random = rand();
+						int accept_max = (int)((float)RAND_MAX * point_ratio);
+						__int64 nanosec = cue_point->qwTimecode * GetTimecodeScale();
+
+						// cue points in the first 5 seconds stay all
+						if (random < accept_max || nanosec < 5000000000)
+							ws.iCuePointsWritten += e_Cues->AddCuePoint(*cue_point);
+					}
+
+					ws.iCueTargetSizeRatio -= 0.001f; // reduce ratio for next try
+
+				} else {
+					std::vector<CUE_POINT>::iterator cue_point = ws.cues.begin();
+					for (;cue_point != ws.cues.end(); cue_point++)
+						ws.iCuePointsWritten += e_Cues->AddCuePoint(*cue_point);
+				}
+			} while (e_Cues->GetSize() >= available_size);
+		} else {
+			std::vector<CUE_POINT>::iterator cue_point = ws.cues.begin();
+			for (;cue_point != ws.cues.end(); cue_point++)
+				ws.iCuePointsWritten += e_Cues->AddCuePoint(*cue_point);
+		}
+				
+		if (e_Cues && e_Cues->GetSize()>8) {
+			e_Cues->EnableCRC32();
+			if (ws.iSizeOfReservedSpace > e_Cues->GetSize()) {
+				__int64 q = GetDest()->GetPos();
+				GetDest()->Seek(ws.iPosOfReservedSpace);
+				e_TargetSeekhead->AddEntry((char*)MID_CUES,ws.iPosOfReservedSpace - ws.iSegClientDataBegin,1);
+				i=(int)e_Cues->Write();
+				ws.iPosOfReservedSpace += i;
+				ws.iSizeOfReservedSpace -= i;
+				e_ReservedSpace->SetFixedSize(ws.iSizeOfReservedSpace);
+				e_ReservedSpace->Write();
+				GetDest()->Seek(q);
+			} else {
+				e_TargetSeekhead->AddEntry((char*)MID_CUES,ws.iPosInSegment,1);
+				ws.iPosInSegment += (i=(int)e_Cues->Write());
+				ws.iAccumulatedOverhead += i;
+			}
+			DeleteEBML(&e_Cues);
+		}
+
 		// write secondary seekhead, if there is one
 		if (e_SecondarySeekhead) {
-			e_PrimarySeekhead->AddEntry((char*)MID_MS_SEEKHEAD,ws.iPosInSegment,1);
+			e_PrimarySeekhead->AddEntry((char*)MID_SEEKHEAD,ws.iPosInSegment,1);
 			e_SecondarySeekhead->EnableCRC32();
 			ws.iPosInSegment += (i=(int)e_SecondarySeekhead->Write());
 			ws.iAccumulatedOverhead += i;
 			ws.iSeekheadSize += i;
-			DeleteEBML(&e_SecondarySeekhead);
 		} 
 
 		// set segment info
+		for (int uidtype=0;uidtype<4;uidtype++) 
+			if (ws.bUIDs[uidtype])
+				e_SegInfo->SetUID(uidtype, ws.cUIDs[uidtype]);
+
 		e_SegInfo->SetDuration(ws.fSetDuration);
 		e_SegInfo->SetTimecodeScale(GetTimecodeScale());
 		e_SegInfo->Build();
 		e_SegInfo->EnableCRC32();
 
-		e_SegInfo->SetFixedSize(2048);
+//		e_SegInfo->SetFixedSize(2048);
 		GetDest()->Seek(ws.iSegInfoPosInFile);
 		iTrash = (int)e_SegInfo->Write();
 
@@ -1158,19 +1455,25 @@ int MATROSKA::Close()
 		GetDest()->Seek(ws.iSeekheadPosInFile);
 		e_PrimarySeekhead->EnableCRC32();
 		ws.iSeekheadSize += e_PrimarySeekhead->Write();
-		DeleteEBML(&e_PrimarySeekhead);
 		
 		GetDest()->Seek(ws.iSegPosInFile+4);
 		char t[8];
 		Int2VSUInt(&ws.iPosInSegment,t,8);
 		GetDest()->Write(t,8);
 
+		DeleteEBML(&e_PrimarySeekhead);
+		if (e_SecondarySeekhead) DeleteEBML(&e_SecondarySeekhead);
 		DeleteEBML(&e_Segment);
 		DeleteEBML(&e_SegInfo);
 		DeleteEBML(&e_Tracks);
-		delete write_buffer.block;
-		delete write_buffer.used;
-		delete write_buffer.block_of_stream;
+		DeleteEBML(&e_Tags);
+
+		if (write_buffer.block) 
+			delete write_buffer.block;
+		if (write_buffer.used)
+			delete write_buffer.used;
+		if (write_buffer.block_of_stream)
+			delete write_buffer.block_of_stream;
 		
 	}
 
@@ -1187,11 +1490,19 @@ __int64 MATROSKA::GetDuration()
 
 __int64 MATROSKA::GetSegmentDuration()
 {
-	if (info->mode == MMODE_READ) {
+/*	if (info->mode == MMODE_READ) {
 		return (__int64)pActiveSegInfo->fDuration;
 	} else {
 		return (__int64)ws.fSetDuration;
 	}
+*/
+	if (CanRead() && !CanWrite())
+		return (__int64)pActiveSegInfo->fDuration;
+
+	if (!CanRead() && CanWrite())
+		return (__int64)ws.fSetDuration;
+
+	return 0;
 }
 
 __int64 MATROSKA::GetSegmentSize()
@@ -1217,7 +1528,125 @@ int MATROSKA::GetCodecPrivateSize(int iTrack)
 
 int MATROSKA::GetTrackType(int iTrack)
 {
+	iTrack = MapT(iTrack);
+	if (iTrack >= GetTrackCount())
+		return 0;
+
 	return pActiveSegInfo->tracks->track_info[MapT(iTrack)]->iType;
+}
+
+int MATROSKA::GetTrackCompressionDescriptorCount(int iTrack)
+{
+	iTrack = MapT(iTrack);
+	if (iTrack >= GetTrackCount())
+		return 0;
+
+	if (CanRead())
+		return (int)pActiveSegInfo->tracks->track_info[iTrack]->track_compression.size();
+	if (CanWrite())
+		return (int)tracks[iTrack]->track_compression.size();
+
+	return -1;
+}
+
+int MATROSKA::GetTrackCompressionPrivateSize(int iTrack, int index)
+{
+	iTrack = MapT(iTrack);
+	if (iTrack >= GetTrackCount())
+		return 0;
+	if (index < 0 || index >= GetTrackCompressionDescriptorCount(iTrack))
+		return 0;
+
+	if (CanRead())
+		return pActiveSegInfo->tracks->track_info[iTrack]->track_compression[index].compression_private_size;
+	if (CanWrite())
+		return tracks[iTrack]->track_compression[index].compression_private_size;
+
+	return 0;
+}
+
+int MATROSKA::GetTrackCompression(int iTrack, int index)
+{
+	iTrack = MapT(iTrack);
+	if (iTrack >= GetTrackCount())
+		return 0;
+	int count = GetTrackCompressionDescriptorCount(iTrack);
+	
+	if (!count)
+		return COMPRESSION_NONE;
+
+	if (index < 0 || index >= count)
+		return COMPRESSION_ERROR;
+
+	if (CanRead())
+		return pActiveSegInfo->tracks->track_info[iTrack]->track_compression[index].compression;
+	if (CanWrite())
+		return tracks[iTrack]->track_compression[index].compression;
+
+	return 0;
+}
+
+int MATROSKA::GetTrackCompression(int iTrack, TRACK_COMPRESSION &target)
+{
+	iTrack = MapT(iTrack);
+	if (iTrack >= GetTrackCount())
+		return 0;
+
+	if (CanRead())
+		target = pActiveSegInfo->tracks->track_info[iTrack]->track_compression;
+	if (CanWrite())
+		target = tracks[iTrack]->track_compression;
+
+	return 1;
+}
+
+int MATROSKA::GetTrackCompressionPrivate(int iTrack, int index, void* pDest)
+{
+	iTrack = MapT(iTrack);
+	if (iTrack >= GetTrackCount())
+		return 0;
+	if (index < 0 || index >= GetTrackCompressionDescriptorCount(iTrack))
+		return 0;
+
+	int size = GetTrackCompressionPrivateSize(iTrack, index);
+
+	if (CanRead())
+		memcpy(pDest, pActiveSegInfo->tracks->track_info[iTrack]->track_compression[index].compression_private,
+			size);
+	if (CanWrite())
+		memcpy(pDest, tracks[iTrack]->track_compression[index].compression_private,
+			size);
+
+	return size;
+}
+
+void* MATROSKA::GetTrackCompressionPrivate(int iTrack, int index)
+{
+	iTrack = MapT(iTrack);
+	if (iTrack >= GetTrackCount())
+		return 0;
+	if (index < 0 || index >= GetTrackCompressionDescriptorCount(iTrack))
+		return 0;
+
+	return pActiveSegInfo->tracks->track_info[MapT(iTrack)]->track_compression[index].compression_private;
+}
+
+int MATROSKA::GetTrackCompressionPrivate(int iTrack, int index, void** pDest)
+{
+	iTrack = MapT(iTrack);
+	if (iTrack >= GetTrackCount())
+		return 0;
+	if (index < 0 || index >= GetTrackCompressionDescriptorCount(index))
+		return 0;
+
+	if (!GetTrackCompressionPrivateSize(iTrack, index)) {
+		*pDest = 0;
+		return 0;
+	}
+
+	*pDest = malloc(GetTrackCompressionPrivateSize(iTrack, index));
+
+	return GetTrackCompressionPrivate(iTrack, index, *pDest);
 }
 
 int MATROSKA::GetColorSpace(int iTrack)
@@ -1235,10 +1664,41 @@ char* MATROSKA::GetTrackName(int iIndex)
 
 char* MATROSKA::GetSegmentUID()
 {
-	CBuffer*	C = pActiveSegInfo->CurrSeg.cUID;
-	if (C) {
-		return C->AsString();
-	} else return "";
+	return GetUID(UIDTYPE_SEGMENTUID);
+}
+
+char* MATROSKA::GetUID(int uid_type)
+{
+	SEGID*	id = NULL;
+
+	switch (uid_type) {
+		case UIDTYPE_NEXTUID: id = &pActiveSegInfo->NextSeg; break;
+		case UIDTYPE_PREVUID: id = &pActiveSegInfo->PrevSeg; break;
+		case UIDTYPE_SEGMENTUID: id = &pActiveSegInfo->CurrSeg; break;
+		case UIDTYPE_SEGMENTFAMILY: id = &pActiveSegInfo->SegmentFamily; break;
+		default: return NULL; break;
+	}
+	
+	if (id->bValid)
+		return id->cUID;
+
+	return NULL;
+}
+
+TAG_INDEX_LIST& MATROSKA::GetGlobalTags()
+{
+	return pActiveSegInfo->pGlobalTags;
+}
+
+int MATROSKA::GetTag(uint iIndex, char* cTagName, char* cTagValue, char* cTagLng)
+{
+	if (iIndex >= (uint)pActiveSegInfo->pAllTags->iCount) return 0;
+
+	if (cTagName) strcpy(cTagName, pActiveSegInfo->pAllTags->pTags[iIndex]->cName);
+	if (cTagValue) strcpy(cTagValue, pActiveSegInfo->pAllTags->pTags[iIndex]->cData);
+	if (cTagLng) strcpy(cTagLng, pActiveSegInfo->pAllTags->pTags[iIndex]->cLanguage);
+
+	return 1;
 }
 
 int MATROSKA::IsLaced(int iTrack)
@@ -1251,7 +1711,6 @@ int MATROSKA::IsSparse(int iTrack)
 	return !!pActiveSegInfo->tracks->track_info[MapT(iTrack)]->iSparse;
 }
 
-
 int MATROSKA::IsDefault(int iIndex)
 {
 	return pActiveSegInfo->tracks->track_info[MapT(iIndex)]->iDefault;
@@ -1260,6 +1719,11 @@ int MATROSKA::IsDefault(int iIndex)
 int MATROSKA::IsEnabled(int iIndex)
 {
 	return pActiveSegInfo->tracks->track_info[MapT(iIndex)]->iEnabled;
+}
+
+int MATROSKA::IsForced(int iIndex)
+{
+	return pActiveSegInfo->tracks->track_info[MapT(iIndex)]->iForced;
 }
 
 int MATROSKA::GetMinCache(int iTrack)
@@ -1282,7 +1746,7 @@ int MATROSKA::GetTrackNumber(int iIndex)
 	return pActiveSegInfo->tracks->iTable[MapT(iIndex)];
 }
 
-int MATROSKA::GetTrackUID(int iIndex)
+__int64 MATROSKA::GetTrackUID(int iIndex)
 {
 	if (info->mode == MMODE_READ) {
 		return pActiveSegInfo->tracks->track_info[MapT(iIndex)]->iUID;
@@ -1294,14 +1758,17 @@ int MATROSKA::GetTrackUID(int iIndex)
 
 int MATROSKA::GetSegmentCount()
 {
-	return e_Segments->iCount;
+	return (int)e_Segments->iCount;
 }
 
-int MATROSKA::GetTrackCount(int iType)
+int MATROSKA::GetTrackCount(int segment, int iType)
 {
+	if (segment != -1)
+		SetActiveSegment(segment);
+
 	if (info->mode == MMODE_READ) {
 		if (iType == GTC_ALL) {
-			return pActiveSegInfo->tracks->iCount;
+			return (int)pActiveSegInfo->tracks->iCount;
 		} else {
 			if (iType < 256) {
 				return pActiveSegInfo->tracks->iCountByType[iType];
@@ -1313,6 +1780,14 @@ int MATROSKA::GetTrackCount(int iType)
 	if (info->mode == MMODE_WRITE) return iTrackCount;
 	return 0;
 }
+
+TAG_INDEX_LIST& MATROSKA::GetTrackTags(int iTrack)
+{
+	iTrack = MapT(iTrack);
+
+	return pActiveSegInfo->tracks->track_info[iTrack]->pTags;
+}
+
 
 char* MATROSKA::GetSegmentMuxingApp(int iSegment)
 {
@@ -1342,14 +1817,23 @@ int MATROSKA::GetResolution(int *iPX, int* iPY, int* iDX, int* iDY, int* iDU)
 	return 0;
 }
 
+int MATROSKA::GetCropping(RECT* cropping)
+{
+	TRACK_INFO*	t = pActiveTrackInfo;
+
+	if (cropping) memcpy(cropping, &t->video.rPixelCrop, sizeof(RECT));
+	
+	return 0;
+}
+
 float MATROSKA::GetSamplingFrequency(int iTrack)
 {
-	return  pActiveSegInfo->tracks->track_info[MapT(iTrack)]->audio.fSamplingFrequency;
+	return  (float)pActiveSegInfo->tracks->track_info[MapT(iTrack)]->audio.fSamplingFrequency;
 }
 
 float MATROSKA::GetOutputSamplingFrequency(int iTrack)
 {
-	return  pActiveSegInfo->tracks->track_info[MapT(iTrack)]->audio.fOutputSamplingFrequency;
+	return  (float)pActiveSegInfo->tracks->track_info[MapT(iTrack)]->audio.fOutputSamplingFrequency;
 }
 
 int MATROSKA::GetChannelCount(int iTrack)
@@ -1427,7 +1911,7 @@ int MATROSKA::GetAspectRatioType(int iTrack)
 
 float MATROSKA::GetGamma(int iTrack)
 {
-	return pActiveSegInfo->tracks->track_info[MapT(iTrack)]->video.fGamma;
+	return (float)pActiveSegInfo->tracks->track_info[MapT(iTrack)]->video.fGamma;
 }
 
 __int64 MATROSKA::GetMinTimecode()
@@ -1447,14 +1931,31 @@ __int64 MATROSKA::GetMasterTrackDuration()
 	return seg->GetMasterTrackDuration();
 }
 
-int MATROSKA::GetTrackCompression(int iTrack)
-{
-	return pActiveSegInfo->tracks->track_info[MapT(iTrack)]->iCompression;
-}
 
 			//////////////////////
 			// Matroska Writing //
 			//////////////////////
+
+void MATROSKA::SetMinimumCueInterval(__int64 interval_ns)
+{
+	ws.min_cue_point_interval = interval_ns;
+}
+
+void MATROSKA::SetCueTargetSizeRatio(double ratio)
+{
+	if (ratio > 0.999)
+		ratio = 0.999;
+
+	if (ratio < 0.7)
+		ratio = 0.7;
+
+	ws.iCueTargetSizeRatio = ratio;
+}
+
+double MATROSKA::GetCueTargetSizeRatio(void)
+{
+	return ws.iCueTargetSizeRatio;
+}
 
 void MATROSKA::SetTrackCount(int iCount)
 {
@@ -1465,12 +1966,11 @@ void MATROSKA::SetTrackCount(int iCount)
 			tracks[i]->fTrackTimecodeScale = 1.0;
 			tracks[i]->iMinCache = 1;
 			tracks[i]->iMaxCache = 1;
-
 		}
 	}
 	e_Tracks->SetTrackCount(iTrackCount = iCount);
 	ws.iLastCuePointTimecode = new __int64[iCount+1];
-	for (int j=0;j<=iCount;ws.iLastCuePointTimecode[j++]=-ws.iMinimumCuePointInterval-1);
+	for (int j=0;j<=iCount;ws.iLastCuePointTimecode[j++]=-ws.min_cue_point_interval-1);
 	
 	j = write_buffer.iCount = iBufsPerStream * iCount;
 	write_buffer.block = new ADDBLOCK[j];
@@ -1482,6 +1982,17 @@ void MATROSKA::SetTrackCount(int iCount)
 	write_buffer.block_of_stream = new int[iCount];
 	ZeroMemory(write_buffer.block_of_stream, sizeof(int)*iCount);
 }
+
+void MATROSKA::EnableCueAutosize(int enabled)
+{
+	ws.iCueAutosize = enabled;
+}
+
+bool MATROSKA::IsCueAutoSizeEnabled(void)
+{
+	return !!ws.iCueAutosize;
+}
+
 
 void MATROSKA::SetCodecID(int iTrack, char* cID)
 {
@@ -1532,6 +2043,14 @@ void MATROSKA::SetTrackLanguageCode(int iTrack,char* cLngCode)
 		t->cLngCode = new CStringBuffer (cLngCode);
 	}
 }
+
+void MATROSKA::SetCropping(int iTrack, RECT* r)
+{
+	TRACK_DESCRIPTOR* t = tracks[iTrack];
+
+	if (r) memcpy(&t->video.rCrop, r, sizeof(RECT));
+}
+
 
 void MATROSKA::SetLaceStyle(int iStyle)
 {
@@ -1601,7 +2120,7 @@ void MATROSKA::SetTrackNumber(int iTrack, int iNbr)
 	tracks[iTrack]->iTrackNbr = iNbr;
 }
 
-void MATROSKA::SetTrackInfo(int iTrack,MATROSKA *m,int iSourceTrack)
+void MATROSKA::SetTrackInfo(int iTrack, MATROSKA *m, int iSourceTrack)
 {
 	TRACK_DESCRIPTOR* t = tracks[iTrack];
 
@@ -1627,7 +2146,12 @@ void MATROSKA::SetTrackInfo(int iTrack,MATROSKA *m,int iSourceTrack)
 		t->video.iColorSpace = m->GetColorSpace();
 		t->video.iAspectRatioType = m->GetAspectRatioType();
 		t->video.fGamma = m->GetGamma();
-		t->iCompression = m->GetTrackCompression(iSourceTrack);
+
+
+//		t->compression = m->GetTrackCompression(iSourceTrack);
+//		t->compression_private_size = m->GetTrackCompressionPrivate(iSourceTrack, &t->compression_private);
+		m->GetTrackCompression(iSourceTrack, t->track_compression);
+
 		SetCodecID(iTrack,m->GetCodecID());
 		SetCodecPrivate(iTrack,m->GetCodecPrivate(),m->GetCodecPrivateSize());
 		SetTrackName(iTrack,m->GetTrackName());
@@ -1635,11 +2159,94 @@ void MATROSKA::SetTrackInfo(int iTrack,MATROSKA *m,int iSourceTrack)
 	}
 }
 
-void MATROSKA::SetTrackCompression(int iTrack, int iCompression)
+int MATROSKA::GetTrackCompressionOrder(int iTrack, std::vector<int>& order)
 {
-	tracks[iTrack]->iCompression = iCompression;
+	order.clear();
+	iTrack = MapT(iTrack);
+	if (iTrack >= GetTrackCount())
+		return 0;
+
+	int last = GetTrackCompressionDescriptorCount(iTrack) - 1;
+
+	if (CanRead())
+		for (int i=0; i<last; i++)
+			order.push_back(pActiveSegInfo->tracks->track_info[iTrack]->track_compression[i].order);
+
+	if (CanWrite())
+		for (int i=0; i<last; i++)
+			order.push_back(tracks[iTrack]->track_compression[i].order);
+	
+	return 1;
 }
 
+void MATROSKA::AddTrackCompression(int iTrack, int compression, 
+								   void* compression_private,
+								   size_t compression_private_size)
+{
+	if (iTrack < 0 || iTrack >= GetTrackCount())
+		return;
+
+	if (compression_private_size && !compression_private)
+		return;
+		
+	TRACK_COMPRESSION_DESCRIPTOR tcd;
+	tcd.compression_private_size = compression_private_size;
+	tcd.compressed_elements = TRACKCOMPRESSION_BLOCKS;
+	if (compression_private_size) {
+		tcd.compression_private = malloc(tcd.compression_private_size);
+		memcpy(tcd.compression_private, compression_private, tcd.compression_private_size);
+	}
+	tcd.compression = compression;
+	tcd.is_decompressed = false;
+
+	if (!GetTrackCompressionDescriptorCount(iTrack))
+		tcd.order = 0;
+	else {
+		std::vector<int> order;
+		GetTrackCompressionOrder(iTrack, order);
+		int m = -1;
+		std::vector<int>::iterator iter = order.begin();
+		for (; iter != order.end(); iter++)
+			m = max(m, *iter);
+
+		tcd.order = 1 + m;
+	}
+		
+	tracks[iTrack]->track_compression.push_back(tcd);
+}
+/*
+void MATROSKA::SetTrackCompression(int iTrack, int iCompression, void* compression_private, int compression_private_size)
+{
+	tracks[iTrack]->compression = iCompression;
+	if (!compression_private_size) {_
+		if (tracks[iTrack]->compression_private)
+			free (tracks[iTrack]->compression_private);
+		tracks[iTrack]->compression_private_size = 0;
+		return;
+	}
+
+	tracks[iTrack]->compression_private = malloc(compression_private_size);
+	tracks[iTrack]->compression_private_size = compression_private_size;
+	memcpy(tracks[iTrack]->compression_private, compression_private, compression_private_size);
+
+}
+*/
+void MATROSKA::SetMatroskaVersion(int version)
+{
+	if (version > 0 && version < 3)
+		ws.matroska_version = version;
+}
+
+int MATROSKA::GetMatroskaVersion()
+{
+	if (CanWrite() && !CanRead())
+		return (int)ws.matroska_version;
+
+	if (CanRead() && !CanWrite())
+		return pActiveSegInfo->ebml_info.DocTypeVersion;
+
+	return 0;
+}
 
 int MATROSKA::StoreBlock(ADDBLOCK *a)
 {
@@ -1690,9 +2297,13 @@ int MATROSKA::StoreBlock(ADDBLOCK *a)
 		a->iDuration = 0;
 	}
 
-	if (a->iTimecode + a->iDuration > ws.iLatestTimecode) {
+	if (a->iTimecode + a->iDuration > ws.iLatestTimecode) 
 		ws.iLatestTimecode = a->iTimecode + a->iDuration;
-	}
+	
+	if (a->iTimecode < ws.iEarliestTimecode)
+		ws.iEarliestTimecode = a->iTimecode;
+
+//	ASSERT(iTimecode != 7808);
 
 	if (e_Cluster->AddBlock(a, &block_info)==ABR_CLUSTERFULL) {
 		int iSize = (int)e_Cluster->Write();
@@ -1714,21 +2325,24 @@ int MATROSKA::StoreBlock(ADDBLOCK *a)
 		return StoreBlock(a);
 	}
 
+	/* if frame is keyframe, add a CuePoint if Cues are enabled for that stream type */
 	if (!a->iRefCount) {
 		if (tracks[iTrackIndex]->iTrackType == MSTRT_VIDEO && IsCuesEnabled(CUE_VIDEO) ||
-			tracks[iTrackIndex]->iTrackType == MSTRT_AUDIO && IsCuesEnabled(CUE_AUDIO)) {
-			ws.iCuePoints += AddCuepoint(a->iStream, ws.iPosInSegment,iTimecode, 
+			tracks[iTrackIndex]->iTrackType == MSTRT_AUDIO && IsCuesEnabled(CUE_AUDIO) ||
+			tracks[iTrackIndex]->iTrackType == MSTRT_SUBT && IsCuesEnabled(CUE_SUBS)) {
+			AddCuepoint(a->iStream, ws.iPosInSegment,iTimecode, 
 				(IsCueBlockNumberEnabled()?ws.iBlocksInCluster:0));
 		}
 	}
-
 
 	tracks[iTrackIndex]->iLaceSchemes[block_info.iLaceStyle]++;
 	tracks[iTrackIndex]->iBlocksWritten++;
 	tracks[iTrackIndex]->iFramesWritten[block_info.iLaceStyle]+=a->iFrameCountInLace;
 	tracks[iTrackIndex]->iLaceOverhead[block_info.iLaceStyle]+=block_info.iLaceOverhead;
-
 	tracks[iTrackIndex]->iTotalSize += a->cData->GetSize();
+	if (GetTrackCompression(iTrackIndex, 0) == COMPRESSION_HDRSTRIPING)
+		tracks[iTrackIndex]->iTotalSize += GetTrackCompressionPrivateSize(iTrackIndex, 0);
+
 	tracks[iTrackIndex]->iTotalFrameCount += (a->iFrameCountInLace)?a->iFrameCountInLace:1;
 
 	ws.iBlocksInCluster++;
@@ -1760,7 +2374,7 @@ int MATROSKA::FindEarliestBlockIndexOfStream(int s)
 		iBegin++;
 	}
 
-	return ((iMinIndex>(s+1)*iBufsPerStream)?(s*iBufsPerStream):iMinIndex);
+	return ((iMinIndex>(s+1)*iBufsPerStream)?(-1):iMinIndex);
 }
 
 int MATROSKA::FindEarliestBlockIndex()
@@ -1771,7 +2385,8 @@ int MATROSKA::FindEarliestBlockIndex()
 	int i;
 
 	for (int j=0;j<GetTrackCount();j++) {
-		if (write_buffer.used[i=FindEarliestBlockIndexOfStream(j)]) {
+		i = FindEarliestBlockIndexOfStream(j);
+		if (i >= 0 && write_buffer.used[i]) {
 			bUsed = 1;
 			if (iMinTC > write_buffer.block[i].iTimecode) {
 				iMinTC = write_buffer.block[i].iTimecode;
@@ -1779,21 +2394,27 @@ int MATROSKA::FindEarliestBlockIndex()
 			}
 		}
 	}
-	if (!bUsed) return -1;
+	
+	if (!bUsed)
+		return -1;
+	
 	return iMinIndex;
 }
 
 int MATROSKA::StoreEarliestBlock()
 {
 	int iMinIndex = FindEarliestBlockIndex();
+
 	if (iMinIndex < write_buffer.iCount && iMinIndex >= 0) {
 		write_buffer.used[iMinIndex] = 0;
+		
 		int i = write_buffer.block[iMinIndex].iStream; 
+		
 		StoreBlock(&write_buffer.block[iMinIndex]);
 		tracks[i]->iBufferedBlocks--;
 		DecBufferRefCount(&write_buffer.block[iMinIndex].cData);
 		if (write_buffer.block[iMinIndex].iFrameCountInLace) {
-			delete write_buffer.block[iMinIndex].iFrameSizes;
+			delete[] write_buffer.block[iMinIndex].iFrameSizes;
 		}
 		return iMinIndex;
 	}
@@ -1860,12 +2481,39 @@ __int64 MATROSKA::GetOverhead()
 
 int MATROSKA::AddCuepoint(int iTrack, __int64 iClusterPosition, __int64 iTimecode, __int64 iBlock)
 {
-	iTimecode *= GetTimecodeScale();
-	if (iTimecode - ws.iLastCuePointTimecode[iTrack] > ws.iMinimumCuePointInterval) {
-		e_Cues->AddCuePoint(iTrack, iTimecode/GetTimecodeScale(), iClusterPosition, iBlock);
-		ws.iLastCuePointTimecode[iTrack] = iTimecode;
+	__int64 iTimecode_unscaled = iTimecode * GetTimecodeScale();
+
+	if (iTimecode_unscaled - ws.iLastCuePointTimecode[iTrack] > ws.min_cue_point_interval) {
+
+		if (ws.cues.size() && ws.cues[ws.cues.size()-1].qwTimecode == iTimecode) {
+		}
+		else {
+			
+			int s = ws.cues.size()?ws.cues[ws.cues.size()-1].GetSize():0;
+			CUE_POINT p;
+			ws.cues.push_back(p);
+			ws.iCuePointsCreated++;
+		}
+		
+				
+		CUE_POINT&e = ws.cues[ws.cues.size()-1];
+		e.qwTimecode = iTimecode;
+		
+		CUE_TRACKINFO ct;
+		ct.iBlockNbr = (int)iBlock;
+		ct.iRefCount = 0;
+		ct.iTrack    = iTrack;
+		ct.pReferences = NULL;
+		ct.qwClusterPos = iClusterPosition;
+		ct.qwCodecStatePos = 0;
+
+		e.tracks.push_back(ct);
+		ws.iLastCuePointTimecode[iTrack] = iTimecode_unscaled;
+
+/*		e_Cues->AddCuePoint(iTrack, iTimecode/GetTimecodeScale(), iClusterPosition, iBlock);
+		
 		return 1;
-	}
+*/	}
 
 	return 0;
 }
@@ -1979,7 +2627,7 @@ float MATROSKA::GetAvgFramesize(int iTrack)
 	do {
 		READBLOCK_INFO*	r = (READBLOCK_INFO*)q->buffer->GetData();
 		iSize += r->cData->GetSize();
-		iCount += max(1,r->iFrameCountInLace);
+		iCount += max(1,(int)r->frame_sizes.size());
 		q = q->pLast;
 	} while (q != q->pLast);
 
@@ -2058,9 +2706,13 @@ void MATROSKA::GetClusterStats(CLUSTER_STATS* lpInfo)
 	lpInfo->iOverhead = (int)ws.iClusterOverhead;
 }
 
-int MATROSKA::GetCueCount()
+int MATROSKA::GetCueCount(int flag)
 {
-	return (int)ws.iCuePoints;
+	if (flag == 1)
+		return (int)ws.iCuePointsCreated;
+	if (flag == 2)
+		return (int)ws.iCuePointsWritten;
+	return 0;
 }
 
 __int64 MATROSKA::GetSeekheadSize()
@@ -2093,4 +2745,150 @@ int MATROSKA::SetSparseFlag(int iTrack, int bFlag)
 
 	t->iSparse = !!bFlag;
 	return 0;	
+}
+
+void MATROSKA::SetNonclusterIndexMode(int mode)
+{
+	ws.iTargetSeekhead = mode;
+}
+
+/* attachment functions */
+int MATROSKA::GetAttachmentIndex(__int64 uid)
+{
+	for (int i=0;i<pActiveSegInfo->attachments.count;i++) {
+		ATTACHMENT& att = pActiveSegInfo->attachments.attachments[i];
+
+		if (att.file_uid == uid)
+			return i;
+	}
+
+	return ATTACHMENTINDEX_INVALID;
+}
+
+int save_copy(char* source, char* dest, int max_len)
+{
+	int source_len = (int)strlen(source);
+
+	int bytes_to_copy = min (max_len - 1, source_len + 1);
+
+	if (dest) 
+		strncpy(dest, source, bytes_to_copy);
+	else
+		return source_len + 1;
+
+	return bytes_to_copy;
+}
+
+int save_copy(CStringBuffer* source, char* dest, int max_len)
+{
+	if (source)
+		return save_copy(source->AsString(), dest, max_len);
+
+	if (dest) 
+		dest[0] = 0;
+	
+	return 1;
+}
+
+int MATROSKA::GetAttachmentMimeType(int index, char* pDest, int max_len)
+{
+	if (index < 0 || index > pActiveSegInfo->attachments.count)
+		return ATTACHMENTINDEX_INVALID;
+
+	ATTACHMENT& att = pActiveSegInfo->attachments.attachments[index];
+
+	return save_copy(att.file_mime_type, pDest, max_len);
+}
+
+int MATROSKA::GetAttachmentFilename(int index, char* pDest, int max_len)
+{
+	if (index < 0 || index > pActiveSegInfo->attachments.count)
+		return ATTACHMENTINDEX_INVALID;
+
+	ATTACHMENT& att = pActiveSegInfo->attachments.attachments[index];
+
+	return save_copy(att.file_name, pDest, max_len);
+}
+
+int MATROSKA::GetAttachmentFileDescription(int index, char* pDest, int max_len)
+{
+	if (index < 0 || index > pActiveSegInfo->attachments.count)
+		return ATTACHMENTINDEX_INVALID;
+
+	ATTACHMENT& att = pActiveSegInfo->attachments.attachments[index];
+
+	return save_copy(att.file_description, pDest, max_len);
+}
+
+__int64 MATROSKA::GetAttachmentUID(int index)
+{
+	if (index < 0 || index > pActiveSegInfo->attachments.count)
+		return ATTACHMENTINDEX_INVALID;
+
+	ATTACHMENT& att = pActiveSegInfo->attachments.attachments[index];
+
+	return att.file_uid;
+}
+
+__int64 MATROSKA::GetAttachmentFileSize(int index)
+{
+	if (index < 0 || index > pActiveSegInfo->attachments.count)
+		return ATTACHMENTINDEX_INVALID;
+
+	ATTACHMENT& att = pActiveSegInfo->attachments.attachments[index];
+
+	return att.file_size;
+}
+
+__int64 MATROSKA::GetAttachmentFilePosition(int index)
+{
+	if (index < 0 || index > pActiveSegInfo->attachments.count)
+		return ATTACHMENTINDEX_INVALID;
+
+	ATTACHMENT& att = pActiveSegInfo->attachments.attachments[index];
+
+	return att.file_pos;
+}
+
+__int64 MATROSKA::GetAttachmentFlags(int index)
+{
+	if (index < 0 || index > pActiveSegInfo->attachments.count)
+		return ATTACHMENTINDEX_INVALID;
+
+	ATTACHMENT& att = pActiveSegInfo->attachments.attachments[index];
+
+	return att.flags;
+}
+
+
+int MATROSKA::GetAttachmentBinaryData(int index, char* pDest, int max_len)
+{
+	if (index < 0 || index > pActiveSegInfo->attachments.count)
+		return ATTACHMENTINDEX_INVALID;
+
+	ATTACHMENT& att = pActiveSegInfo->attachments.attachments[index];
+
+	__int64 bytes_to_read = 0;
+	bytes_to_read = min((_int64)max_len, GetAttachmentFileSize(index));
+
+	if (bytes_to_read > INT_MAX)
+		return 0;
+
+	__int64 old_pos = GetSource()->GetPos();
+	GetSource()->Seek(GetAttachmentFilePosition(index));
+	int r = GetSource()->Read(pDest, (int)bytes_to_read);
+	GetSource()->Seek(old_pos);
+
+	return r;
+}
+
+int MATROSKA::GetAttachmentCount()
+{
+	return pActiveSegInfo->attachments.count;
+}
+
+bool MATROSKA::VerifyCuePoint(int index) {
+	EBMLM_Segment*		seg = (EBMLM_Segment*)e_Segments->pElement[GetActiveSegment()];
+
+	return seg->VerifyCuePoint(index);
 }

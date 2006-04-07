@@ -3,17 +3,17 @@
 #include "configscripts.h"
 #include "IncResource.h"
 #include "languages.h"
-#include "memory.h"
-
 #include "stdlib.h"
 #include "stdio.h"
 #include "string.h"
 #include "windows.h"
-#include "strings.h"
-#include "..\basestreams.h"
+#include "../strings.h"
+#include "../basestreams.h"
 #include "textfiles.h"
 #include "AVIMux_GUI.h"
 #include "global.h"
+#include "../UnicodeCalls.h"
+#include "../Filenames.h"
 
  HANDLE hGlobalMuxingStartedSemaphore;
  HANDLE hGlobalMuxSemaphore;
@@ -65,13 +65,13 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 	int		withpos_ind = 0;
 	char*   extension, *name, *path;
 
-	path = (char*)calloc(1,2560);
+	path = (char*)calloc(1,25600);
 	splitpathname(lpcName,&name,&extension,&path);
 
-	buffer = (char*)calloc(1,2560);
-	entire_line = (char*)calloc(1,2560);
-	with = (char*)calloc(1,2560);
-	line = (char*)calloc(1,2560);
+	buffer = (char*)calloc(1,25600);
+	entire_line = (char*)calloc(1,25600);
+	with = (char*)calloc(1,25600);
+	line = (char*)calloc(1,25600);
 	line_old = line;
 	hGlobalMuxingStartedSemaphore = OpenSemaphore(SEMAPHORE_ALL_ACCESS, false, GlobalMuxingStartedSemaphoreName());
 	hGlobalMuxSemaphore = OpenSemaphore(SEMAPHORE_ALL_ACCESS, false, GlobalMuxSemaphoreName());
@@ -109,13 +109,17 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 		{	}
 		else
 		if (!strcmp(w,"LOAD"))	{
-			cText = (char*)calloc(1,2+strlen(l)+strlen(path));
-			if (l[1]!=':') {
-				strcat(cText,path);
-				strcat(cText,"\\");
-			}
+			cText = (char*)calloc(2, 32768);
+			char curr_dir[65536];
+			(*UGetCurrentDirectory())(32768, curr_dir);
+			char* upath = NULL;
+			fromUTF8(path, &upath);
+			(*USetCurrentDirectory())(upath);
+			free(upath);
 
-			strcat(cText,l);
+			Filename2LongFilename(l, cText, 32768);
+			(*USetCurrentDirectory())(curr_dir);		
+			ProcessMsgQueue(hwnd);
 			PostMessage(hwnd,message,IDM_DOADDFILE,(LPARAM)cText);
 		}
 		else
@@ -140,14 +144,15 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 			w = getword(&l);
 			if (!strcmp(w,"FILE")) { 
 				PostMessage(hwnd,message,IDM_SELFILE,atoi(l)-1);
-			}
-			else
+			} else
 			if (!strcmp(w,"AUDIO")) {
 				PostMessage(hwnd,message,IDM_SELAUDIO,atoi(l)-1);
-			}
-			else
+			} else
 			if (!strcmp(w,"SUBTITLE")) {
 				PostMessage(hwnd,message,IDM_SELSUB,atoi(l)-1);
+			} else
+			if (!strcmp(w,"VIDEO")) {
+				PostMessage(hwnd,message,IDM_SELVIDEO,atoi(l)-1);
 			}
 			else bError=true;
 		}
@@ -156,14 +161,15 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 			w = getword(&l);
 			if (!strcmp(w,"FILE")) {
 				PostMessage(hwnd,message,IDM_DESELFILE,atoi(l)-1);
-			}
-			else
+			} else
 			if (!strcmp(w,"SUBTITLE")) {
 				PostMessage(hwnd,message,IDM_DESELSUB,atoi(l)-1);
-			}
-			else
+			} else
 			if (!strcmp(w,"AUDIO")) {
 				PostMessage(hwnd,message,IDM_DESELAUDIO,atoi(l)-1);
+			} else
+			if (!strcmp(w, "VIDEO")) {
+				PostMessage(hwnd, message, IDM_DESELVIDEO, atoi(l)-1);
 			}
 			else
 			bError=true;

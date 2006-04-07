@@ -28,9 +28,11 @@ class VIDEOSOURCELIST: public VIDEOSOURCE
 		int			virtual GetNbrOfFrames(DWORD dwKind=FT_ALL);
 		void		virtual *GetFormat(void);
 		int			virtual GetResolution(int* lpdwWidth,int* lpdwHeight);
+/*		void		virtual GetOutputResolution(RESOLUTION* r);
+*/
 		AVIStreamHeader virtual *GetAVIStreamHeader(void);
 		__int64		virtual	GetNanoSecPerFrame(void);
-		char		virtual* GetIDString();
+		char		virtual* GetCodecID();
 		bool		virtual IsAVIOutputPossible();
 		void		virtual AllowAVIOutput(bool bAllow);
 		bool		virtual IsEndOfStream();
@@ -39,7 +41,9 @@ class VIDEOSOURCELIST: public VIDEOSOURCE
 		void		virtual ReInit();
 		int			virtual Seek(__int64 iTime);
 		int			virtual GetFormatSize(void);
-
+		DWORD		virtual GetFourCC(void);
+//		void		virtual GetCropping(RECT* r);
+		int			virtual GetStrippableHeaderBytes(void* pBuffer, int max);
 };
 
 #endif

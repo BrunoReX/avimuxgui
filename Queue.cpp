@@ -1,13 +1,22 @@
 #include "stdafx.h"
 #include "queue.h"
 
+#ifdef DEBUG_NEW
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+#endif
+
 void QUEUE_enter(QUEUE** q, CBuffer* pData)
 {
 	if (!*q) {
 		*q = new QUEUE; ZeroMemory(*q,sizeof(QUEUE));
 		(*q)->buffer = pData;
 		pData->IncRefCount();
-	} else QUEUE_enter(&(*q)->pLast->pNext, pData);
+	} else 
+		QUEUE_enter(&(*q)->pLast->pNext, pData);
 
 	if ((*q)->pLast) {
 		(*q)->pLast = (*q)->pLast->pNext;
@@ -56,7 +65,3 @@ bool QUEUE_empty(QUEUE* q)
 	return (!q);
 }
 
-/*int QUEUE_size(QUEUE* q)
-{
-	return (q)?q->iSize:0;
-}*/

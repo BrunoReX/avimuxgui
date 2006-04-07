@@ -1,4 +1,5 @@
-/* !!!  B0RKED  !!!
+/* ================
+   !!!  B0RKED  !!!
    ================
 
 Reading of Vorbis headers containing ordered codebooks
@@ -18,12 +19,14 @@ last codebook is ordered will not be read correctly!
 #include "audiosource_vorbis.h"
 #include "..\cache.h"
 #include "math.h"
-/*
-typedef struct
-{
+#include "avifile.h"
 
-} VORBIS_CODEBOOK;
-*/
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 const int VORBIS_PACKETTYPE_IDHEADER = 0x01;
 const int VORBIS_PACKETTYPE_COMMENT = 0x03;
 const int VORBIS_PACKETTYPE_SETUPHEADER = 0x05;
@@ -31,6 +34,8 @@ const int VORBIS_PACKETTYPE_SETUPHEADER = 0x05;
 const int VORBIS_SETUPHEADER_BROKEN = 0x01;
 const int VORBIS_AUDIOFRAME_ERROR   = -0x01;
 
+
+// initialize class and hope that no packet exceeds 256 kB
 VORBISFROMOGG::VORBISFROMOGG()
 {
 	ZeroMemory(&vsh,sizeof(vsh));
@@ -38,28 +43,13 @@ VORBISFROMOGG::VORBISFROMOGG()
 	packet_cache = new LINEARCACHE;
 	binary_packet = new BYTE[1<<18];
 	iCurrentPacket = 0;
-	for (int i=0;i<3;i++) {
+	for (int i=0;i<3;i++) 
 		pConfigFrames[i] = new CBuffer;
-	}
-	AllowAVIOutput(false); // Vorbis-in-AVI not yet possible!
-	SetTimecodeScale(1000);
+	
+	AllowAVIOutput(false);  // Vorbis-in-AVI not yet possible to write!
+	SetTimecodeScale(1000); // micro second accuracy
 }
 
-/*
-VORBISFROMOGG::VORBISFROMOGG(OGGFILE* _source)
-{
-	ZeroMemory(&vsh,sizeof(vsh));
-	packet  = new BITSTREAM();
-	source = _source;
-	binary_packet = new BYTE[1<<18];
-	packet_cache = new LINEARCACHE;
-	iCurrentPacket = 0;
-	
-	for (int i=0;i<3;i++) {
-		pConfigFrames[i] = new CBuffer;
-	}
-}
-*/
 
 PACKETIZER* VORBISFROMOGG::GetSource()
 {
@@ -91,8 +81,11 @@ int VORBISFROMOGG::Close()
 
 int VORBISFROMOGG::Open(PACKETIZER* lpSource)
 {
+	if (!lpSource || lpSource->GetSize() <= 0)
+		return VORBIS_OPEN_ERROR;
+
 	int j;
-	if (lpSource) source = lpSource;
+	source = lpSource;
 	iAudioData_begin = 0;
 	
 	do {
@@ -104,6 +97,11 @@ int VORBISFROMOGG::Open(PACKETIZER* lpSource)
 	iPrecedingBlockSize = 0;
 	iSourceTimecode = TIMECODE_UNKNOWN;
 	return VORBIS_OPEN_OK;
+}
+
+void VORBISFROMOGG::ReInit()
+{
+	GetSource()->ReInit();
 }
 
 static int ilog(unsigned int v){
@@ -122,7 +120,11 @@ int VORBISFROMOGG::ProcessPacket()
 		iPacketType = 2*packet->ReadBits(7,1) + iPacketType;
 		__int64 iVorbis = packet->ReadBits64(48, 1);
 		char* cVorbis = (char*)&iVorbis;
+		
+		if (strcmp(cVorbis, "vorbis")) {
+		}
 	}
+
 
 	switch (iPacketType) {
 		case VORBIS_PACKETTYPE_IDHEADER: 
@@ -136,7 +138,8 @@ int VORBISFROMOGG::ProcessPacket()
 			pConfigFrames[1]->SetSize((int)packet_cache->GetSize());
 			pConfigFrames[1]->SetData(packet_cache->GetData());
 			break;
-		case VORBIS_PACKETTYPE_SETUPHEADER: ReadSetupHeader(); 
+		case VORBIS_PACKETTYPE_SETUPHEADER: 
+			ReadSetupHeader(); 
 			packet_cache->Seek(0);
 			pConfigFrames[2]->SetSize((int)packet_cache->GetSize());
 			pConfigFrames[2]->SetData(packet_cache->GetData());
@@ -152,6 +155,7 @@ int VORBISFROMOGG::ProcessPacket()
 	return iPacketType;
 }
 
+// render vorbis headers to Matroska::CodecPrivate
 int VORBISFROMOGG::RenderSetupHeader(void* pDest)
 {
 	BYTE* b = (BYTE*)pDest;
@@ -249,9 +253,9 @@ int VORBISFROMOGG::ReadCodebooks()
 int lookup1_value(int entries, int dimension)
 {
 	if (dimension==1) return entries;
-	if (dimension==2) return int(sqrt(entries));
+	if (dimension==2) return int(sqrt((double)entries));
 
-	return (int)pow(entries,1./(float)dimension);
+	return (int)pow((double)entries,1./(float)dimension);
 }
 
 int VORBISFROMOGG::ReadCodebook()
@@ -296,31 +300,30 @@ int VORBISFROMOGG::ReadCodebook()
 //		}*/
 	}
 
-	if (!ordered) 
-	{
-	int codebook_lookup_type = packet->ReadBits(4,1);
-	int codebook_lookup_values;
+	if (!ordered) {
+		int codebook_lookup_type = packet->ReadBits(4,1);
+		int codebook_lookup_values;
 
-	if (codebook_lookup_type) {
-		int codebook_minimum_value = packet->ReadBits(32,1);
-		int codebook_delta_value = packet->ReadBits(32,1);
-		int codebook_value_bits = 1+packet->ReadBits(4,1);
-		int codebook_sequence_p = packet->ReadBits(1,1);
-		switch (codebook_lookup_type) {
-			case 1:
-				codebook_lookup_values = lookup1_value(codebook_entries, codebook_dim);
-				break;
-			case 2:
-				codebook_lookup_values = codebook_entries * codebook_dim;
-				break;
-			default: 
-				codebook_lookup_values = codebook_entries * codebook_dim;
-				break;
+		if (codebook_lookup_type) {
+			int codebook_minimum_value = packet->ReadBits(32,1);
+			int codebook_delta_value = packet->ReadBits(32,1);
+			int codebook_value_bits = 1+packet->ReadBits(4,1);
+			int codebook_sequence_p = packet->ReadBits(1,1);
+			switch (codebook_lookup_type) {
+				case 1:
+					codebook_lookup_values = lookup1_value(codebook_entries, codebook_dim);
+					break;
+				case 2:
+					codebook_lookup_values = codebook_entries * codebook_dim;
+					break;
+				default: 
+					codebook_lookup_values = codebook_entries * codebook_dim;
+					break;
+			}
+			packet->ReadBits(codebook_lookup_values * codebook_value_bits, 1);
 		}
-		packet->ReadBits(codebook_lookup_values * codebook_value_bits, 1);
 	}
-	}
-	delete lengths;
+	delete[] lengths;
 
 	return 0;
 }
@@ -358,11 +361,11 @@ int VORBISFROMOGG::ReadFloor()
 		int maximum_class = -1;
 		floor1_partition_class_list = new int[floor1_partitions];
 
-		// This does not work :o
-	/*	for (int j=0;j<floor1_partitions;j++) {
-			maximum_class = max(maximum_class, floor1_partition_class_list[j]=packet->ReadBits(4,1));
-		}
-		*/
+		// This does not work due to side effect of max. Beware the side effect  O_o
+			/*	for (int j=0;j<floor1_partitions;j++) {
+				maximum_class = max(maximum_class, floor1_partition_class_list[j]=packet->ReadBits(4,1));
+			}
+			*/
 		for (int j=0;j<floor1_partitions;j++) {
 			floor1_partition_class_list[j]=packet->ReadBits(4,1);
 			maximum_class = max(maximum_class, floor1_partition_class_list[j]);
@@ -487,7 +490,7 @@ int VORBISFROMOGG::GetFormatTag()
 	return 0;
 }
 
-char* VORBISFROMOGG::GetIDString()
+char* VORBISFROMOGG::GetCodecID()
 {
 	return "A_VORBIS";
 }
@@ -589,6 +592,8 @@ int VORBISFROMOGG::Read(void* lpDest,DWORD dwMicrosecDesired,DWORD* lpdwMicrosec
 						__int64* lpqwNanosecRead,__int64* lpiTimecode,
 						ADVANCEDREAD_INFO* lpAARI)
 {
+	iSourceTimecode = TIMECODE_UNKNOWN;
+
 	do {
 		GetNextPacket();
 	} while (ProcessPacket());
@@ -662,6 +667,24 @@ __int64 VORBISFROMOGG::GetExactSize()
 	return GetSource()->GetSize();
 }
 
+int VORBISFROMOGG::GetName(char* lpDest)
+{
+	return GetSource()->GetName(lpDest);
+}
+
+int VORBISFROMOGG::GetLanguageCode(char* lpDest)
+{
+	return GetSource()->GetLanguageCode(lpDest);
+}
+
+
+
+		/*****************************/
+		/* VORBISPACKETSFROMMATROSKA */
+		/*****************************/
+
+
+
 VORBISPACKETSFROMMATROSKA::VORBISPACKETSFROMMATROSKA()
 {
 	iFrameSizes=0;
@@ -672,6 +695,11 @@ VORBISPACKETSFROMMATROSKA::VORBISPACKETSFROMMATROSKA()
 __int64 VORBISPACKETSFROMMATROSKA::GetUnstretchedDuration(void)
 {
 	return duration;
+}
+
+void VORBISPACKETSFROMMATROSKA::ReInit()
+{
+	GetSource()->ReInit();
 }
 
 int VORBISPACKETSFROMMATROSKA::Open(AUDIOSOURCEFROMMATROSKA* lpSource)
@@ -721,14 +749,20 @@ int VORBISPACKETSFROMMATROSKA::ReadPacket(BYTE* bDest, __int64* iTimecode)
 		__int64 _iTimecode;
 		iLaceSize = GetSource()->Read(pData, 0, NULL, NULL, &_iTimecode, &aari);
 		iFramesInLace = aari.iFramecount;
-		if (!iFramesInLace) iFramesInLace = 1;
-		if (iTimecode) *iTimecode = _iTimecode * GetSource()->GetTimecodeScale();
+		if (!iFramesInLace) 
+			iFramesInLace = 1;
+		
+//		if (iTimecode) 
+//			*iTimecode = _iTimecode * GetSource()->GetTimecodeScale();
+		
 		if (aari.iFramesizes) {
 			memcpy(iFrameSizes, aari.iFramesizes, 4*aari.iFramecount);
 		} else {
 			iFrameSizes[0] = iLaceSize;
 		}
-		if (iTimecode) *iTimecode = _iTimecode * GetSource()->GetTimecodeScale();
+		
+		if (iTimecode) 
+			*iTimecode = _iTimecode * GetSource()->GetTimecodeScale();
 	}
 
 	memcpy(bDest, pData+iBytePosInLace, j=iFrameSizes[iPos]);
@@ -751,4 +785,158 @@ __int64 VORBISPACKETSFROMMATROSKA::GetSize()
 int  VORBISPACKETSFROMMATROSKA::GetAvgBytesPerSec()
 {
 	return GetSource()->GetAvgBytesPerSec();
+}
+
+int VORBISPACKETSFROMMATROSKA::GetName(char* lpDest)
+{
+	return GetSource()->GetName(lpDest);
+}
+
+int VORBISPACKETSFROMMATROSKA::GetLanguageCode(char* lpDest)
+{
+	return GetSource()->GetLanguageCode(lpDest);
+}
+
+
+		/************************/
+		/* VORBISPACKETSFROMAVI */
+		/************************/
+
+
+VORBISPACKETSFROMAVI::VORBISPACKETSFROMAVI()
+{
+	source = NULL;
+	stream = NULL;
+	iPacketCount = 0;
+}
+
+VORBISPACKETSFROMAVI::VORBISPACKETSFROMAVI(AVIFILEEX* avifile, int stream_nbr)
+{
+	source = NULL;
+	stream = NULL;
+	iPacketCount = 0;
+
+	Open(avifile, stream_nbr);
+}
+
+AVIFILEEX* VORBISPACKETSFROMAVI::GetSource()
+{
+	return source;
+}
+
+int VORBISPACKETSFROMAVI::Open(AVIFILEEX* lpSource, int stream_nbr)
+{
+	if (!lpSource) {
+		source = NULL;
+		stream_nbr = -1;
+		return ASOPEN_ERROR;
+	}
+
+	if (lpSource->GetFormatTag(stream_nbr) != 0x566F)
+		return ASOPEN_ERROR;
+
+	source     = lpSource;
+	stream     = stream_nbr;
+
+	WAVEFORMATEX*	pW = (WAVEFORMATEX*)GetSource()->GetStreamFormat(stream_nbr);
+
+	union {
+		unsigned char*		pBytes;
+		unsigned __int16*	pWords;
+	};
+
+	pBytes = ((unsigned char*)pW) + sizeof(WAVEFORMATEX);
+
+	for (int j=0;j<3;j++) {
+		int size1 = pBytes[1] + 256*pBytes[0];
+		pWords++;
+		pConfig[j].SetSize(size1);
+		pConfig[j].SetData(pBytes);
+		pBytes+=size1;
+	}
+
+	return ASOPEN_OK;
+}
+
+int VORBISPACKETSFROMAVI::Close(bool bCloseSource)
+{
+	for (int i=0;i<3;i++) {
+		pConfig[i].DecRefCount();
+	}
+
+	Open(NULL, 0);
+
+	return AS_OK;
+}
+
+int VORBISPACKETSFROMAVI::ReadPacket(BYTE* cDest, __int64 *iTimecode)
+{
+	int size = NULL;
+
+	if (!GetSource())
+		return AS_ERR;
+
+	if (iPacketCount < 3) {
+		memcpy(cDest, pConfig[iPacketCount].GetData(), size=pConfig[iPacketCount].GetSize());
+		iPacketCount++;
+	} else {
+		if (iPacketCount++ == 3 && iTimecode) 
+			*iTimecode = 0;
+
+		while (!IsEndOfStream() && !size)
+			size = GetSource()->GetAudioChunk(stream, CN_NEXT_CHUNK, cDest);
+	}
+
+	return size;		
+}
+
+void VORBISPACKETSFROMAVI::ReInit()
+{
+	if (!GetSource())
+		return;
+
+	iPacketCount = 3;
+	GetSource()->SeekByteStream(stream, 0);
+}
+
+__int64 VORBISPACKETSFROMAVI::GetUnstretchedDuration()
+{
+	return 0;
+}
+
+int VORBISPACKETSFROMAVI::GetAvgBytesPerSec()
+{
+	if (!GetSource())
+		return 0;
+
+	return GetSource()->GetAvgBytesPerSec(stream);
+}
+
+bool VORBISPACKETSFROMAVI::IsEndOfStream()
+{
+	if (!GetSource())
+		return true;
+
+	return GetSource()->IsEndOfStream(stream);
+}
+
+__int64 VORBISPACKETSFROMAVI::GetSize()
+{
+	if (!GetSource())
+		return 0;
+
+	return GetSource()->GetStreamSize(stream);
+}
+
+int VORBISPACKETSFROMAVI::GetName(char *lpDest)
+{
+ 	return GetSource()->GetStreamName(stream, lpDest);
+}
+
+int VORBISPACKETSFROMAVI::GetLanguageCode(char* lpDest)
+{
+	if (lpDest)
+		*lpDest = 0;
+
+	return 0;
 }

@@ -1,8 +1,21 @@
+/* Disclaimer:
+
+   Recently someone tried to understand the code in this file, and asked
+   me one question after another, why I did certain things the way I did
+   them. I came to the conclusion that this file sucks terribly and is NOT
+   suited to be used for "educational purpose", it rather demonstrates how
+   obscurely things can be done and what happens if you first code and then
+   think about what you should have done instead of what you have done.
+
+   If you try to understand this file, try it on your own risk.
+
+*/
+
 #include "stdafx.h"
-#include "AVIFile.h"
 #include "debug.h"
 #include "math.h"
 #include "..\utf-8.h"
+#include "AVIFile.h"
 
 				///////////////////////////
 				//  AVIFILEEX - Methoden //
@@ -33,9 +46,35 @@ AVIFILEEX::AVIFILEEX(void)
 	ZeroMemory(&vprp,sizeof(vprp));
 	bLowOverheadMode = false;
 	iStreamOfLastChunk = -2;
+	bMoveHDRLAround = false;
+	dwAccess = -1;
+	video_stream_index = -1;
+	siStreams = 0;
 }
 
 AVIFILEEX::~AVIFILEEX(void)
+{
+}
+
+STREAMINFO::STREAMINFO()
+{
+	lpHeader = NULL;
+	lpFormat = NULL;
+	lpOutputFormat = NULL;
+	lpIndx = NULL;
+	dwChunkCount = NULL;
+	qwStreamLength = NULL;
+	dwProcessMode = NULL;
+	dwPos = NULL;		
+	bCompressed = NULL;	
+	bDefault = NULL;
+	lpBufIn = NULL;
+	lpBufOut = NULL;
+	dwOffset = NULL;
+	lpcName = NULL;
+}
+
+STREAMINFO::~STREAMINFO()
 {
 }
 
@@ -64,7 +103,7 @@ DWORD AVIFILEEX::Open(STREAM* lpStream, DWORD Access, DWORD dwAVIType)
 
 	ZeroMemory(&cbfs,sizeof(cbfs));
 
-	siStreams = NULL;
+//	siStreams = NULL;
 
 	lpExtAVIHeader = NULL;
 	lpMainAVIHeader = NULL;
@@ -79,7 +118,7 @@ DWORD AVIFILEEX::Open(STREAM* lpStream, DWORD Access, DWORD dwAVIType)
 	if (cFileTitle) delete cFileTitle;
 	cFileTitle = NULL;
 
-	if (Access&FA_READ)
+	if (Access & FA_READ)
 	{	
 		bDummyMode = !!(Access & FA_DUMMY);
 		ZeroMemory(&abs_pos,sizeof(abs_pos));
@@ -124,14 +163,13 @@ DWORD AVIFILEEX::Open(STREAM* lpStream, DWORD Access, DWORD dwAVIType)
 		}
 
 		if (!CheckIndxCount())
-		{
-			DebugMsg ("Anzahl an indx-Chunks ist ungültig! Datei wird als Standard-AVI behandelt");
+	//		DebugMsg ("Anzahl an indx-Chunks ist ungültig! Datei wird als Standard-AVI behandelt");
 			atType=AT_STANDARD;
-		}
-		else
+		
+		/*else
 		{
 			DebugMsg("Anzahl an indx-Chunks ist gültig");
-		}
+		}*/
 	
 		if (!LocateData(MakeFourCC("movi"),NULL,NULL,&lhListHdr,1000000,DT_LIST))
 		{
@@ -241,7 +279,7 @@ DWORD AVIFILEEX::Open(STREAM* lpStream, DWORD Access, DWORD dwAVIType)
 			ZeroMemory(Buffer,sizeof(Buffer));
 			wsprintf(Buffer,"  Stream %d: %7.0d Chunks, %10.0d kBytes",i,siStreams[i].dwChunkCount,(DWORD)(siStreams[i].qwStreamLength/1024));
 			DebugMsg(Buffer);
-			if (IsVideoStream(i)) dwVideoStreamNbr = i;
+			if (IsVideoStream(i)) video_stream_index = i;
 		}
 		for (i=1;i<lpMainAVIHeader->dwStreams;i++)
 		{
@@ -387,7 +425,7 @@ void AVIFILEEX::SetTitle(char* cTitle)
 
 int AVIFILEEX::GetVideoStreamNumber()
 {
-	return dwVideoStreamNbr;
+	return video_stream_index;
 }
 
 void AVIFILEEX::SetWritingAppName(char* cName)
@@ -407,17 +445,18 @@ char* AVIFILEEX::GetWritingAppName()
 
 void AVIFILEEX::FillMP3VBR(AVIStreamHeader* lphdr,MPEGLAYER3WAVEFORMAT* lpmp3,STREAMINFO* siStr)
 {
-	lpmp3->wfx.cbSize=12;
-	
-	lpmp3->fdwFlags=2;
-	lpmp3->nFramesPerBlock=1;
-	lpmp3->nCodecDelay=0;
-	lpmp3->nBlockSize=(WORD)QW_div(siStr->qwStreamLength,siStr->dwChunkCount,
-		"AVIFILEEX::FillMP3VBR::siStr-dwChunkCount");//(WORD)(siStr->qwStreamLength/siStr->dwChunkCount);
+	if (lpmp3->wfx.wFormatTag == 0x55) {
+		lpmp3->wfx.cbSize=12;
+		lpmp3->fdwFlags=2;
+		lpmp3->nFramesPerBlock=1;
+		lpmp3->nCodecDelay=0;
+		lpmp3->nBlockSize=(WORD)QW_div(siStr->qwStreamLength,siStr->dwChunkCount,
+			"AVIFILEEX::FillMP3VBR::siStr-dwChunkCount");//(WORD)(siStr->qwStreamLength/siStr->dwChunkCount);
+	} else {
+	}
 	
 	lphdr->dwLength=siStr->dwChunkCount;
-//	lphdr->dwScale=lpmp3->wfx.nBlockAlign;
-//	lpmp3->wfx.nBlockAlign = 1152;
+
 	lphdr->fccHandler=0;
 	lphdr->dwFlags=0;
 	lphdr->wPriority=0;
@@ -431,9 +470,11 @@ void AVIFILEEX::FillMP3VBR(AVIStreamHeader* lphdr,MPEGLAYER3WAVEFORMAT* lpmp3,ST
 
 void AVIFILEEX::FillMP3CBR(AVIStreamHeader* lphdr,MPEGLAYER3WAVEFORMAT* lpmp3,STREAMINFO* siStr)
 {
-	lpmp3->wfx.cbSize=12;
-	lpmp3->fdwFlags=2;
-	lpmp3->nFramesPerBlock=1;
+	if (lpmp3->wfx.wFormatTag == 0x0055) {
+		lpmp3->wfx.cbSize=12;
+		lpmp3->fdwFlags=2;
+		lpmp3->nFramesPerBlock=1;
+	}
 	
 	lphdr->dwLength=(DWORD)(siStr->qwStreamLength);
 	lphdr->dwRate=lpmp3->wfx.nAvgBytesPerSec;
@@ -504,12 +545,11 @@ bool AVIFILEEX::Close(bool bCloseSource)
 				if (siStreams[i].lpFormat) free (siStreams[i].lpFormat);
 				if (siStreams[i].lpHeader) free (siStreams[i].lpHeader);
 				if (siStreams[i].lpIndx) free (siStreams[i].lpIndx);
-				if (siStreams[i].ciChunks) free (siStreams[i].ciChunks);
 				if (siStreams[i].lpOutputFormat) free (siStreams[i].lpOutputFormat);
 				if (siStreams[i].lpcName) free (siStreams[i].lpcName);
 				if (lpRSIP) if (lpRSIP[i].rsipEntries) free (lpRSIP[i].rsipEntries);
 			}
-			free(siStreams);
+			delete[] siStreams;
 			siStreams=NULL;
 			if (lpRSIP)
 			{
@@ -520,7 +560,7 @@ bool AVIFILEEX::Close(bool bCloseSource)
 		if (lpMainAVIHeader) free(lpMainAVIHeader); lpMainAVIHeader=NULL;
 		if (lpExtAVIHeader) free (lpExtAVIHeader); lpExtAVIHeader=NULL;
 		if (lpIdx1) free(lpIdx1); lpIdx1=NULL;
-		DebugMsg("Datei geschlossen");
+	//	DebugMsg("Datei geschlossen");
 		SetSource(NULL);
 		if (hDebugFile)
 		{
@@ -542,6 +582,7 @@ bool AVIFILEEX::Close(bool bCloseSource)
 			Buffer=new char[dwIdx1Size];
 			Index->Store(Buffer);
 			dwMoviSize=(DWORD)(qwFilePos-dwMoviPos-8);
+
 			ch.dwFourCC=MakeFourCC("idx1");
 			ch.dwLength=dwIdx1Size;
 			dwWritten=dest->Write(&ch,sizeof(ch));
@@ -553,6 +594,13 @@ bool AVIFILEEX::Close(bool bCloseSource)
 			lh.dwLength=(DWORD)(qwFilePos+dwIdx1Size);
 			dest->Seek(0);
 			dwWritten=dest->Write(&lh,12);
+			
+			ch.dwFourCC = MakeFourCC("JUNK");
+			ch.dwLength = 0;
+			if (bMoveHDRLAround) {
+				dest->Write(&ch, 8);
+			//	dwMoviSize -= 8;
+			}
 
 			lpMainAVIHeader->dwFlags=AVIF_HASINDEX;
 
@@ -582,7 +630,7 @@ bool AVIFILEEX::Close(bool bCloseSource)
 						lpwfe->nAvgBytesPerSec=(DWORD)round(d_div((double)siStreams[i].qwStreamLength,
 							dPlaytime,"AVIFILEEX::Close()::dPlaytime"));
 					}
-					if (lpwfe->wFormatTag==0x55)
+					if (lpwfe->wFormatTag==0x55 || lpwfe->wFormatTag==0x50)
 					{
 						lpmp3=((MPEGLAYER3WAVEFORMAT*)siStreams[i].lpFormat);
 						if ((lpmp3->wID==1)&&(IsMP3SampleCount(lpmp3->wfx.nBlockAlign)))
@@ -705,7 +753,7 @@ bool AVIFILEEX::Close(bool bCloseSource)
 			LastChunk->SetFourCC(MakeFourCC("JUNK"));
 			LastChunk->SetSize(0);
 			i=FirstChunk->GetSize(LE_CHAIN);
-			LastChunk->SetSize(dwHeaderSpace-12-12-i);
+			LastChunk->SetSize(dwHeaderSpace-12-12-i-((bMoveHDRLAround)?8:0));
 			Buffer=new char[FirstList->GetSize(LE_CHAIN)];
 			FirstList->Store(Buffer,LE_CHAIN);
 			dwWritten=dest->Write(Buffer,FirstList->GetSize(LE_CHAIN));
@@ -745,6 +793,10 @@ bool AVIFILEEX::Close(bool bCloseSource)
 			lpMainAVIHeader->dwSuggestedBufferSize=0;//0x40000;
 			siStreams[0].lpHeader->dwLength=siStreams[0].dwChunkCount;
 			
+			ch.dwFourCC = MakeFourCC("JUNK");
+			ch.dwLength = 0;
+			if (bMoveHDRLAround)
+				dest->Write(&ch, 8);
 
 			FirstList->SetFourCC(MakeFourCC("hdrl"));
 			FirstList->SetData(FirstChunk);
@@ -765,7 +817,7 @@ bool AVIFILEEX::Close(bool bCloseSource)
 					if (!(lpwfe->nAvgBytesPerSec)) lpwfe->nAvgBytesPerSec=(DWORD)round(d_div((double)siStreams[i].qwStreamLength,dPlaytime,
 						"AVIFILEEX::Close()::dPlayTime"));
 
-					if (lpwfe->wFormatTag==0x55)
+					if (lpwfe->wFormatTag==0x55 || lpwfe->wFormatTag == 0x50)
 					{
 						lpmp3=((MPEGLAYER3WAVEFORMAT*)siStreams[i].lpFormat);
 						if ((lpmp3->wID==1)&&(IsMP3SampleCount(lpmp3->wfx.nBlockAlign)))
@@ -939,7 +991,7 @@ bool AVIFILEEX::Close(bool bCloseSource)
 			LastChunk->SetFourCC(MakeFourCC("JUNK"));
 			LastChunk->SetSize(0);
 			i=FirstChunk->GetSize(LE_CHAIN);
-			LastChunk->SetSize(dwHeaderSpace-12-12-i-j);
+			LastChunk->SetSize(dwHeaderSpace-12-12-i-j-((bMoveHDRLAround)?8:0));
 			
 			Buffer=new char[FirstList->GetSize(LE_CHAIN)];
 			FirstList->Store(Buffer,LE_CHAIN);
@@ -962,7 +1014,7 @@ bool AVIFILEEX::Close(bool bCloseSource)
 			free(siStreams[i].lpFormat);
 			if (siStreams[i].lpcName) free(siStreams[i].lpcName);
 		}
-		delete siStreams;
+		delete[] siStreams;
 		siStreams=NULL;
 		delete lpMainAVIHeader;
 		lpMainAVIHeader=NULL;
@@ -1038,7 +1090,6 @@ bool AVIFILEEX::ProcessHDRL(char* lpBuffer,DWORD dwLength)
 	DebugMsg(Buffer);
 
 	siStreams=new STREAMINFO[lpMainAVIHeader->dwStreams];
-	ZeroMemory(siStreams,lpMainAVIHeader->dwStreams*sizeof(STREAMINFO));
 	lpRSIP=(READSUPERINDEXPROTOCOL*)malloc(sizeof(READSUPERINDEXPROTOCOL)*(lpMainAVIHeader->dwStreams));
 	ZeroMemory(lpRSIP,sizeof(READSUPERINDEXPROTOCOL)*(lpMainAVIHeader->dwStreams));
 	for (DWORD i=0;i<lpMainAVIHeader->dwStreams;i++)
@@ -1140,7 +1191,7 @@ bool AVIFILEEX::ProcessSTRL(char* lpBuffer,DWORD dwLength,DWORD dwStreamNbr)
 	siStreams[dwStreamNbr].lpIndx=NULL;
 	siStreams[dwStreamNbr].lpHeader=NULL;
 	siStreams[dwStreamNbr].lpFormat=NULL;
-	siStreams[dwStreamNbr].ciChunks=NULL;
+//	siStreams[dwStreamNbr].ciChunks=NULL;
 
 	// Stream header	
 	
@@ -1243,7 +1294,9 @@ bool AVIFILEEX::ProcessHeader(void)
 	
 	if (!CheckRIFF_AVI()) return false;
 
-	dwRead=GetSource()->Read(&lhListHdr,12);
+	LocateData(MakeFourCC("hdrl"), NULL, NULL, &lhListHdr, 16384, DT_LIST);
+
+//	dwRead=GetSource()->Read(&lhListHdr,12);
 	dwTotalSize = lhListHdr.dwLength;
 	if ( !IsList(&lhListHdr,"hdrl"))
 	{
@@ -1254,7 +1307,7 @@ bool AVIFILEEX::ProcessHeader(void)
 
 	if (bDummyMode) return true;
 
-	abs_pos.dwHDRL=24;
+	abs_pos.dwHDRL=GetSource()->GetPos();//24;
 	lpBuffer=(char*)malloc(lhListHdr.dwLength);
 	dwHDRLBufferStart=(DWORD)lpBuffer;
 	dwRead=GetSource()->Read(lpBuffer,lhListHdr.dwLength-4);
@@ -1267,7 +1320,7 @@ bool AVIFILEEX::ProcessHeader(void)
 	DebugMsg("hdrl-List i.O.");
 
 	int p = (int)GetSource()->GetPos();
-	if (LocateData(MakeFourCC("INFO"), NULL, NULL, &lhListHdr, 128, DT_LIST)) {
+	if (LocateData(MakeFourCC("INFO"), NULL, NULL, &lhListHdr, 16384, DT_LIST)) {
 		ProcessINFO(lhListHdr.dwLength);
 	}
 	GetSource()->Seek(p);
@@ -1336,7 +1389,7 @@ bool AVIFILEEX::ProcessIdx1(AVIINDEXENTRY* lpBuffer,DWORD dwCount)
 	DWORD		dwS=0;
 	DWORD		dwChunkID;
 	STREAMINFO* lpsiStr;
-	CHUNKINFO*  lpciCh;
+
 	DWORD		dwAddVal=0;
 	__int64	qwSourcePos=GetSource()->GetPos();
 
@@ -1347,25 +1400,24 @@ bool AVIFILEEX::ProcessIdx1(AVIINDEXENTRY* lpBuffer,DWORD dwCount)
 	}
 	ZeroMemory(Buffer,sizeof(Buffer));
 
-	for (i=0;i<lpMainAVIHeader->dwStreams;i++)
-	{
-		siStreams[i].ciChunks=(CHUNKINFO*)malloc(siStreams[i].dwChunkCount*sizeof(CHUNKINFO));
-	}
-
-	//dwAddVal=(DWORD)qwMoviPos-lpBuffer[0].dwChunkOffset;
 	if (lpBuffer[0].dwChunkOffset==4) {
 		dwAddVal=(DWORD)qwMoviPos-lpBuffer[0].dwChunkOffset;
 	} else {
 		dwAddVal=(DWORD)qwFirstDataChunkPos-lpBuffer[0].dwChunkOffset;
 	}
+
 	for (i=0;i<dwCount;i++)
 	{
 		dwS=GetStreamNbrFromFourCC(lpBuffer[i].ckid);
 		if (dwS!=0xffffffff)
 		{
+			CHUNKINFO	chunk;
+
 			lpsiStr=&(siStreams[dwS]);
-			lpciCh=&(lpsiStr->ciChunks[lpsiStr->dwPos++]);
-			lpciCh->dwLength=lpBuffer[i].dwChunkLength;
+			lpsiStr->dwPos++;
+
+			chunk.dwLength = lpBuffer[i].dwChunkLength;
+
 			if ((lpBuffer[i].dwChunkLength>=dwMaxAllowedChunkSize)&&(dwMaxAllowedChunkSize))
 			{
 				if (bTryToRepairLargeChunks)
@@ -1373,43 +1425,39 @@ bool AVIFILEEX::ProcessIdx1(AVIINDEXENTRY* lpBuffer,DWORD dwCount)
 					GetSource()->Seek(lpBuffer[i].dwChunkOffset+dwAddVal);
 					GetSource()->Read(&dwChunkID,4);
 					if (GetStreamNbrFromFourCC(dwChunkID)==(int)dwS)
-					{
-						GetSource()->Read(&(lpciCh->dwLength),4);
-					}
+						GetSource()->Read(&chunk.dwLength, 4);
+					
 				}
 				if ((lpBuffer[i].dwChunkLength>=dwMaxAllowedChunkSize)||(!dwMaxAllowedChunkSize))
-				{
-					lpciCh->dwLength=0;
-				}
+					chunk.dwLength = 0;
+				
 			}
-			lpciCh->qwPosition=lpBuffer[i].dwChunkOffset+dwAddVal;
-			lpciCh->dwOffsetFieldB=0;
-			if (!(lpciCh->dwLength))
-			{
-				lpciCh->ftFrameType=FT_DROPPEDFRAME;
-			}
-			else
-			{
+			chunk.qwPosition = lpBuffer[i].dwChunkOffset+dwAddVal;
+			chunk.dwOffsetFieldB = 0;
+
+			if (!chunk.dwLength) {
+				chunk.ftFrameType = FT_DROPPEDFRAME;
+			} else {
 				if (lpBuffer[i].dwFlags&AVIIF_KEYFRAME) 
 				{
-					lpciCh->ftFrameType=FT_KEYFRAME;
+					chunk.ftFrameType = FT_KEYFRAME;
 				}
 				else
-					lpciCh->ftFrameType=FT_DELTAFRAME;
+					chunk.ftFrameType = FT_DELTAFRAME;
 			}
 
-//			lpciCh->ftFrameType=(lpBuffer[i].dwFlags&AVIIF_KEYFRAME)?FT_KEYFRAME:(lpBuffer[i].dwChunkLength)?FT_DELTAFRAME:FT_DROPPEDFRAME;
-			lpciCh->qwStreamPos=lpsiStr->qwStreamLength;
-			lpsiStr->qwStreamLength+=lpciCh->dwLength;
+			chunk.qwStreamPos = lpsiStr->qwStreamLength;
+			lpsiStr->qwStreamLength += chunk.dwLength;
 			if (IsVideoStream(dwS))
 			{
-				switch (lpciCh->ftFrameType)
+				switch (chunk.ftFrameType)
 				{
 					case FT_KEYFRAME: frametypes.dwKey++; break;
 					case FT_DELTAFRAME: frametypes.dwDelta++; break;
 					case FT_DROPPEDFRAME: frametypes.dwDropped++; break;
 				}
 			}
+			lpsiStr->chunks.push_back(chunk);
 		}
 	}
 	GetSource()->Seek(qwSourcePos);
@@ -1526,13 +1574,14 @@ bool AVIFILEEX::ProcessBaseIndx(_aviindex_chunk* lpIndx, DWORD dwProcessMode,voi
 	DWORD			dwChunkID;
 	DWORD			dwS=0;
 	STREAMINFO*		lpsiStr;
-	CHUNKINFO*		lpciCh;
+
 	CHUNKHEADER		chChunkHdr;
 	lpRSIP=(READSUPERINDEXPROTOCOL*)lpData;
 	READSUPERINDEXPROTOCOL*	lpTemp;
 	DWORD*			lpdwEntries=(DWORD*)lpData;
 	WAVEFORMATEX*	lpwfe;
 	DWORD			dwBaseOffset=(DWORD)(lpIndx-dwHDRLBufferStart);
+	CHUNKINFO		chunk;
 
 	
 	qwFilePos=GetSource()->GetPos();
@@ -1555,9 +1604,11 @@ bool AVIFILEEX::ProcessBaseIndx(_aviindex_chunk* lpIndx, DWORD dwProcessMode,voi
 
 				GetSource()->Seek(lpSupIndx->aIndex[i].qwOffset);
 				dwRead=GetSource()->Read(&chChunkHdr,8);
+				ASSERT (dwRead == 8);
 				if (chChunkHdr.dwLength)
 				{
 					lpSubIndex=malloc(chChunkHdr.dwLength+8);
+					ASSERT(lpSubIndex);
 					GetSource()->Seek(lpSupIndx->aIndex[i].qwOffset);
 					dwRead=GetSource()->Read(lpSubIndex,chChunkHdr.dwLength+8);
 					if (lpRSIP)
@@ -1583,47 +1634,45 @@ bool AVIFILEEX::ProcessBaseIndx(_aviindex_chunk* lpIndx, DWORD dwProcessMode,voi
 					}
 					else
 					{
-						lpciCh=&(lpsiStr->ciChunks[lpsiStr->dwPos++]);
-					//	if (lpStdIndx->qwBaseOffset)
+						lpsiStr->dwPos++;
+						lpsiStr->dwChunkCount++;					
 						{
-							if (lpIndx->bIndexSubType!=AVI_INDEX_2FIELD)
-							{
-								lpciCh->dwLength=lpStdIndx->aIndex[i].dwSize;
-								lpciCh->dwOffsetFieldB=0;
-								lpciCh->qwPosition=lpStdIndx->qwBaseOffset+lpStdIndx->aIndex[i].dwOffset-8;
+							if (lpIndx->bIndexSubType!=AVI_INDEX_2FIELD) {
+								chunk.dwLength = lpStdIndx->aIndex[i].dwSize;
+								chunk.dwOffsetFieldB = 0;
+								chunk.qwPosition = lpStdIndx->qwBaseOffset+lpStdIndx->aIndex[i].dwOffset-8;
+							} else {
+								chunk.dwLength = lpFldIndx->aIndex[i].dwSize;
+								chunk.dwOffsetFieldB = lpFldIndx->aIndex[i].dwOffsetField2-lpFldIndx->aIndex[i].dwOffset;
+								chunk.qwPosition = lpFldIndx->aIndex[i].dwOffset+lpFldIndx->qwBaseOffset-8;
 							}
-							else
-							{
-								lpciCh->dwLength=lpFldIndx->aIndex[i].dwSize;
-								lpciCh->dwOffsetFieldB=lpFldIndx->aIndex[i].dwOffsetField2-lpFldIndx->aIndex[i].dwOffset;
-								lpciCh->qwPosition=lpFldIndx->aIndex[i].dwOffset+lpFldIndx->qwBaseOffset-8;
-							}
-							if ((lpciCh->qwPosition<(__int64)dwRIFFSize)&&(IsVideoStream(dwS))) dwRealFramesInRIFF++;
-							if (((lpciCh->dwLength&0x7FFFFFFF)>dwMaxAllowedChunkSize)&&(dwMaxAllowedChunkSize))
+							if ((chunk.qwPosition<(__int64)dwRIFFSize)&&(IsVideoStream(dwS))) dwRealFramesInRIFF++;
+							if (((chunk.dwLength & 0x7FFFFFFF)>dwMaxAllowedChunkSize)&&(dwMaxAllowedChunkSize))
 							{
 								if (bTryToRepairLargeChunks)
 								{
-									GetSource()->Seek(lpciCh->qwPosition);
+									GetSource()->Seek(chunk.qwPosition);
 									GetSource()->Read(&dwChunkID,4);
 									if (GetStreamNbrFromFourCC(dwChunkID)==(int)dwS)
 									{
-										GetSource()->Read(&(lpciCh->dwLength),4);
-										if (IsVideoStream(dwS)) lpciCh->dwLength|=(1<<31);
+										GetSource()->Read(&chunk.dwLength, 4);
+										if (IsVideoStream(dwS))
+											chunk.dwLength |= (1<<31);
 									}
 								}
-								if (((lpciCh->dwLength&0x7FFFFFFF)>dwMaxAllowedChunkSize)&&(dwMaxAllowedChunkSize))
-								{
-									lpciCh->dwLength=0;
-								}
+								if (((chunk.dwLength & 0x7FFFFFFF)>dwMaxAllowedChunkSize)&&(dwMaxAllowedChunkSize))
+									chunk.dwLength = 0;
+								
 							}
-							lpciCh->ftFrameType=(lpciCh->dwLength&(1<<31))?(((lpciCh->dwLength)&0x7FFFFFFF)?FT_DELTAFRAME:FT_DROPPEDFRAME):(lpciCh->dwLength)?FT_KEYFRAME:FT_DROPPEDFRAME;
-							lpciCh->dwLength&=0x7FFFFFFF;
-							lpciCh->qwStreamPos=lpsiStr->qwStreamLength;
-							lpsiStr->qwStreamLength+=lpciCh->dwLength;
+							chunk.ftFrameType = (chunk.dwLength&(1<<31))?(((chunk.dwLength)&0x7FFFFFFF)?FT_DELTAFRAME:FT_DROPPEDFRAME):(chunk.dwLength)?FT_KEYFRAME:FT_DROPPEDFRAME;
+							chunk.dwLength &= 0x7FFFFFFF;
+							chunk.qwStreamPos = lpsiStr->qwStreamLength;
+							lpsiStr->qwStreamLength += chunk.dwLength;
+
 							if (IsVideoStream(dwS))
 							{
 								if (lpdwEntries) *lpdwEntries=*lpdwEntries+1;
-								switch (lpciCh->ftFrameType)
+								switch (chunk.ftFrameType)
 								{
 									case FT_KEYFRAME: frametypes.dwKey++; break;
 									case FT_DELTAFRAME: frametypes.dwDelta++; break;
@@ -1640,7 +1689,7 @@ bool AVIFILEEX::ProcessBaseIndx(_aviindex_chunk* lpIndx, DWORD dwProcessMode,voi
 								}
 								else
 								{
-									if (lpdwEntries) *lpdwEntries=*lpdwEntries+(DWORD)QW_div((lpciCh->dwLength),siStreams[dwS].lpHeader->dwScale,
+									if (lpdwEntries) *lpdwEntries=*lpdwEntries+(DWORD)QW_div((chunk.dwLength),siStreams[dwS].lpHeader->dwScale,
 										"AVIFILEEX::ProcessBadeIndex::siStreams[dwS].lpHeader->dwScale");//(lpciCh->dwLength)/siStreams[dwS].lpHeader->dwScale;
 								}
 							}
@@ -1650,6 +1699,7 @@ bool AVIFILEEX::ProcessBaseIndx(_aviindex_chunk* lpIndx, DWORD dwProcessMode,voi
 								*lpdwEntries=1;
 							}
 						}
+						lpsiStr->chunks.push_back(chunk);
 					}
 				}
 				break;
@@ -1665,18 +1715,7 @@ bool AVIFILEEX::ProcessBaseIndx(_aviindex_chunk* lpIndx, DWORD dwProcessMode,voi
 
 bool AVIFILEEX::ProcessExtIndex(_aviindex_chunk* lpIndx,DWORD dwStreamNbr,READSUPERINDEXPROTOCOL* lpRSIP)
 {
-	if (ProcessBaseIndx(lpIndx,PI_COUNTCHUNKS))
-	{
-		DebugMsg("verarbeite OpenDML-Index...");
-
-		siStreams[dwStreamNbr].ciChunks=(CHUNKINFO*)malloc(siStreams[dwStreamNbr].dwChunkCount*sizeof(CHUNKINFO));
-		return ProcessBaseIndx(lpIndx,PI_PROCESSINDEX,lpRSIP);
-	}
-	else
-		return false;
-
-
-	return true;
+	return ProcessBaseIndx(lpIndx,PI_PROCESSINDEX,lpRSIP);
 }
 
 READSUPERINDEXPROTOCOL*	AVIFILEEX::GetLoadSuperIndexProtocol(void)
@@ -1701,8 +1740,7 @@ DWORD AVIFILEEX::GetFrameCount(void)
 {
 	DWORD dwNbr;
 
-//	dwNbr=((lpExtAVIHeader)?lpExtAVIHeader->dwTotalFrames:lpMainAVIHeader->dwTotalFrames);
-	dwNbr=siStreams[0].dwChunkCount;
+	dwNbr=siStreams[video_stream_index].dwChunkCount;
 
 	return ((fmFieldMode==FM_NONE)?dwNbr:(fmFieldMode&(FM_DISCARD_FIRST|FM_DISCARD_SECOND))?dwNbr:2*dwNbr);
 }
@@ -1813,7 +1851,7 @@ int AVIFILEEX::LoadVideoChunk(DWORD dwChunkNbr,DWORD* lpdwSize)
 //	FRAMEINFO*	fiFrame;
 	FRAME*		fDest;
 	bool		bResult;
-	char		Msg[1000];
+//	char		Msg[1000];
 
 	DebugMsg ("LoadVideoChunk: ");
 	if (dwAccess!=FA_READ) return AFE_INVALIDCALL;
@@ -1823,25 +1861,31 @@ int AVIFILEEX::LoadVideoChunk(DWORD dwChunkNbr,DWORD* lpdwSize)
 		return AFE_ENDOFSTREAM;
 	}
 
-	GetSource()->Seek(siStreams[0].ciChunks[dwChunkNbr].qwPosition+8);
+//	GetSource()->Seek(siStreams[0].ciChunks[dwChunkNbr].qwPosition+8);
+	STREAMINFO* str = &siStreams[video_stream_index];
+	CHUNKINFO chunk = str->chunks[dwChunkNbr];
+	//dwLength=siStreams[0].ciChunks[dwChunkNbr].dwLength;
+	GetSource()->Seek(chunk.qwPosition + 8);
+	dwLength = chunk.dwLength;
 
-	dwLength=siStreams[0].ciChunks[dwChunkNbr].dwLength;
-	if (lpdwSize) *lpdwSize=dwLength;
+	if (lpdwSize) 
+		*lpdwSize=dwLength;
+
 	lpBuffer=(dwLength)?malloc(dwLength*2):malloc(1024);
-	if (dwLength) 
-	{
+	if (dwLength) {
 		dwRead=GetSource()->Read(lpBuffer,dwLength);
 		if (!dwRead)
-		{
 			return AFE_CANTREADFROMSOURCE;
-		}
+		
 	}
-	ZeroMemory(&Msg,sizeof(Msg));
+
+	/*ZeroMemory(&Msg,sizeof(Msg));
 	wsprintf(Msg,"  Frame %d (%d Bytes) wurde gelesen @ %d kByte",dwChunkNbr,dwLength,
 		(DWORD)(siStreams[0].ciChunks[dwChunkNbr].qwPosition/1024));
-	DebugMsg(Msg);
-	switch (FrameType=siStreams[0].ciChunks[dwChunkNbr].ftFrameType)
-	{
+	DebugMsg(Msg); */
+
+	//switch (FrameType=siStreams[0].ciChunks[dwChunkNbr].ftFrameType)
+	switch (FrameType = chunk.ftFrameType) {
 		case FT_DROPPEDFRAME: 
 			DebugMsg ("  -> enthält keine Daten"); 
 			break;
@@ -1852,9 +1896,11 @@ int AVIFILEEX::LoadVideoChunk(DWORD dwChunkNbr,DWORD* lpdwSize)
 			DebugMsg ("  -> ist Keyframe");
 			break;
 	}
+
 	lpbiIn=(BITMAPINFOHEADER*)siStreams[0].lpFormat;
 	lpbiOut=(BITMAPINFOHEADER*)siStreams[0].lpOutputFormat;
-    if (siStreams[0].dwProcessMode==PM_PROCESS)
+    
+	if (siStreams[0].dwProcessMode==PM_PROCESS)
 	{
 /*		if ((FrameType)!=FT_DROPPEDFRAME)
 		{
@@ -1978,7 +2024,8 @@ int AVIFILEEX::GetAudioChunk(DWORD dwStreamNbr,DWORD dwChunkNbr,void* lpDest)
 	}
 	siStr->dwOffset=0;
  
-	return LoadAudioData(dwStreamNbr,siStr->ciChunks[dwChunkNbr].dwLength,lpDest); 
+//	return LoadAudioData(dwStreamNbr,siStr->ciChunks[dwChunkNbr].dwLength,lpDest); 
+	return LoadAudioData(dwStreamNbr,siStr->chunks[dwChunkNbr].dwLength,lpDest); 
 }
 
 DWORD AVIFILEEX::FindKeyFrame(DWORD dwFrameNbr)
@@ -2001,13 +2048,11 @@ bool AVIFILEEX::IsKeyFrame(DWORD dwChunkNbr)
 {
 	DWORD	dwFrame=TranslateChunkNumber(0,dwChunkNbr);
 
-	if (dwFrame>=siStreams[0].dwChunkCount)
-	{
+	if (dwFrame>=siStreams[0].dwChunkCount) {
 		return true;
-	}
-	else
-	{
-		return (siStreams[0].ciChunks[dwFrame].ftFrameType==FT_KEYFRAME)?true:false;
+	} else {
+//		return (siStreams[0].ciChunks[dwFrame].ftFrameType==FT_KEYFRAME)?true:false;
+		return (siStreams[0].chunks[dwFrame].ftFrameType==FT_KEYFRAME)?true:false;
 	}
 }
 
@@ -2139,7 +2184,8 @@ DWORD AVIFILEEX::DecompressEndAudio(DWORD dwStreamNbr)
 int AVIFILEEX::SeekByteStream(DWORD dwStreamNbr,_int64 qwPos)
 {
 	STREAMINFO* siStr;
-	CHUNKINFO*	ciCh;
+//	CHUNKINFO*	ciCh;
+	CHUNKINFO	chunk;
 	int			dwLo,dwHi,dwMiddle;
 	DWORD		dwChunkNbr=0;
 
@@ -2160,25 +2206,29 @@ int AVIFILEEX::SeekByteStream(DWORD dwStreamNbr,_int64 qwPos)
 	while (abs(dwHi-dwLo)>1)
 	{
 		dwMiddle=(dwLo+dwHi)/2;
-		if ((siStr->ciChunks[dwLo].qwStreamPos<=qwPos)&&(siStr->ciChunks[dwMiddle].qwStreamPos>qwPos))
-		{
+//		if ((siStr->ciChunks[dwLo].qwStreamPos<=qwPos)&&(siStr->ciChunks[dwMiddle].qwStreamPos>qwPos))
+		if ((siStr->chunks[dwLo].qwStreamPos<=qwPos)&&(siStr->chunks[dwMiddle].qwStreamPos>qwPos)) {
 			dwHi=dwMiddle;
-		}
-		else
-		{
+		} else {
 			dwLo=dwMiddle;
 		}
 	}
 	dwChunkNbr=dwLo;
-	ciCh=&(siStr->ciChunks[dwChunkNbr]);
-	siStr->dwPos=dwChunkNbr;
-	siStr->dwOffset=(DWORD)(qwPos-ciCh->qwStreamPos);
+	//ciCh=&(siStr->ciChunks[dwChunkNbr]);
+	chunk = siStr->chunks[dwChunkNbr];
 
-	while ((siStr->dwOffset>=ciCh->dwLength)&&(siStr->dwPos+1<siStr->dwChunkCount))
+	siStr->dwPos=dwChunkNbr;
+//	siStr->dwOffset=(DWORD)(qwPos-ciCh->qwStreamPos);
+	siStr->dwOffset=(DWORD)(qwPos-chunk.qwStreamPos);
+
+//	while ((siStr->dwOffset>=ciCh->dwLength)&&(siStr->dwPos+1<siStr->dwChunkCount))
+	while ((siStr->dwOffset>=chunk.dwLength)&&(siStr->dwPos+1<siStr->dwChunkCount))
 	{
-		siStr->dwOffset-=ciCh->dwLength;
+//		siStr->dwOffset-=ciCh->dwLength;
+		siStr->dwOffset -= chunk.dwLength;
 		siStr->dwPos++;
-		ciCh=&(siStr->ciChunks[siStr->dwPos]);
+//		ciCh=&(siStr->ciChunks[siStr->dwPos]);
+		chunk = siStr->chunks[siStr->dwPos]; 
 	}
 
 	return AFE_OK;
@@ -2241,7 +2291,8 @@ _int64 AVIFILEEX::GetByteStreamPos(DWORD dwStreamNbr)
 
 	STREAMINFO*		siStr=&(siStreams[dwStreamNbr]);
 
-	return (siStr->ciChunks[siStr->dwPos].qwStreamPos+siStr->dwOffset);
+//	return (siStr->ciChunks[siStr->dwPos].qwStreamPos+siStr->dwOffset);
+	return (siStr->chunks[siStr->dwPos].qwStreamPos + siStr->dwOffset);
 }
 
 int AVIFILEEX::LoadPartialChunk(DWORD dwStreamNbr,DWORD dwLength,void* lpDest)
@@ -2252,12 +2303,12 @@ int AVIFILEEX::LoadPartialChunk(DWORD dwStreamNbr,DWORD dwLength,void* lpDest)
 
 	STREAMINFO*	siStr=&(siStreams[dwStreamNbr]);;
 	if (siStr->dwPos>=siStr->dwChunkCount) return 0;
-	CHUNKINFO*	ciCh=&(siStr->ciChunks[siStr->dwPos]);
+	CHUNKINFO	chunk = siStr->chunks[siStr->dwPos];
 
-	DWORD		l1=ciCh->dwLength-siStr->dwOffset;
+	DWORD		l1=chunk.dwLength-siStr->dwOffset; 
 	DWORD		dwBytesToRead=(l1<dwLength)?l1:dwLength;
 
-	GetSource()->Seek(ciCh->qwPosition+8+siStr->dwOffset);
+	GetSource()->Seek(chunk.qwPosition+8+siStr->dwOffset);
 	dwRead=GetSource()->Read(lpDest,dwBytesToRead);
 
 	return dwRead;
@@ -2362,7 +2413,8 @@ _int64 AVIFILEEX::GetFilePosOfChunk(DWORD dwStreamNbr,DWORD dwChunkNbr)
 	if (dwStreamNbr>=lpMainAVIHeader->dwStreams) return AFE_INVALIDPARAM;
 	if (dwChunkNbr>=siStreams[dwStreamNbr].dwChunkCount) return AFE_INVALIDPARAM;
 
-	return (siStreams[dwStreamNbr].ciChunks[dwChunkNbr].qwPosition);
+//	return (siStreams[dwStreamNbr].ciChunks[dwChunkNbr].qwPosition);
+	return (siStreams[dwStreamNbr].chunks[dwChunkNbr].qwPosition);
 }
 
 _int64 AVIFILEEX::GetFileSize(void)
@@ -2384,7 +2436,8 @@ _int64 AVIFILEEX::GetFileSize(void)
 int AVIFILEEX::VBR_FrameCountInChunk(DWORD dwStream, DWORD dwChunk)
 {
 	int  nsize = VBR_MaxFrameSize(dwStream);
-	int  chsize = siStreams[dwStream].ciChunks[dwChunk].dwLength;
+//	int  chsize = siStreams[dwStream].ciChunks[dwChunk].dwLength;
+	int  chsize = siStreams[dwStream].chunks[dwChunk].dwLength;
 
 	return (chsize / nsize) + (!!(chsize%nsize));
 }
@@ -2409,7 +2462,8 @@ int AVIFILEEX::VBR_FrameCountTillPos(DWORD dwStream, __int64 iPos)
 
 	if (iPos > 0) do {
 		
-		int nsize = siStreams[dwStream].ciChunks[currchunk].dwLength;
+//		int nsize = siStreams[dwStream].ciChunks[currchunk].dwLength;
+		int nsize = siStreams[dwStream].chunks[currchunk].dwLength;
 		if (nsize<iPos) {
 			res+=VBR_FrameCountInChunk(dwStream, currchunk);
 		} else {
@@ -2447,7 +2501,8 @@ _int64 AVIFILEEX::GetStreamPosOfChunk(DWORD dwStreamNbr,DWORD dwChunkNbr)
 	if (dwAccess!=FA_READ) return AFE_INVALIDCALL;
 
 
-	return siStreams[dwStreamNbr].ciChunks[dwChunkNbr].qwStreamPos;
+//	return siStreams[dwStreamNbr].ciChunks[dwChunkNbr].qwStreamPos;
+	return siStreams[dwStreamNbr].chunks[dwChunkNbr].qwStreamPos;
 }
 
 DWORD AVIFILEEX::GetChunkSize(DWORD dwStreamNbr,DWORD dwChunkNbr)
@@ -2463,7 +2518,8 @@ DWORD AVIFILEEX::GetChunkSize(DWORD dwStreamNbr,DWORD dwChunkNbr)
 		return GetChunkSize(dwStreamNbr,siStreams[dwStreamNbr].dwPos-1);
 	}
 
-	return siStreams[dwStreamNbr].ciChunks[dwChunkNbr].dwLength;
+//	return siStreams[dwStreamNbr].ciChunks[dwChunkNbr].dwLength;
+	return siStreams[dwStreamNbr].chunks[dwChunkNbr].dwLength;
 }
 
 AVIStreamHeader* AVIFILEEX::GetStreamHeader(DWORD dwStreamNbr)
@@ -2614,8 +2670,8 @@ int AVIFILEEX::SetNumberOfStreams(DWORD dwNbr)
 
 	lpMainAVIHeader->dwStreams=dwNbr;
 
-	siStreams=(STREAMINFO*)malloc(dwNbr*sizeof(STREAMINFO));
-	ZeroMemory(siStreams,dwNbr*sizeof(STREAMINFO));
+	siStreams= new STREAMINFO[dwNbr];
+//	ZeroMemory(siStreams,dwNbr*sizeof(STREAMINFO));
 	dwLargestChunks=(DWORD*)malloc(4*dwNbr);
 	ZeroMemory(dwLargestChunks,4*dwNbr);
 	SetProcessMode(SPM_SETALL,PM_DIRECTSTREAMCOPY);
@@ -2714,13 +2770,19 @@ int AVIFILEEX::SetStreamFormat(DWORD dwStreamNbr,void* strf)
 	return AFE_OK;
 }
 
+void AVIFILEEX::MoveHDRL(bool bEnabled)
+{
+	bMoveHDRLAround = bEnabled;
+}
+
+
 int AVIFILEEX::AddChunk(DWORD dwStreamNbr,void* lpData,DWORD dwSize,DWORD dwFlags)
 {
 	CHUNK*	NextChunk;
 	INDEX*	NextIndex;
 	char	Buffer[200];
 	int		iSize;
-	DWORD	dwKind;
+	DWORD	dwKind = INDEXTYPE_UNCHANGED;
 	void**	lplpData = (void**)lpData;
 	bool	bContinueChunk = false;
 	DWORD	dwOffset = 0;
@@ -2738,7 +2800,7 @@ int AVIFILEEX::AddChunk(DWORD dwStreamNbr,void* lpData,DWORD dwSize,DWORD dwFlag
 		NextChunk=FirstChunk;
 	} else {
 		// continue chunk seqeuence
-		if (iStreamOfLastChunk == dwStreamNbr && IsLowOverheadMode()) {
+		if ((iStreamOfLastChunk == (int)dwStreamNbr) && IsLowOverheadMode()) {
 			LastChunk->IncreaseSizeBy(dwSize, &dwOffset);
 			dwOffset += (dwOffset % 2);
 			NextChunk = LastChunk;
@@ -2796,12 +2858,9 @@ int AVIFILEEX::AddChunk(DWORD dwStreamNbr,void* lpData,DWORD dwSize,DWORD dwFlag
 		}
 
 	
-		if (GetAVIType()==AT_STANDARD)
-		{
+		if (GetAVIType()==AT_STANDARD) {
 			NextIndex->SetData(dwStreamNbr,dwFlags,qwFilePos-dwMoviPos-8,dwSize,dwKind);
-		}
-		else
-		{
+		} else {
 			if (!bContinueChunk) {
 				NextIndex->SetData(dwStreamNbr,dwFlags,qwFilePos,dwSize,dwKind);
 			} else {
@@ -2823,8 +2882,7 @@ int AVIFILEEX::AddChunk(DWORD dwStreamNbr,void* lpData,DWORD dwSize,DWORD dwFlag
 	LastChunk=NextChunk;
 	dwChunkCount++;
 
-	if (GetPadding()>2)
-	{
+	if (GetPadding()>2) {
 		if (qwFilePos%GetPadding())
 		{
 			iSize=(int)(GetPadding()-(qwFilePos%GetPadding())-8);
@@ -2905,7 +2963,10 @@ int AVIFILEEX::BeginRECList(void)
 
 int AVIFILEEX::EndRECList(void)
 {
-	if (GetAVIType()==AT_STANDARD) RECIndex->SetData(0xffffffff,AVIIF_LIST,0,FirstList->GetSize(LE_CHAIN),0);
+	if (GetAVIType()==AT_STANDARD) {
+		//RECIndex->SetData(0xffffffff,AVIIF_LIST,0,FirstList->GetSize(LE_CHAIN),0);
+		RECIndex->SetData(0xffffffff,AVIIF_LIST,0,LastList->GetSize(LE_CHAIN)-8,0);
+	}
 	bRECListOpen=false;
 	dwRecCount++;
 
@@ -3032,6 +3093,9 @@ int AVIFILEEX::CreateLegacyIndexForODML(bool bLegacyIndex)
 	if (!IsWriteODML()) return AFE_INVALIDCALL;
 
 	bCreateLegacyIndexForODML=bLegacyIndex;
+	if (bLegacyIndex)
+		EnableLowOverheadMode(false);
+	
 	return AFE_OK;
 }
 

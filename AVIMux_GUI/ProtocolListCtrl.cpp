@@ -5,6 +5,7 @@
 #include "AVIMux_GUI.h"
 #include "ProtocolListCtrl.h"
 #include "Languages.h"
+#include ".\protocollistctrl.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -40,6 +41,7 @@ BEGIN_MESSAGE_MAP(CProtocolListCtrl, CUnicodeListCtrl)
 	ON_WM_RBUTTONUP()
 	ON_WM_CONTEXTMENU()
 	//}}AFX_MSG_MAP
+	ON_WM_SIZE()
 END_MESSAGE_MAP()
 
 BEGIN_DISPATCH_MAP(CProtocolListCtrl, CUnicodeListCtrl)
@@ -115,4 +117,11 @@ BOOL CProtocolListCtrl::OnCommand(WPARAM wParam, LPARAM lParam)
 	}
 				
 	return CUnicodeListCtrl::OnCommand(wParam, lParam);
+}
+
+void CProtocolListCtrl::OnSize(UINT nType, int cx, int cy)
+{
+	CUnicodeListCtrl::OnSize(nType, cx, cy);
+
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein.
 }

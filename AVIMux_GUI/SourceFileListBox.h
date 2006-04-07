@@ -20,7 +20,13 @@ public:
 	CSourceFileListBox();
 
 	FILE_INFO*	GetFileInfo(int i = -1);
+	int			FileID2Index(int id);
+	void		SortItems();
+	void		RedoNumbering();
+	void virtual ItemUp();
+	void virtual ItemDown();
 
+//	int			CompareItem(LPCOMPAREITEMSTRUCT lpCompareItemStruct);
 // Attribute
 public:
 
@@ -32,6 +38,7 @@ public:
 	//{{AFX_VIRTUAL(CSourceFileListBox)
 	public:
 	virtual void OnFinalRelease();
+	virtual void DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct);
 	protected:
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
 	//}}AFX_VIRTUAL
@@ -45,6 +52,7 @@ protected:
 	//{{AFX_MSG(CSourceFileListBox)
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnDropFiles(HDROP hDropInfo);
+	afx_msg void OnPaint();
 	//}}AFX_MSG
 
 	DECLARE_MESSAGE_MAP()

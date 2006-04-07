@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "RIFFFile.h"
 #include "WAVFile.h"
-//#include "mmreg.h"
 #include "math.h"
 
 WAVEFILE::WAVEFILE()
@@ -38,13 +37,9 @@ bool WAVEFILE::IsEndOfStream()
 int WAVEFILE::GetGranularity()
 {
 	if (lpwfe)
-	{
 		return lpwfe->nBlockAlign;
-	}
-	else
-	{
-		return 0;
-	}
+	
+	return 0;
 }
 
 WAVEFILE::~WAVEFILE()
@@ -62,13 +57,11 @@ int WAVEFILE::Open(STREAM* lpStream,DWORD _dwAccess)
 	{
 		if (!lpStream) return WAV_ERR;
 		SetSource(lpStream);
-		if (CheckRIFF_WAVE()!=WAV_OK) 
-		{
+		if (CheckRIFF_WAVE()!=WAV_OK) {
 			Close();
 			return WAV_ERR;
 		}
-		if (!(LocateData(MakeFourCC("fmt "),NULL,NULL,&chhdr,1000000,DT_CHUNK)))
-		{
+		if (!(LocateData(MakeFourCC("fmt "),NULL,NULL,&chhdr,1000000,DT_CHUNK))) {
 			Close();
 			return WAV_ERR;
 		}
@@ -103,8 +96,14 @@ WAVEFORMATEX* WAVEFILE::GetStreamFormat()
 
 int WAVEFILE::Close()
 {
-	if (!bOpen) return WAV_ERR;
+	if (!bOpen) 
+		return WAV_ERR;
 
+/*	if (GetSource()) {
+		GetSource()->Close();
+		delete GetSource();
+	}
+*/
 	if (lpwfe) free(lpwfe);
 	InitValues();
 	return WAV_OK;

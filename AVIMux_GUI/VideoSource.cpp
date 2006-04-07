@@ -6,6 +6,7 @@
 
 // Videofilter
 
+/*
 VIDEOFILTER::VIDEOFILTER(void)
 {
 	lpSource=NULL;
@@ -149,3 +150,5 @@ bool FRAMERATECHANGER::IsKeyFrame(DWORD dwNbr)
 	if ((dwNbr)>=GetNbrOfFrames()) return false;
 	return IsSourceKeyFrame(lpdwFrameTable[dwNbr]);
 }
+
+  */

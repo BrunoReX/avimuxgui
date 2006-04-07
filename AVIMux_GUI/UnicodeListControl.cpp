@@ -39,6 +39,7 @@ BEGIN_MESSAGE_MAP(CUnicodeListCtrl, CListCtrl)
 	//{{AFX_MSG_MAP(CUnicodeListCtrl)
 	ON_NOTIFY_REFLECT(LVN_GETDISPINFO, OnGetdispinfo)
 	ON_NOTIFY_REFLECT(LVN_GETDISPINFOW, OnGetdispinfo)
+	ON_WM_DESTROY()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -80,7 +81,7 @@ void CUnicodeListCtrl::InitUnicode()
 {
 	SendMessage(LVM_SETUNICODEFORMAT, utf8_IsUnicodeEnabled());
 
-	CUnicodeBase::InitUnicode(utf8_IsUnicodeEnabled());
+	CUnicodeBase::InitUnicode(SendMessage(CCM_GETUNICODEFORMAT));
 }
 
 int CUnicodeListCtrl::InsertItem(LV_ITEM *pItem)
@@ -93,10 +94,11 @@ int CUnicodeListCtrl::InsertItem(LV_ITEM *pItem)
 	UNICODELISTCONTROL_DATA* data = new UNICODELISTCONTROL_DATA;
 
 	data->iItemCount = 1;
-	data->cText = new char*[data->iItemCount];
+	data->cText = (char**)calloc(data->iItemCount, sizeof(char*));
 
-	data->cText[0] = new char[1024];
-	ZeroMemory(data->cText[0], 1024);
+	int k=1+strlen(c);
+	data->cText[0] = new char[k];
+	ZeroMemory(data->cText[0], k);
 	strcpy(data->cText[0], c);
 
 	CListCtrl::SetItemData(iIndex, (LPARAM)data);
@@ -115,12 +117,15 @@ BOOL CUnicodeListCtrl::DeleteItem(int nItem)
 	if (data) {
 		for (int i = 0; i < data->iItemCount; i++) {
 			if (data->cText[i]) {
-				delete data->cText[i];
+				delete[] data->cText[i];
 				data->cText[i] = 0;
 			}
 		}
-//		delete data->cText;
+		free(data->cText);
 	}
+
+	delete data;
+	data = NULL;
 
 	CListCtrl::DeleteItem(nItem);
 
@@ -136,15 +141,27 @@ BOOL CUnicodeListCtrl::DeleteAllItems()
 int CUnicodeListCtrl::SetItemText(int nItem, int nSubItem, LPTSTR lpszText)
 {
 	UNICODELISTCONTROL_DATA* data = (UNICODELISTCONTROL_DATA*)CListCtrl::GetItemData(nItem);
+	ASSERT(data);
+	int k;
 
-	if ((DWORD)data != LB_ERR) {
+	if (data && (DWORD)data != LB_ERR) {
 		if (nSubItem >= data->iItemCount) {
-			data->cText = (char**)realloc(data->cText, sizeof(char*) * nSubItem);
-			data->cText[data->iItemCount] = 0;
+			if (!data->cText)
+				data->cText = (char**)calloc(sizeof(char*) * (1+nSubItem), 1);
+			else {
+				data->cText = (char**)realloc(data->cText, sizeof(char*) * (1+nSubItem));
+				for (int j=data->iItemCount;j<=nSubItem;j++)
+					data->cText[j] = NULL;
+			}
 			data->iItemCount = nSubItem+1;
 		}
-		if (!data->cText[nSubItem]) data->cText[nSubItem] = new char[1024];
-		ZeroMemory(data->cText[nSubItem], 1024);
+
+		if (data->cText[nSubItem])
+			delete[] data->cText[nSubItem];
+
+		data->cText[nSubItem] = new char[k=strlen(lpszText)+1];
+
+		ZeroMemory(data->cText[nSubItem], k);
 
 		strcpy(data->cText[nSubItem], lpszText);
 
@@ -169,6 +186,7 @@ void CUnicodeListCtrl::GetItemText(int nItem, int nSubItem, char* cDest, int ima
 
 	strncpy(cDest, data->cText[nSubItem], imax);
 }
+
 
 char* CUnicodeListCtrl::GetItemText(int nItem, int nSubItem)
 {
@@ -206,7 +224,10 @@ void CUnicodeListCtrl::OnGetdispinfo(NMHDR* pNMHDR, LRESULT* pResult)
 				GetTextCallback(pNMHDR, pResult);
 			}
 
-			(fromUTF8)(c, dest);
+			if (c)
+				(fromUTF8)(c, dest);
+			else
+				dest[0]=0;
 
 			if (bAllocated) {
 				delete c;
@@ -219,4 +240,11 @@ void CUnicodeListCtrl::OnGetdispinfo(NMHDR* pNMHDR, LRESULT* pResult)
 	}
 
 	*pResult = 0;
+}
+
+void CUnicodeListCtrl::OnDestroy()
+{
+	while (GetItemCount())
+		DeleteItem(0);
+
 }

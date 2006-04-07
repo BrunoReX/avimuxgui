@@ -17,9 +17,30 @@ PACKETIZER::PACKETIZER()
 	duration = 0;
 }
 
+void PACKETIZER::ReInit()
+{
+	return;
+}
+
 void PACKETIZER::SetDuration(__int64 i)
 {
 	duration = i;
+}
+
+int PACKETIZER::GetName(char* lpcName)
+{
+	if (lpcName)
+		*lpcName = 0;
+
+	return 0;
+}
+
+int PACKETIZER::GetLanguageCode(char* lpDest)
+{
+	if (lpDest)
+		*lpDest = 0;
+
+	return 0;
 }
 
 OGGFILE::OGGFILE()
@@ -34,6 +55,19 @@ OGGFILE::OGGFILE(STREAM* lpStream, DWORD dwAccess)
 	source = NULL;
 	ZeroMemory(&data,sizeof(data));
 	Open(lpStream, dwAccess);
+	current_page_index = 0;
+}
+
+void OGGFILE::ReInit()
+{
+	GetSource()->InvalidateCache();
+	GetSource()->Seek(0);
+
+	int j = data.iOpenMode;
+	STREAM* s = GetSource();
+
+	ZeroMemory(&data,sizeof(data));
+	Open(s, j);
 	current_page_index = 0;
 }
 
@@ -101,7 +135,7 @@ int OGGFILE::LoadPage(int dest_index)
 		data.iEndReached = 1;
 		return OGG_LOAD_PAGE_ERROR;
 	}
-	if (dwOggs != MakeFourCC("OggS")) {
+	if (dwOggs != 'SggO') {
 		return OGG_LOAD_PAGE_ERROR;
 	}
 	
@@ -137,7 +171,15 @@ int OGGFILE::LoadPage(int dest_index)
 
 	p->iTotalSize = (int)(GetSource()->GetPos() - iStreamPos);
 
+	if (FindStreamSerialNumberIndex(p->iStreamSerialNumber) == -1)
+		InsertStreamSerialNumber(p->iStreamSerialNumber);
+
 	return OGG_LOAD_PAGE_OK;
+}
+
+int OGGFILE::GetNumberOfStreams()
+{
+	return stream_serial_numbers.count;
 }
 
 int OGGFILE::SeekIntoCurrentPage(int iOffset)
@@ -179,10 +221,27 @@ int OGGFILE::LoadNextPage()
 	}
 }
 
+void OGGFILE::InsertStreamSerialNumber(int i)
+{
+	stream_serial_numbers.count++;
+	stream_serial_numbers.serial_nbr = (int*)realloc(stream_serial_numbers.serial_nbr, sizeof(int)*stream_serial_numbers.count);
+	stream_serial_numbers.serial_nbr[stream_serial_numbers.count-1] = i;
+}
+
+int OGGFILE::FindStreamSerialNumberIndex(int serial)
+{
+	for (int j=0;j<stream_serial_numbers.count;j++)
+		if (stream_serial_numbers.serial_nbr[j] == serial)
+			return j;
+
+	return -1;
+}
+
 int OGGFILE::Open(STREAM* lpStream, DWORD dwAccess)
 {
 	pages = new OGG_PAGE[2];
 	ZeroMemory(pages,2*sizeof(OGG_PAGE));
+	memset(&stream_serial_numbers, 0, sizeof(stream_serial_numbers));
 	current_page_index = 0;
 	source = lpStream;
 	GetSource()->Seek(0);
@@ -195,6 +254,7 @@ int OGGFILE::Open(STREAM* lpStream, DWORD dwAccess)
 			return OGG_OPEN_ERROR;
 		}
 		data.iLatestGranulePos = current_page->iGranulePos;
+		ScanForStreams();
 	} else {
 		write_page.iCount = 0;
 		write_page.pPacket = new void*[256];
@@ -217,6 +277,34 @@ int OGGFILE::Open(STREAM* lpStream, DWORD dwAccess)
 	data.iOpenMode = dwAccess;
 
 	return OGG_OPEN_OK;
+}
+
+void OGGFILE::ScanForStreams()
+{
+	int bStop = 0;
+	int page_count = 0;
+
+	Seek(0);
+
+	do {
+		LoadNextPage();
+		page_count++;
+		bStop = (page_count >= 20 && page_count >= 3*GetNumberOfStreams());
+	} while (!bStop);
+
+	Seek(0);
+//	LoadNextPage();
+	//SeekIntoCurrentPage(current_page->iHeaderSize);
+}
+
+
+void OGGFILE::GetCurrentPageHeader(OGG_PAGE* dest)
+{
+	if (!dest)
+		return;
+
+	memcpy(dest, current_page, sizeof(*dest));
+	dest->bData = NULL;
 }
 
 int OGGFILE::SetMaxPageSize(int iMaxSize)
@@ -295,8 +383,7 @@ int OGGFILE::ReadPacket(BYTE* cDest, __int64* iTimestamp)
 		return OGG_READ_ERROR;
 	}
 
-	do 
-	{
+	do {
 		iLoadPacketResult = ReadPacketFromCurrentPage(cDest+iRead);
 		if (iLoadPacketResult == OGG_LOAD_PACKET_ERROR) {
 			return OGG_READ_ERROR;

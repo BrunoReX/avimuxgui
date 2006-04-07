@@ -6,6 +6,7 @@ CTEXTFILE::CTEXTFILE()
 {
 	iCharCoding = 0;
 	iHdrSize = 0;
+	source=NULL;
 }
 
 CTEXTFILE::CTEXTFILE(DWORD _dwMode, STREAM* s, int iOutputFormat)
@@ -14,6 +15,11 @@ CTEXTFILE::CTEXTFILE(DWORD _dwMode, STREAM* s, int iOutputFormat)
 	iHdrSize = 0;
 	Open(_dwMode, s);
 	SelectOutputFormat(iOutputFormat);
+}
+
+bool CTEXTFILE::IsEndOfStream()
+{
+	return source->IsEndOfStream();
 }
 
 int CTEXTFILE::Open(DWORD _dwMode, STREAM* s)
@@ -59,6 +65,11 @@ int CTEXTFILE::Seek(__int64 qwPos)
 	return source->Seek(qwPos + iHdrSize + GetOffset());
 }
 
+__int64 CTEXTFILE::GetSize()
+{
+	return source->GetSize() - iHdrSize;
+}
+
 bool CTEXTFILE::IsUTF8In()
 {
 	return (iCharCoding == CM_UTF8);
@@ -100,7 +111,7 @@ int CTEXTFILE::ReadLine(char* d)
 		strcpy(d,s);
 	}
 
-	return (strlen(s));
+	return (strlen(d));
 }
 
 void CTEXTFILE::SelectOutputFormat(int iFormat)
@@ -116,4 +127,27 @@ void CTEXTFILE::SelectInputFormat(int iFormat)
 __int64 CTEXTFILE::GetPos()
 {
 	return source->GetPos() - iHdrSize - GetOffset();
+}
+
+char CTEXTFILE::ReadChar(int flags)
+{
+	char c = 0;
+	__int64 pos = GetPos();
+
+	if (flags == TFRC_ALL) {
+		Read(&c, 1);
+	} else
+	if (flags & TFRC_NOLINEBREAKS) {
+		while ((c == 0x00 || c == 0x0A || c == 0x0D) && !IsEndOfStream() )
+			Read(&c, 1);
+
+		if (IsEndOfStream())
+			c = 0x00;
+
+	}
+
+	if (flags & TFRC_DONTUPDATEPOS)
+		Seek(pos);
+
+	return c;
 }

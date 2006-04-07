@@ -2,6 +2,12 @@
 #include "audiosource_list.h"
 #include "..\matroska.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 	//////////////////////////////////
 	// list of joined audio sources //
 	//////////////////////////////////
@@ -24,7 +30,7 @@ AUDIOSOURCELIST::Append(AUDIOSOURCE* pNext)
 		pNext->SetBias(info.audiosources[info.iCount-1]->GetBias()+info.audiosources[info.iCount-1]->GetDuration());
 	} else {
 		pNext->SetBias(0);
-		char cBuffer[200];
+		char cBuffer[2048];
 		ZeroMemory(cBuffer,sizeof(cBuffer));
 		pNext->GetName(cBuffer);
 		SetName(cBuffer);
@@ -54,7 +60,10 @@ AUDIOSOURCELIST::Append(AUDIOSOURCE* pNext)
 __int64 AUDIOSOURCELIST::GetUnstretchedDuration()
 {
 	__int64 res = 0;
-	for (int i=0; i<info.iCount; i++) res+=info.audiosources[i]->GetUnstretchedDuration() * info.audiosources[i]->GetTimecodeScale() / GetTimecodeScale();
+	for (int i=0; i<info.iCount; i++) {
+		res+=info.audiosources[i]->GetUnstretchedDuration() * info.audiosources[i]->GetTimecodeScale() / GetTimecodeScale();
+	}
+
 	return res;
 }
 
@@ -89,6 +98,16 @@ int AUDIOSOURCELIST::SetFrameMode(DWORD dwMode)
 	return AS_OK;
 }
 
+void AUDIOSOURCELIST::AssumeCBR()
+{
+	for (int i=0;i<info.iCount;info.audiosources[i++]->AssumeCBR());
+}
+
+void AUDIOSOURCELIST::AssumeVBR()
+{
+	for (int i=0;i<info.iCount;info.audiosources[i++]->AssumeVBR());
+}
+
 int AUDIOSOURCELIST::Read(void* lpDest, DWORD dwMicrosecDesired, DWORD* lpdwMicrosecRead,
 						  __int64* lpqwNanosecRead, __int64* lpiTimecode, ADVANCEDREAD_INFO* lpAARI)
 {
@@ -105,7 +124,7 @@ int AUDIOSOURCELIST::Read(void* lpDest, DWORD dwMicrosecDesired, DWORD* lpdwMicr
 		}
 		if (lpAARI) {
 			if (lpAARI->iNextTimecode != TIMECODE_UNKNOWN) {
-				lpAARI->iNextTimecode += GetBias();
+	//			lpAARI->iNextTimecode = lpAARI->iNextTimecode*info.active_source->GetTimecodeScale() / GetTimecodeScale() + GetBias();
 			}
 		}
 		if (lpAARI) {
@@ -125,6 +144,7 @@ int AUDIOSOURCELIST::Read(void* lpDest, DWORD dwMicrosecDesired, DWORD* lpdwMicr
 				if (lpAARI->iNextTimecode != TIMECODE_UNKNOWN) {
 					lpAARI->iNextTimecode *= info.active_source->GetTimecodeScale();
 					lpAARI->iNextTimecode /= GetTimecodeScale();
+					lpAARI->iNextTimecode += GetBias();
 				}
 			}
 		}
@@ -207,9 +227,9 @@ int AUDIOSOURCELIST::GetBitDepth()
 	return info.active_source->GetBitDepth();
 }
 
-char* AUDIOSOURCELIST::GetIDString()
+char* AUDIOSOURCELIST::GetCodecID()
 {
-	return info.audiosources[0]->GetIDString();
+	return info.audiosources[0]->GetCodecID();
 }
 
 int AUDIOSOURCELIST::IsCompatible(AUDIOSOURCE* a)
@@ -262,4 +282,35 @@ __int64 AUDIOSOURCELIST::GetFrameDuration()
 int AUDIOSOURCELIST::GetFormatTag()
 {
 	return info.active_source->GetFormatTag();
+}
+
+int AUDIOSOURCELIST::GetStrippableHeaderBytes(void* pBuffer, int max)
+{
+	int res = min(max, 64);
+	unsigned char bytes_result[64];
+	unsigned char bytes[64];
+
+	if (!info.iCount)
+		return 0;
+
+	res = info.audiosources[0]->GetStrippableHeaderBytes(bytes_result, res);
+	if (res < 0)
+		res = 0;
+
+	if (res)	for (int i=1;i<info.iCount;i++) {
+		int z = info.audiosources[i]->GetStrippableHeaderBytes(bytes, res);
+
+		res = min(res, z);
+		
+		for (int j=0;j<res;j++) {
+			if (bytes_result[j] != bytes[j])
+				res = j;
+		}
+	}
+
+	if (res)
+		memcpy(pBuffer, bytes_result, res);
+
+	return res;
+
 }

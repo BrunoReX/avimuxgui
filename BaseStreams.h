@@ -10,7 +10,7 @@ BITSTREAM   access to a stream bit by bit
 #define I_BASESTREAMS
 
 #define STREAM_OK		0x01
-#define STREAM_ERR		-0x01
+#define STREAM_ERR		-0x010000
 
 #define STREAM_READ					0x01
 #define STREAM_WRITE				0x02
@@ -20,18 +20,8 @@ BITSTREAM   access to a stream bit by bit
 #define STREAM_OVERLAPPED			0x10
 
 #include "windows.h"
-#include "stdlib.h"
 
 const int READF_ASYNC = 0x01;
-
-
-typedef struct
-{
-	void*			lpDest;
-	HANDLE			hSemaphore;
-	__int64			iStart;
-	OVERLAPPED*		pOverlapped;
-} READ_ASYNC_STRUCT;
 
 // sowas wie abstrakter Basistyp für alle Streams
 class STREAM
@@ -39,14 +29,31 @@ class STREAM
 	private:
 		DWORD		dwMode;
 		int			iOffset;
+		bool		bAttached;
+	protected:
+		/* flag modification */
+		bool		virtual _Enable(int flag, bool set, bool enable) { return false; };
 	public:
-		STREAM() { iOffset=0; };
-		~STREAM() {};
+		STREAM() { iOffset=0; dwMode = 0; bAttached = false; };
+		virtual ~STREAM() {};
+
+		/* flag modification */
+		bool		Enable(int flag);
+		bool		Disable(int flag);
+		bool		IsEnabled(int flag);
+		bool		SetFlag(int flag, int value);
+
 		int					Open(DWORD _dwMode) { dwMode=_dwMode; return (STREAM_ERR); }
 		int			virtual	Read(void* lpDest,DWORD dwBytes) { return (STREAM_ERR); }
-		int			virtual	ReadAsync(READ_ASYNC_STRUCT* pRAS,DWORD dwBytes);
-		int			virtual WaitForCompletion(READ_ASYNC_STRUCT* pRAS) { return (STREAM_ERR); }
+		int			virtual WaitForAsyncIOCompletion(OVERLAPPED* overlapped, DWORD* pdwBytesTransferred) { return STREAM_ERR; };
+		int			virtual IsOverlappedIOComplete(OVERLAPPED* overlapped) { return false; };
+		void		virtual AttachSource() { bAttached = true; }; 
+		bool		virtual IsSourceAttached() { return bAttached; };
+		int			virtual	ReadAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped) { return (STREAM_ERR); }
+		int			virtual	WriteAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped) { return (STREAM_ERR); }
+
 		int			virtual Write(void* lpSource,DWORD dwBytes) { return (STREAM_ERR); }
+		int			virtual WriteString(void* lpSource) { return Write(lpSource, (DWORD)strlen((char*)lpSource)); }
 		__int64		virtual	GetPos(void) { return (STREAM_ERR); }
 		__int64		virtual	GetSize(void) { return (STREAM_ERR); }
 		int			virtual	Close(void) { return (STREAM_ERR); }
@@ -65,28 +72,35 @@ class STREAM
 		int			virtual TruncateAt(__int64 iPosition);
 };
 
-// generally disable buffered read if necessary (e.g. in case of bugs)
-void  filestreamAllowBufferedRead(bool bAllow = true);
+class STREAM_FILTER: public STREAM
+{
+	private:
+		STREAM*		source;
+	protected:
+		STREAM*		GetSource();
+	public:
+		STREAM_FILTER();
+		virtual ~STREAM_FILTER();
+		void		SetSource(STREAM* s);
+		
+		int Close();
+};
+
+const FILESTREAM_ASYNCH_IO_INITIATED = 0x13;
+const FILESTREAM_ASYNCH_IO_FINISHED  = 0x17;
+const FILESTREAM_ASYNCH_IO_FAILED    = 0x00;
 
 class FILESTREAM : public STREAM
 {
 	private:
 		HANDLE		hFile;
 		__int64		iCurrentSize;
-		char*		cOutCache;
-		char*		cOutCacheCurr;
 		char		cWriteSemaphoreName[10];
-		__int64		iOutCachePos;
 		__int64		iFilesize;
 		__int64		iCurrPos;
-		HANDLE		hWriteSemaphore;
 		bool		bBuffered;
 		bool		bOverlapped;
-		void*		pAlignedInputBufferAllocated;
-		void*		pAlignedInputBuffer;
-		int			iAlignedBufferSize;
 		char*		cFilename;
-		int			align;
 		int			iPossibleAlignedReadCount;
 		bool		bDenyUnbufferedRead;
 		bool		bCanRead;
@@ -94,12 +108,9 @@ class FILESTREAM : public STREAM
 
 	protected:
 		void		virtual Flush();
-		int			virtual Write2Disk(void* lpSource,DWORD dwBytes);
-//		int			virtual	read(void* lpDest,DWORD dwBytes);
-//		int			virtual read(READ_ASYNC_STRUCT* pRAS, DWORD dwBytes);
 	public:
 		FILESTREAM(void);
-		~FILESTREAM(void);
+		virtual ~FILESTREAM(void);
 		int			virtual	Open (char* lpFileName,DWORD _dwMode);
 		int					SethFile (HANDLE _hFile);
 		HANDLE				GethFile (void) { return hFile; }
@@ -108,8 +119,10 @@ class FILESTREAM : public STREAM
 		__int64		virtual GetPos(void);
 		__int64		virtual GetSize(void);
 		int			virtual	Read(void* lpDest,DWORD dwBytes);
-		int			virtual	ReadAsync(READ_ASYNC_STRUCT* pRAS,DWORD dwBytes);
-		int			virtual WaitForCompletion(READ_ASYNC_STRUCT* pRAS);
+		int			virtual	ReadAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped);
+		int			virtual	WriteAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped);
+		int			virtual WaitForAsyncIOCompletion(OVERLAPPED* overlapped, DWORD* pdwBytesTransferred);
+		int			virtual IsOverlappedIOComplete(OVERLAPPED* overlapped);
 		int			virtual Write(void* lpSource,DWORD dwBytes);
 		bool		virtual IsEndOfStream(void);
 		int			virtual GetGranularity(void) { return 1; }
@@ -127,7 +140,7 @@ class BITSTREAM
 
 	public:
 		BITSTREAM(void)	{ source=NULL; dwCurrBitPos=0; }
-		~BITSTREAM(void) {};
+		virtual ~BITSTREAM() {};
 		STREAM*			GetSource() { return source; }
 		int		virtual	Open(STREAM* lpStream);
 		int		virtual Close(void) { source=NULL; return STREAM_OK; }
@@ -136,8 +149,6 @@ class BITSTREAM
 		int				ReadBits(int n, int iFlag = 0);
 		__int64			ReadBits64(int n, int iFlag = 0);
 		__int64			GetPos();
-
-
 
 };
 

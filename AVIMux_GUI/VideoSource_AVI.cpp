@@ -1,6 +1,12 @@
 #include "stdafx.h"
 #include "videosource_avi.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 	//////////////////////////
 	// Videosource from AVI //
 	//////////////////////////
@@ -12,7 +18,8 @@ VIDEOSOURCEFROMAVI::VIDEOSOURCEFROMAVI()
 
 VIDEOSOURCEFROMAVI::~VIDEOSOURCEFROMAVI()
 {
-
+	if (info.avifile)
+		free(info.avifile);
 }
 
 bool VIDEOSOURCEFROMAVI::IsCFR()
@@ -28,9 +35,11 @@ __int64 VIDEOSOURCEFROMAVI::GetUnstretchedDuration()
 
 int VIDEOSOURCEFROMAVI::Open(AVIFILEEX* avifile)
 {
-	info.avifile = (AVIFILEEX**)realloc(info.avifile,(info.iCount++)*sizeof(AVIFILEEX*));
-	info.avifile[info.iCount-1] = avifile;
+	info.avifile = (AVIFILEEX**)malloc(sizeof(AVIFILEEX*));
+	info.avifile[0] = avifile;
+
 	SetCurrentTimecode(-avifile->GetNanoSecPerFrame(),TIMECODE_UNSCALED);
+
 	return VS_OK;
 }
 
@@ -42,6 +51,7 @@ void* VIDEOSOURCEFROMAVI::GetFormat()
 
 void VIDEOSOURCEFROMAVI::ReInit()
 {
+	info.avifile[0]->GetSource()->InvalidateCache();
 	Seek(0);
 }
 
@@ -83,6 +93,8 @@ int VIDEOSOURCEFROMAVI::GetResolution(int *lpiWidth,int* lpiHeight)
 void VIDEOSOURCEFROMAVI::GetOutputResolution(RESOLUTION* r)
 {
 	GetResolution(&r->iWidth,&r->iHeight);
+	//GetCropping(&r->rcCrop);
+	memset(&r->rcCrop, 0, sizeof(r->rcCrop));
 }
 
 __int64 VIDEOSOURCEFROMAVI::GetExactSize()
@@ -92,7 +104,13 @@ __int64 VIDEOSOURCEFROMAVI::GetExactSize()
 
 AVIStreamHeader* VIDEOSOURCEFROMAVI::GetAVIStreamHeader()
 {
+	
 	return info.avifile[info.iActiveFile]->GetStreamHeader(0);
+}
+
+DWORD VIDEOSOURCEFROMAVI::GetFourCC()
+{
+	return (GetAVIStreamHeader()->fccHandler);
 }
 
 int VIDEOSOURCEFROMAVI::GetNbrOfFrames(DWORD dwKind)
@@ -132,4 +150,35 @@ __int64 VIDEOSOURCEFROMAVI::GetNanoSecPerFrame()
 int VIDEOSOURCEFROMAVI::GetFormatSize()
 {
 	return sizeof(BITMAPINFOHEADER);
+}
+
+
+
+void VIDEOSOURCEFROMAVI::GetCropping(RECT* r)
+{
+	RECT R; POINT p;
+	__int16	R16[4];
+
+//	R.left = GetAVIStreamHeader()->rcFrame.
+	AVIStreamHeader* h = GetAVIStreamHeader();
+
+	memcpy(&R, &GetAVIStreamHeader()->rcFrame, sizeof(R));
+	memcpy(R16, &GetAVIStreamHeader()->rcFrame, sizeof(R16));
+
+	GetResolution((int*)&p.x, (int*)&p.y);
+
+	if (R.top > 65536) {
+		r->left = R16[0];
+
+		r->top  = R16[1];
+
+		r->right = p.x - R16[2];
+		r->bottom= p.y - R16[3];
+	} else if (r) {
+		r->left = R.left;
+		r->top  = R.top;
+
+		r->right = p.x - R.right;
+		r->bottom= p.y - R.bottom;
+	}
 }

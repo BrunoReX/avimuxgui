@@ -8,6 +8,7 @@ typedef struct
 {
 	MATROSKA*	m;
 	int			iStream;
+	__int64		size;
 } VIDEOSOURCEFROMMATROSKA_DATA;
 
 
@@ -24,6 +25,8 @@ class VIDEOSOURCEFROMMATROSKA: public VIDEOSOURCE
 	protected:
 		__int64		virtual GetUnstretchedDuration();
 		__int64		virtual GetExactSize();
+		MATROSKA* GetSource();
+		int GetSourceStream();
 	public:
 		VIDEOSOURCEFROMMATROSKA();
 		VIDEOSOURCEFROMMATROSKA(MATROSKA* matroska, int iStream = -1);
@@ -31,21 +34,26 @@ class VIDEOSOURCEFROMMATROSKA: public VIDEOSOURCE
 		AVIStreamHeader virtual *GetAVIStreamHeader(void);
 		int			virtual GetFrame(void* lpDest,DWORD* lpdwSize,__int64* lpiTimecode = NULL,
 										ADVANCEDREAD_INFO* lpAARI = NULL);
-		__int64		virtual	GetNanoSecPerFrame(void);
-		int			virtual GetNbrOfFrames(DWORD dwKind=FT_ALL);
-		int			virtual GetResolution(int* lpdwWidth,int* lpdwHeight);
-		void		virtual GetOutputResolution(RESOLUTION* r);
-		int			virtual Enable(int bEnabled);
-		bool		virtual IsKeyFrame(DWORD dwNbr = CN_CURRENT_CHUNK);
-		bool		virtual IsEndOfStream();
-		char		virtual* GetIDString();
-		bool		virtual IsOpen();
-		int			virtual Open(MATROSKA* matroska, int iStream = -1);
-		void		virtual ReInit();
-		int			virtual Seek(__int64 iTime);
-		int			virtual GetFormatSize(void);
+		__int64	virtual	GetNanoSecPerFrame(void);
+		int		virtual GetNbrOfFrames(DWORD dwKind=FT_ALL);
+		int		virtual GetResolution(int* lpdwWidth,int* lpdwHeight);
+		void	virtual GetOutputResolution(RESOLUTION* r);
+		int		virtual Enable(int bEnabled);
+		bool	virtual IsKeyFrame(DWORD dwNbr = CN_CURRENT_CHUNK);
+		bool	virtual IsEndOfStream();
+		char	virtual* GetCodecID();
+		bool	virtual IsOpen();
+		int		virtual Open(MATROSKA* matroska, int iStream = -1);
+		void	virtual ReInit();
+		int		virtual Seek(__int64 iTime);
+		int		virtual GetFormatSize(void);
+		void	virtual GetCropping(RECT* r);
+		DWORD	virtual GetFourCC();
+		virtual ~VIDEOSOURCEFROMMATROSKA();
+		int		virtual GetStrippableHeaderBytes(void* pBuffer, int max);
+		int		virtual	GetName(char* lpDest);
+		int		virtual GetLanguageCode(char* lpDest);
 
-		~VIDEOSOURCEFROMMATROSKA();
 };
 
 #endif

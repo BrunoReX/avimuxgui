@@ -8,9 +8,9 @@ AVISTREAM: maps a stream of an AVI file to a plain file source
 AVILISTSTREAM: maps a stream of an AVI-List to a plain file source
 
  */
-
+/*
 #include "..\BaseStreams.h"
-#include "AVIFile.h"
+//#include "AVIFile.h"
 #include "..\Cache.h"
 
 // cached eine ganze Datei in den RAM
@@ -45,5 +45,5 @@ class MEMORYSTREAM : public STREAM
 		int			virtual GetGranularity(void) { return 1; }
 };
 
-
+*/
 #endif

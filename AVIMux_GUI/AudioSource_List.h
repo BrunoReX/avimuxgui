@@ -35,9 +35,10 @@ class AUDIOSOURCELIST: public AUDIOSOURCE
 		int		virtual GetOutputFrequency();
 		__int64	virtual GetFrameDuration();
 		int		virtual GetGranularity();
-		char	virtual *GetIDString();
+		char	virtual *GetCodecID();
 		int		virtual GetOffset();
 		__int64	virtual	GetSize();
+		int		virtual	SetFrameMode(DWORD dwMode);
 		bool	virtual IsCBR(void);
 		int		virtual IsCompatible(AUDIOSOURCE* a);
 		bool	virtual IsEndOfStream();
@@ -45,6 +46,9 @@ class AUDIOSOURCELIST: public AUDIOSOURCE
 							__int64* lpqwNanosecRead,__int64* lpiTimecode = NULL, ADVANCEDREAD_INFO* lpAARI = NULL);
 		void	virtual ReInit();
 		int		virtual Seek(__int64 iPos);
-		int		virtual	SetFrameMode(DWORD dwMode);
+		void	virtual AssumeCBR(void);
+		void	virtual AssumeVBR(void);
+
+		int		virtual GetStrippableHeaderBytes(void* pBuffer, int max);
 };
 #endif

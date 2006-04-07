@@ -32,7 +32,7 @@ class SILENCE: public AUDIOSOURCE
 	public:
 		SILENCE();
 		~SILENCE();
-		Init(char* lpName=NULL);
+		int virtual Init(char* lpName=NULL);
 		int virtual				Read(void*,DWORD,DWORD*,__int64*);
 		int virtual				Close(void);
 		int virtual				SetFormat(DWORD dwFormat,DWORD dwChannels,DWORD dwFreq,float fBitrate);

@@ -1,6 +1,12 @@
 #include "stdafx.h"
 #include "videosource_list.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 	//////////////////////////////////
 	// joined list of video sources //
 	//////////////////////////////////
@@ -28,6 +34,12 @@ int VIDEOSOURCELIST::Append(VIDEOSOURCE *pNext)
 			RESOLUTION r;
 			pNext->GetOutputResolution(&r);
 			SetOutputResolution(&r);
+			char c[1024]; c[0]=0;
+			pNext->GetName(c);
+			SetName(c);
+			pNext->GetLanguageCode(c);
+			SetLanguageCode(c);
+			SetDefault(pNext->IsDefault());
 		}
 		info.iCount++;
 		if (info.iCount==1) info.curr_source = info.videosources[0];
@@ -49,6 +61,14 @@ void VIDEOSOURCELIST::ReInit()
 int VIDEOSOURCELIST::Enable(int bEnabled)
 {
 	for (int i=0;i<info.iCount;info.videosources[i++]->Enable(bEnabled));
+	return 0;
+}
+
+DWORD VIDEOSOURCELIST::GetFourCC()
+{
+	if (info.iCount)
+		return info.videosources[0]->GetFourCC();
+
 	return 0;
 }
 
@@ -85,10 +105,10 @@ int VIDEOSOURCELIST::GetFrame(void* lpDest,DWORD* lpdwSize,__int64 *lpiTimecode,
 	return VS_ERROR;
 }
 
-char* VIDEOSOURCELIST::GetIDString()
+char* VIDEOSOURCELIST::GetCodecID()
 {
 	if (info.iCount) {
-		return info.curr_source->GetIDString();
+		return info.curr_source->GetCodecID();
 	} else return 0;
 }
 
@@ -215,4 +235,49 @@ __int64 VIDEOSOURCELIST::GetUnstretchedDuration()
 bool VIDEOSOURCELIST::IsEndOfStream()
 {
 	return (info.curr_source->IsEndOfStream() && !(info.iActiveSource<info.iCount-1));
+}
+
+/*
+void VIDEOSOURCELIST::GetCropping(RECT* r)
+{
+	if (info.iCount) info.videosources[0]->GetCropping(r);
+}
+
+void VIDEOSOURCELIST::GetOutputResolution(RESOLUTION* r)
+{
+	if (info.iCount)
+		info.videosources[0]->GetOutputResolution(r);
+	*r = re
+}
+*/
+
+int VIDEOSOURCELIST::GetStrippableHeaderBytes(void* pBuffer, int max)
+{
+	int res = min(max, 64);
+	unsigned char bytes_result[64];
+	unsigned char bytes[64];
+
+	if (!info.iCount)
+		return 0;
+
+	res = info.videosources[0]->GetStrippableHeaderBytes(bytes_result, res);
+	if (res < 0)
+		res = 0;
+
+	if (res)	for (int i=1;i<info.iCount;i++) {
+		int z = info.videosources[i]->GetStrippableHeaderBytes(bytes, res);
+
+		res = min(res, z);
+		
+		for (int j=0;j<res;j++) {
+			if (bytes_result[j] != bytes[j])
+				res = j;
+		}
+	}
+
+	if (res)
+		memcpy(pBuffer, bytes_result, res);
+
+	return res;
+
 }

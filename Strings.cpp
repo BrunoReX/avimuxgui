@@ -56,6 +56,9 @@ bool isposint(char* s)
 // alloc only *path before!!!
 void splitpathname(char* p, char** f, char** e, char** path)
 {
+	char* t1; char* t2;
+	if (!e) e = &t1;
+	if (!f) f = &t2;
 	*e = NULL; *f = NULL;
 
 	for (int i=strlen(p);i>=0 && (!*e || !*f);i--) {
@@ -70,4 +73,36 @@ void splitpathname(char* p, char** f, char** e, char** path)
 		(*path)[i]=0;
 	}
 
+}
+
+int split_string(char* in, char* separator, std::vector<char*>& dest)
+{
+	char* c = (char*)calloc(sizeof(char), 1+strlen(in));
+	char* d = c;
+	char* e;
+	int sep_len = strlen(separator);
+	strcpy(c, in);
+
+	int i = 0;
+
+	do  {
+		e = strstr(c, separator);
+		if (e) for (int j=0;j<sep_len;j++)
+			*e++ = 0;
+
+		dest.push_back(strdup(c));
+		c = e;
+//		in = c;
+		i++;
+	} while (c);
+
+	free(d);
+
+	return i;
+}
+
+void DeleteStringVector(std::vector<char*>& v)
+{
+	std::vector<char*>::iterator iter = v.begin();
+	for (; iter != v.end(); delete (*iter++));
 }

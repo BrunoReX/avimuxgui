@@ -1,9 +1,16 @@
 #include "stdafx.h"
 #include "FormatInt64.h"
 
-void QW2Str(__int64 qwX,char*	lpDest,int dwLen)
+
+void QW2Str(__int64 qwX, char* lpDest,int dwLen)
 {
-	char	cBuffer[30];
+	if (!lpDest)
+		return;
+
+	*lpDest = 0;
+
+	char	cBuffer[64];
+//	memset(cBuffer, 0, sizeof(cBuffer)); // should actually work without, but doesn't
 	int		i=0;
 	int		d=0;
 	int		j;

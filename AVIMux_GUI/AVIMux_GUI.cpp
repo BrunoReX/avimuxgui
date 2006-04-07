@@ -39,6 +39,10 @@ CAVIMux_GUIApp theApp;
 /////////////////////////////////////////////////////////////////////////////
 // CAVIMux_GUIApp Initialisierung
 
+HINSTANCE GetInstance() {
+	return theApp.m_hInstance;
+}
+
 BOOL CAVIMux_GUIApp::InitInstance()
 {
 	AfxEnableControlContainer();

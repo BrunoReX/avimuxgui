@@ -98,8 +98,7 @@ void CVideoInformationDlgListbox::OnRButtonUp(UINT nFlags, CPoint point)
 	{
 		cmPopupMenu=new CMenu;
 		cmPopupMenu->CreatePopupMenu();
-		if (dwKind==KOS_AVIFILEEX)
-		{
+		if (dwKind==KOS_AVIFILEEX) {
 			avifile=lpFI->AVIFile;
 			if (avifile)
 			{
@@ -144,16 +143,16 @@ void CVideoInformationDlgListbox::OnRButtonUp(UINT nFlags, CPoint point)
 			}
 			}
 		}
+
+	
 		if (bShowMenu)
-		{
 			cmPopupMenu->AppendMenu(MF_SEPARATOR,0);
-		}
+		
 		cStr=LoadString(STR_SAVEAS);
 		cmPopupMenu->AppendMenu(MF_STRING,IDM_VILB_SAVEAS,cStr);
 		bShowMenu=true;
 			
-		if (bShowMenu)
-		{
+		if (bShowMenu)	{
 			ClientToScreen(&point);
 			cmPopupMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_LEFTBUTTON,point.x,point.y,this);
 		}
@@ -192,6 +191,7 @@ BOOL CVideoInformationDlgListbox::OnCommand(WPARAM wParam, LPARAM lParam)
 	DWORD					dwNNSPF;
 	DWORD					dwNMSPF;
 	DWORD					dwKind;
+	FRAME_RATE               f;
 
 	dwKind=((CVideoInformationDlg*)GetParent())->GetKindOfSource();
 	if (dwKind==KOS_AVIFILEEX)
@@ -248,15 +248,26 @@ BOOL CVideoInformationDlgListbox::OnCommand(WPARAM wParam, LPARAM lParam)
 			break;
 		case IDM_VILB_SETFRAMERATE:
 			csfrd=new CSetFramerateDlg;
-			csfrd->SetData((double)avifile->GetNanoSecPerFrame());
+
+			f.den = 0;
+			f.nom = 0;
+			f.frate = 1000000000./(double)avifile->GetNanoSecPerFrame();
+			csfrd->SetData(&f);
 			if (csfrd->DoModal()==IDOK)
 			{
-				dwNNSPF=(DWORD)(csfrd->GetData());
-				dwNNSPF=(DWORD)round(((double)dwNNSPF)/100)*100;
+				csfrd->GetData(&f);
+				dwNNSPF=(DWORD)round(((double)1000000000./f.frate)/100)*100;
 				dwNMSPF=(DWORD)round(((double)dwNNSPF)/1000);
-				AddRepair(&lpcahCurr,4,avifile->GetAbsolutePositions()->dwMicroSecPerFrame,0,dwNMSPF);
-				AddRepair(&lpcahCurr,4,avifile->GetAbsolutePositions()->dwRateSTRH0,0,10000000);
-				AddRepair(&lpcahCurr,4,avifile->GetAbsolutePositions()->dwScaleSTRH0,0,dwNNSPF/100);
+				if (f.den == 0) {
+					AddRepair(&lpcahCurr,4,avifile->GetAbsolutePositions()->dwMicroSecPerFrame,0,dwNMSPF);
+					AddRepair(&lpcahCurr,4,avifile->GetAbsolutePositions()->dwRateSTRH0,0,10000000);
+					AddRepair(&lpcahCurr,4,avifile->GetAbsolutePositions()->dwScaleSTRH0,0,dwNNSPF/100);
+				} else {
+
+					AddRepair(&lpcahCurr,4,avifile->GetAbsolutePositions()->dwMicroSecPerFrame,0,dwNMSPF);
+					AddRepair(&lpcahCurr,4,avifile->GetAbsolutePositions()->dwRateSTRH0,0,f.nom);
+					AddRepair(&lpcahCurr,4,avifile->GetAbsolutePositions()->dwScaleSTRH0,0,f.den);
+				}
 			}
 
 			delete csfrd;

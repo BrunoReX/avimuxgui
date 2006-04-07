@@ -4,7 +4,6 @@
 #include "stdafx.h"
 #include "AVIMux_GUI.h"
 #include "SetMainAVIHeaderFlagsDlg.h"
-//#include "vfw.h"
 #include "avifile.h"
 #include "Languages.h"
 

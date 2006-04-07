@@ -43,67 +43,105 @@ void CSetFramerateDlg::DoDataExchange(CDataExchange* pDX)
 	//}}AFX_DATA_MAP
 }
 
-void CSetFramerateDlg::SetData(double dData)
+void CSetFramerateDlg::SetData(FRAME_RATE* f)
 {
-	dFramerate=dData;
+	memcpy(&fr, f, sizeof(*f));
+
+	//float dFramerate=dData;
 	char		Buffer[50];
-	dFramerate=(double)(100*(round(dFramerate/100)));
+	//fr.frate = (double)(100*(round(dFramerate/100)));
 
 	if (bAllowEditUpdate)
 	{
 		if (IsDlgButtonChecked(IDR_FR_NSPF))
 		{
-			itoa((DWORD)dFramerate,Buffer,10);
+			itoa((int)(1000000000./fr.frate),Buffer,10);
 			dwUnit=UNIT_NSPF;
 		}
 		else
 		if (IsDlgButtonChecked(IDR_FR_MSPF))
 		{	
-			gcvt(dFramerate/1000,9,Buffer);
+			gcvt(1000000./fr.frate,9,Buffer);
 			dwUnit=UNIT_MSPF;
 		}
 		else
 		if (IsDlgButtonChecked(IDR_FR_FPS))
 		{
-			_gcvt(1000000000/dFramerate,6,Buffer);
-			dwUnit=UNIT_FPS;
+			if (fr.den == 0) {
+				_gcvt(fr.frate,6,Buffer);
+				dwUnit=UNIT_FPS;
+			} else {
+				sprintf(Buffer, "%d/%d", fr.nom, fr.den);
+			}
 		}
 		SendDlgItemMessage(IDC_NEWFRAMERATE,WM_SETTEXT,0,(LPARAM)Buffer);
 	}
 }
 
-double CSetFramerateDlg::GetData()
+void CSetFramerateDlg::GetData(FRAME_RATE* result)
 {
-	return dFramerate;
+	result->frate = fr.frate;
+	result->den = fr.den;
+	result->nom = fr.nom;
 }
+
+void split_at(char split_char, char* c1, char** c2, char** c3);
+
+void split_equal(char* c1, char** c2, char** c3)
+{
+	split_at('=', c1, c2, c3);
+}
+
+void split_at(char split_char, char* c1, char** c2, char** c3)
+{
+	*c2 = c1;
+
+	while (*c1) {
+		if (*c1 == split_char) {
+			*c1 = 0;
+			*c3 = ++c1;
+			return;
+		}
+		c1++;
+	}
+}
+
 
 void CSetFramerateDlg::Refresh()
 {
-	DWORD		dwNanoSecPF;
-	char		Buffer[50];
+	char		Buffer[50]; memset(Buffer,0,sizeof(Buffer));
+	char		*p1; p1=(char*)calloc(1, 50);
+	char		*p2; p2=(char*)calloc(1, 50);
+	char        *q1 = p1;
+	char        *q2 = p2;
 
 	SendDlgItemMessage(IDC_NEWFRAMERATE,WM_GETTEXT,50,(LPARAM)Buffer);
+
+	split_at('/', Buffer, (char**)&p1, (char**)&p2);
+	if (*p1) 
+		fr.nom = atoi(p1);
+	
+	if (*p2) {
+		fr.den = atoi(p2);
+		fr.frate = (double)fr.nom / (double)fr.den;
+	} else {
+		fr.den = 0;
+		fr.frate = atof(p1);
+	}
+
 	if (dwUnit==UNIT_FPS)
-	{
-		if (atoi(Buffer))
-		{
-			dwNanoSecPF=(DWORD)round(1000000000/(double)atof(Buffer));
-		}
-	}
-	else
-	if (dwUnit==UNIT_MSPF)
-	{
-		dwNanoSecPF=(DWORD)round(1000*atof(Buffer));
-	}
-	else
-	if (dwUnit==UNIT_NSPF)
-	{
-		dwNanoSecPF=(DWORD)round(atof(Buffer));
+	{ } else if (dwUnit==UNIT_MSPF) {
+		fr.den = 0;
+		fr.frate = 1000000./atof(Buffer);
+	} else if (dwUnit==UNIT_NSPF) {
+		fr.den = 0;
+		fr.frate = 1000000000./atof(Buffer);
 	}
 
-	SetData(dwNanoSecPF);
+	SetData(&fr);
 
-
+	free(q1);
+	free(q2);
 }
 
 BEGIN_MESSAGE_MAP(CSetFramerateDlg, CDialog)
@@ -165,8 +203,7 @@ BOOL CSetFramerateDlg::OnInitDialog()
 	dwUnit=UNIT_FPS;
 	CheckDlgButton(IDR_FR_FPS,BST_CHECKED);
 	bAllowEditUpdate=true;	
-	_gcvt(1000000000/dFramerate,6,Buffer);
-	dwUnit=UNIT_FPS;
+	_gcvt(fr.frate,6,Buffer);
 	SendDlgItemMessage(IDC_NEWFRAMERATE,WM_SETTEXT,0,(LPARAM)Buffer);
 
 	SetWindowText(LoadString(STR_SFR_TITLE));

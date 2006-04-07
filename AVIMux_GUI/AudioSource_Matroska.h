@@ -54,10 +54,13 @@ class AUDIOSOURCEFROMMATROSKA: public AUDIOSOURCE
 	protected:
 		int		virtual	doClose();
 		__int64	virtual GuessTotalSize();
+		MATROSKA* GetSource();
+		int GetSourceStream();
+
 	public:
 		AUDIOSOURCEFROMMATROSKA();
 		AUDIOSOURCEFROMMATROSKA(MATROSKA* matroska, int iStream);
-		~AUDIOSOURCEFROMMATROSKA();
+		virtual ~AUDIOSOURCEFROMMATROSKA();
 		__int64	virtual GetUnstretchedDuration();
 		int		virtual	Open(MATROSKA* matroska,int iStream);
 		int		virtual Enable(int bEnable);
@@ -72,7 +75,7 @@ class AUDIOSOURCEFROMMATROSKA: public AUDIOSOURCE
 		int		virtual GetGranularity();
 		int		virtual	GetName(char* lpDest);
 		int		virtual GetLanguageCode(char* lpDest);
-		char	virtual *GetIDString();
+		char	virtual *GetCodecID();
 		int		virtual GetOffset();
 		__int64 virtual FormatSpecific(__int64 iCode, __int64 iValue);
 		bool	virtual IsCBR();
@@ -81,8 +84,7 @@ class AUDIOSOURCEFROMMATROSKA: public AUDIOSOURCE
 							__int64* lpqwNanosecRead,__int64* lpiTimeocde = NULL, ADVANCEDREAD_INFO* lpAARI = NULL);
 		void	virtual ReInit();
 		int		virtual Seek(__int64 iPos);
-
-
+		int		virtual GetStrippableHeaderBytes(void* pBuffer, int max);
 };
 
 #endif

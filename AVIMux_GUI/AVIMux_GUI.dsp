@@ -139,6 +139,10 @@ SOURCE=.\AudioSource_MP3.cpp
 
 SOURCE=.\AudioSource_Vorbis.cpp
 # End Source File
+# Begin Source File
+
+SOURCE=.\AudioSource_WAV.cpp
+# End Source File
 # End Group
 # Begin Group "Video - Source - Code"
 
@@ -177,6 +181,10 @@ SOURCE=.\AddSplitPointDlg.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\ChapterSegmentUIDEdit.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\ClusterTimeEdit.cpp
 # End Source File
 # Begin Source File
@@ -185,7 +193,19 @@ SOURCE=.\MKVAC3FrameCountEdit.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\MKVHeaderSizeEdit.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\ResolutionEdit.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\UserDrawEdit.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\VerifyEdit.cpp
 # End Source File
 # End Group
 # Begin Group "AVI - Stuff"
@@ -204,6 +224,10 @@ SOURCE=.\AVIIndices.cpp
 SOURCE=.\AVIStream.cpp
 # End Source File
 # End Group
+# Begin Source File
+
+SOURCE=.\AttachedWindows.cpp
+# End Source File
 # Begin Source File
 
 SOURCE=.\AudioSourceTree.cpp
@@ -290,6 +314,10 @@ SOURCE=.\EnhancedListBox.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\FileDialogs.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\FillASIs.cpp
 # End Source File
 # Begin Source File
@@ -339,6 +367,10 @@ SOURCE=.\ProgressList.cpp
 # Begin Source File
 
 SOURCE=.\ProtocolListCtrl.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\ResizeableDialog.cpp
 # End Source File
 # Begin Source File
 
@@ -395,10 +427,6 @@ SOURCE=.\SubTitles.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\SubtitlesListBox.cpp
-# End Source File
-# Begin Source File
-
 SOURCE=.\TextFiles.cpp
 # End Source File
 # Begin Source File
@@ -415,11 +443,27 @@ SOURCE=.\UnicodeBase.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=..\UnicodeCalls.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\UnicodeListControl.cpp
 # End Source File
 # Begin Source File
 
 SOURCE=.\UnicodeTreeCtrl.cpp
+# End Source File
+# Begin Source File
+
+SOURCE="..\utf-8.cpp"
+# End Source File
+# Begin Source File
+
+SOURCE=.\UTF8Windows.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\Version.cpp
 # End Source File
 # Begin Source File
 
@@ -440,6 +484,10 @@ SOURCE=.\WAVFile.cpp
 # Begin Source File
 
 SOURCE=..\XML.CPP
+# End Source File
+# Begin Source File
+
+SOURCE=.\XMLFiles.cpp
 # End Source File
 # End Group
 # Begin Group "Header-Dateien"
@@ -492,6 +540,10 @@ SOURCE=.\AudioSource_MP3.h
 
 SOURCE=.\AudioSource_Vorbis.h
 # End Source File
+# Begin Source File
+
+SOURCE=.\AudioSource_WAV.h
+# End Source File
 # End Group
 # Begin Group "Video - Source - Headers"
 
@@ -526,6 +578,10 @@ SOURCE=.\AC3FrameCountEdit.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\ChapterSegmentUIDEdit.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\ClusterTimeEdit.h
 # End Source File
 # Begin Source File
@@ -534,7 +590,19 @@ SOURCE=.\MKVAC3FrameCountEdit.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\MKVHeaderSizeEdit.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\ResolutionEdit.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\UserDrawEdit.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\VerifyEdit.h
 # End Source File
 # End Group
 # Begin Group "AVI - Stuff - Headers"
@@ -560,6 +628,10 @@ SOURCE=.\AVIStructs.h
 # Begin Source File
 
 SOURCE=.\AddSplitPointDlg.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\AttachedWindows.h
 # End Source File
 # Begin Source File
 
@@ -639,6 +711,10 @@ SOURCE=.\FILE_INFO.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\FileDialogs.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\FillASIs.h
 # End Source File
 # Begin Source File
@@ -695,6 +771,10 @@ SOURCE=.\ProtocolListCtrl.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\ResizeableDialog.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\RIFFChunkTreeDlg.h
 # End Source File
 # Begin Source File
@@ -747,7 +827,7 @@ SOURCE=.\SubTitles.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\SubtitlesListBox.h
+SOURCE=..\Tags.h
 # End Source File
 # Begin Source File
 
@@ -763,7 +843,15 @@ SOURCE=.\Trees.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\Types.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\UnicodeBase.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\UnicodeCalls.h
 # End Source File
 # Begin Source File
 
@@ -772,6 +860,18 @@ SOURCE=.\UnicodeListControl.h
 # Begin Source File
 
 SOURCE=.\UnicodeTreeCtrl.h
+# End Source File
+# Begin Source File
+
+SOURCE="..\utf-8.h"
+# End Source File
+# Begin Source File
+
+SOURCE=.\UTF8Windows.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\Version.h
 # End Source File
 # Begin Source File
 
@@ -796,6 +896,10 @@ SOURCE=.\WAVFile.h
 # Begin Source File
 
 SOURCE=..\XML.H
+# End Source File
+# Begin Source File
+
+SOURCE=.\XMLFiles.h
 # End Source File
 # End Group
 # Begin Group "Ressourcendateien"
@@ -831,6 +935,10 @@ SOURCE=..\EBML_matroska.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=..\GenerateUIDs.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=..\Integers.cpp
 # End Source File
 # Begin Source File
@@ -859,10 +967,6 @@ SOURCE=..\Queue.cpp
 # End Source File
 # Begin Source File
 
-SOURCE="..\utf-8.cpp"
-# End Source File
-# Begin Source File
-
 SOURCE=..\Warnings.cpp
 # End Source File
 # End Group
@@ -875,7 +979,15 @@ SOURCE=..\EBML.H
 # End Source File
 # Begin Source File
 
+SOURCE=..\EBML_IDs.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\EBML_matroska.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\GenerateUIDs.h
 # End Source File
 # Begin Source File
 
@@ -908,10 +1020,6 @@ SOURCE=..\Matroska_writing.h
 # Begin Source File
 
 SOURCE=..\Queue.h
-# End Source File
-# Begin Source File
-
-SOURCE="..\utf-8.h"
 # End Source File
 # Begin Source File
 

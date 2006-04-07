@@ -9,26 +9,46 @@
 
 //#include "audiosourcelist.h"
 #include "subtitles.h"
-#include "dynarray.h"
+#include "../dynarray.h"
 #include "trees.h"
 #include "audiosource.h"
 #include "unicodetreectrl.h"
+#include "videosource.h"
 
 typedef struct 
 {
+	DWORD*				lpdwFiles;
+	AUDIOSOURCE*		audiosource;
+
 	DWORD				dwType;
 	DWORD				dwFlags;
 	AVIStreamHeader*	lpASH;
-	void*				lpFormat;
-	int					iFormatSize;
-	AUDIOSOURCE*		audiosource;
+	
+	union {
+		void*				lpFormat;
+		void*               lpFormatMKV;
+	};
+	union {
+		int					iFormatSize;
+		int					iFormatSizeMKV;
+	};
+
+	// for vorbis only
+	void*				lpFormatAVI;
+	int					iFormatSizeAVI;
+
+	int*				iScaleF;
 	int					iDelay;
 	__int64				iSize;
 
 	bool				bNameFromFormatTag;
-	DWORD*				lpdwFiles;
-
 } AUDIO_STREAM_INFO;
+
+typedef struct 
+{
+	DWORD*	lpdwFiles;
+	MULTIMEDIASOURCE* mms;
+} MULTIMEDIA_STREAM_INFO;
 
 const int ASIF_ALLOCATED =	0x01;
 const int ASIF_AVISOURCE =	0x02;
@@ -43,6 +63,8 @@ typedef struct {
 		void*                  pData;
 		AUDIO_STREAM_INFO*     pASI;
 		SUBTITLE_STREAM_INFO*  pSSI;
+		VIDEO_STREAM_INFO*     pVSI;
+		MULTIMEDIA_STREAM_INFO* pMSI;
 		char*                  pText;
 	};
 
@@ -50,11 +72,13 @@ typedef struct {
 
 const int TIIID_ASI		= 0x01;
 const int TIIID_SSI		= 0x02;
+const int TIIID_VSI     = 0x04;
 const int TIIID_LNGCODE = 0x10;
 const int TIIID_STRNAME = 0x11;
 
 TREE_ITEM_INFO*	BuildTIIfromASI(AUDIO_STREAM_INFO* asi);
 TREE_ITEM_INFO*	BuildTIIfromSSI(SUBTITLE_STREAM_INFO* ssi);
+TREE_ITEM_INFO* BuildTIIfromVSI(VIDEO_STREAM_INFO* vsi);
 
 /////////////////////////////////////////////////////////////////////////////
 // Fenster CAudioSourceTree 
@@ -80,6 +104,7 @@ public:
 	HTREEITEM	FindID(HTREEITEM hItem, int iID, TREE_ITEM_INFO** tii = NULL);
 	CDynIntArray* GetItems(HTREEITEM hItem, int iID, int iCheck, CDynIntArray** indices = NULL);
 	TREE_ITEM_INFO* GetItemInfo(HTREEITEM hItem);
+	TREE_ITEM_INFO*	FindItemOriginalPosition(int original_position);
 
 // Überschreibungen
 	// Vom Klassen-Assistenten generierte virtuelle Funktionsüberschreibungen
@@ -88,6 +113,7 @@ public:
 	virtual void OnFinalRelease();
 	protected:
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
+	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 	//}}AFX_VIRTUAL
 
 // Implementierung
@@ -97,11 +123,10 @@ public:
 	// Generierte Nachrichtenzuordnungsfunktionen
 protected:
 	//{{AFX_MSG(CAudioSourceTree)
-	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
-	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnRclick(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnBegindrag(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	//}}AFX_MSG
 
 	DECLARE_MESSAGE_MAP()
@@ -111,6 +136,8 @@ protected:
 	//}}AFX_DISPATCH
 	DECLARE_DISPATCH_MAP()
 	DECLARE_INTERFACE_MAP()
+public:
+	afx_msg void OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult);
 };
 
 /////////////////////////////////////////////////////////////////////////////

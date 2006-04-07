@@ -1,7 +1,7 @@
 #ifndef I_TREES
 #define I_TREES
 
-#include "DynArray.h"
+#include "../DynArray.h"
 
 template <class T> HTREEITEM Tree_Insert(T* CTree,char* cBuffer,HTREEITEM hParent = NULL, HTREEITEM hAfter = TVI_LAST)
 {
@@ -11,7 +11,9 @@ template <class T> HTREEITEM Tree_Insert(T* CTree,char* cBuffer,HTREEITEM hParen
 	tvi.hInsertAfter=hAfter;
 	tvi.item.mask=TVIF_TEXT;
 	tvi.item.pszText=cBuffer;
-	tvi.item.cchTextMax=1+lstrlen(cBuffer);
+	
+	if (cBuffer != LPSTR_TEXTCALLBACK)
+		tvi.item.cchTextMax=strlen(cBuffer);
 
 	return CTree->InsertItem(&tvi);
 }

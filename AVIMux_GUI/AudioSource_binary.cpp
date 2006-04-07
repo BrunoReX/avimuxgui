@@ -2,10 +2,16 @@
 #include "audiosource_binary.h"
 #include "debug.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 	//////////////////////
 	// audio cue points //
 	//////////////////////
-
+/*
 CUEPOINTS::CUEPOINTS()
 {
 	points = new CDynIntArray;
@@ -76,7 +82,7 @@ void CUEPOINTS::Delete()
 	points->DeleteAll();
 	delete points;
 }
-
+*/
 
 	///////////////////////////////////////////
 	// audio source from binary input stream //
@@ -88,9 +94,19 @@ AUDIOSOURCEFROMBINARY::AUDIOSOURCEFROMBINARY()
 	source=NULL; 
 	SetName(NULL); 
 	dwResync_Range = 131072; 
-	cues = NULL;
 	bEndReached = 0;
+	unstretched_duration = 0;
 	SetTimecodeScale(1000);
+}
+
+
+void AUDIOSOURCEFROMBINARY::ReInit()
+{
+	if (!GetSource())
+		return;
+
+	GetSource()->InvalidateCache();
+	Seek(0);
 }
 
 int AUDIOSOURCEFROMBINARY::Seek(__int64 qwPos)
@@ -115,8 +131,6 @@ int AUDIOSOURCEFROMBINARY::Open(STREAM* lpStream)
 		 SetName(lpcName);
 	 }
 
-	 cues = new CUEPOINTS;
-
 	 return (lpStream)?AS_OK:AS_ERR; 
 }
 
@@ -127,21 +141,32 @@ int AUDIOSOURCEFROMBINARY::Read(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdw
 	__int64	iNanosecRead, iCTC;
 	
 	if (lpiTimecode) *lpiTimecode = iCTC = GetCurrentTimecode();
-	int	iRead = doRead(lpDest,dwMicroSecDesired,lpdwMicrosecRead,&iNanosecRead);
-	if (!iRead) bEndReached = 1;
+
+	int	iRead = -1;
+	
+	if (!IsEndOfStream())
+		iRead = doRead(lpDest,dwMicroSecDesired,lpdwMicrosecRead,&iNanosecRead);
+	if (iRead <= 0) bEndReached = 1;
 
 	if (lpqwNanosecRead) *lpqwNanosecRead = iNanosecRead;
 
 	__int64 iLTC = -1000;
 	
-/*	if (cues && (cues->FindClosestPoint(iCTC,&iLTC,NULL)==-1 || iCTC - iLTC > 1000)) {
-		cues->AddPoint(iCTC,GetSource()->GetPos());
-	}
-*/
 	IncCurrentTimecode(iNanosecRead);
 	if (lpAARI) lpAARI->iNextTimecode = GetCurrentTimecode();
 
+	if (IsEndOfStream())
+		unstretched_duration = GetCurrentTimecode() - GetBias();
+
 	return iRead;
+}
+
+__int64 AUDIOSOURCEFROMBINARY::GetUnstretchedDuration()
+{
+	if (GetMaxLength())
+		return GetMaxLength();
+
+	return unstretched_duration;
 }
 
 int AUDIOSOURCEFROMBINARY::doClose()
@@ -150,11 +175,6 @@ int AUDIOSOURCEFROMBINARY::doClose()
 	if (lpcName) {
 		delete lpcName;
 		lpcName = NULL;
-	}
-
-	if (cues) {
-		cues->Delete();
-		delete cues;
 	}
 
 	return AS_OK; 
@@ -172,7 +192,14 @@ bool AUDIOSOURCEFROMBINARY::IsEndOfStream()
 
 int AUDIOSOURCEFROMBINARY::GetAvgBytesPerSec()
 {
-	return source->GetAvgBytesPerSec();
+	int i = source->GetAvgBytesPerSec();
+	if (i)
+		return i;
+
+	__int64 duration = GetDuration() * GetTimecodeScale() / 1000000000;
+
+	return (int)((double)GetSize()/(double)duration);
+
 }
 
 int AUDIOSOURCEFROMBINARY::GetChannelCount()
@@ -208,7 +235,7 @@ bool AUDIOSOURCEFROMBINARY::IsCBR()
 	//////////////////////////////
 	// general CBR audio source //
 	//////////////////////////////
-
+/*
 int CBRAUDIOSOURCE::doRead(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdwMicroSecRead,__int64* lpqwNanoSecRead)
 {
 	DWORD	dwBytes,dwAdd;
@@ -243,3 +270,4 @@ int CBRAUDIOSOURCE::doClose()
 	 return AUDIOSOURCE::doClose();
 }
 
+*/

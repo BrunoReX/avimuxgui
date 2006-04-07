@@ -53,6 +53,7 @@ public:
 protected:
 	//{{AFX_MSG(CUnicodeListControl)
 	afx_msg void OnGetdispinfo(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnDestroy();
 	//}}AFX_MSG
 
 	DECLARE_MESSAGE_MAP()

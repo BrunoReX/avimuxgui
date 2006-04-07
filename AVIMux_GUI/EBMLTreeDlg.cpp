@@ -9,6 +9,7 @@
 #include "..\matroska_block.h"
 #include "FormatText.h"
 #include "UnicodeTreeCtrl.h"
+#include "..\cache.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -24,7 +25,7 @@ char* sem_close = "semaphore_close";
 int iDepth;
 
 CEBMLTreeDlg::CEBMLTreeDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CEBMLTreeDlg::IDD, pParent)
+	: CResizeableDialog(CEBMLTreeDlg::IDD, pParent)
 {
 	EnableAutomation();
 
@@ -40,13 +41,14 @@ void CEBMLTreeDlg::OnFinalRelease()
 	// automatisch. Fügen Sie zusätzlichen Bereinigungscode für Ihr Objekt
 	// hinzu, bevor Sie die Basisklasse aufrufen.
 
-	CDialog::OnFinalRelease();
+	CResizeableDialog::OnFinalRelease();
 }
 
 void CEBMLTreeDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialog::DoDataExchange(pDX);
+	CResizeableDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CEBMLTreeDlg)
+	DDX_Control(pDX, IDOK, m_OK);
 	DDX_Control(pDX, IDC_TREE1, m_EBMLTree);
 	DDX_Control(pDX, IDC_ABSOLUTE, m_Absolute);
 	DDX_Control(pDX, IDC_RELATIVE, m_Relative);
@@ -54,7 +56,7 @@ void CEBMLTreeDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CEBMLTreeDlg, CDialog)
+BEGIN_MESSAGE_MAP(CEBMLTreeDlg, CResizeableDialog)
 	//{{AFX_MSG_MAP(CEBMLTreeDlg)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE1, OnSelchangedTree1)
 	ON_BN_CLICKED(IDC_ABSOLUTE, OnAbsolute)
@@ -62,9 +64,14 @@ BEGIN_MESSAGE_MAP(CEBMLTreeDlg, CDialog)
 	ON_NOTIFY(TVN_SELCHANGEDW, IDC_TREE1, OnSelchangedTree1)
 	ON_BN_CLICKED(IDC_FULLEXPAND, OnFullexpand)
 	//}}AFX_MSG_MAP
+	ON_BN_CLICKED(IDC_FONT_LARGER, OnBnClickedFontLarger)
+	ON_BN_CLICKED(IDC_FONT_SMALLER, OnBnClickedFontSmaller)
+//	ON_BN_CLICKED(IDOK, OnBnClickedOk)
+ON_BN_CLICKED(IDOK, OnBnClickedOk)
+ON_WM_SYSCOMMAND()
 END_MESSAGE_MAP()
 
-BEGIN_DISPATCH_MAP(CEBMLTreeDlg, CDialog)
+BEGIN_DISPATCH_MAP(CEBMLTreeDlg, CResizeableDialog)
 	//{{AFX_DISPATCH_MAP(CEBMLTreeDlg)
 		// HINWEIS - Der Klassen-Assistent fügt hier Zuordnungsmakros ein und entfernt diese.
 	//}}AFX_DISPATCH_MAP
@@ -78,7 +85,7 @@ END_DISPATCH_MAP()
 static const IID IID_IEBMLTreeDlg =
 { 0x1b7faf77, 0x38f6, 0x4d01, { 0xb0, 0x45, 0x1b, 0xd4, 0xec, 0x89, 0x2c, 0xf9 } };
 
-BEGIN_INTERFACE_MAP(CEBMLTreeDlg, CDialog)
+BEGIN_INTERFACE_MAP(CEBMLTreeDlg, CResizeableDialog)
 	INTERFACE_PART(CEBMLTreeDlg, IID_IEBMLTreeDlg, Dispatch)
 END_INTERFACE_MAP()
 
@@ -88,19 +95,20 @@ END_INTERFACE_MAP()
 #include "trees.h"
 #include "..\ebml.h"
 #include "..\matroska.h"
- 
+#include ".\ebmltreedlg.h"
+
 typedef struct
 {
 	CEBMLTree*   tree;
 	HTREEITEM    hParent;
 	EBMLElement* eParent;
 	bool*		 pbDoClose;
-	HANDLE		 hSemaphore_1;
-	char*		 cSemaphore_Finished;
+//  HANDLE		 hSemaphore_1;
+//	char*		 cSemaphore_Finished;
 	int			 iFlag;
 } ADD_CHILDREN_DATA;
 
-int AddChildren_Thread(void* pData);
+DWORD WINAPI AddChildren_Thread(void* pData);
 
 char* sem_name[] = 
 	{ "add_children_thread_semaphore_1", "add_children_thread_semaphore_2",
@@ -108,149 +116,180 @@ char* sem_name[] =
  };
 
 
-void AddChildren(CEBMLTree* tree, HTREEITEM hParent, EBMLElement* eParent, bool* pbDoClose, HANDLE hSemaphore_1,
-				 char* cSemaphore_Finished)
+void AddChildren(CEBMLTree* tree, HTREEITEM hParent, EBMLElement* eParent, 
+				 bool* pbDoClose)
 {
 	EBMLITEM_DESCRIPTOR* d;
 	HTREEITEM	hThis;
-	HANDLE		hSem_Loop;//, hSem;
-//	int			k;
-	HANDLE		hSemaphore_Finished;
-	if (cSemaphore_Finished) {
-		hSemaphore_Finished = OpenSemaphore(SEMAPHORE_ALL_ACCESS,false, cSemaphore_Finished);
-	}
+	
+	HANDLE		hSem_Loop;
 
-	char	msg[50];
+	char		msg[128];
 	msg[0]=0;
+	
 	bool		bExpanded = false;
 
 	iDepth++;
+
+//	if (iDepth >= 4) {
+//		MessageBox(0, "B0rked!", "Fatal error", MB_OK | MB_ICONERROR);
+//		while (iDepth >= 4 && !*pbDoClose) Sleep(100);
+//	}
+	
 	if (!(hSem_Loop = OpenSemaphore(SEMAPHORE_ALL_ACCESS, NULL, sem_name[1]))) {
 		hSem_Loop = CreateSemaphore(NULL, 1, 1, sem_name[1]);
+		if (!hSem_Loop)
+			MessageBox(0, "Internal error: OpenSemaphore and CreateSemaphore failed!", "B0rked!", MB_OK | MB_ICONERROR);
 	}
 
 	if (!tree->GetChildItem(hParent) && !*pbDoClose) {
 		EBMLElement* e = NULL;
 
-		if (eParent && eParent->IsMaster() && !*pbDoClose) {
-			WaitForSingleObject(hSem_Loop, INFINITE);
-			eParent->Create1stSub(&e);
+		int wait_result = -1;
+		while (wait_result != WAIT_OBJECT_0 && !*pbDoClose)
+			wait_result = WaitForSingleObject(hSem_Loop, 100);
+		
+		if (wait_result == WAIT_OBJECT_0) {
+			if (eParent && eParent->IsMaster() && !*pbDoClose)
+				eParent->Create1stSub(&e);
+		
 			ReleaseSemaphore(hSem_Loop,1,NULL);
 		}
 
 		while (e && !*pbDoClose) {
-		  int iWaitResult = -1;
-		  while (!*pbDoClose && iWaitResult!=WAIT_OBJECT_0) {
-			  iWaitResult = WaitForSingleObject(hSem_Loop, 100);
-		  }
-		  
-		  if (iWaitResult == WAIT_OBJECT_0) {
-			d = new EBMLITEM_DESCRIPTOR;
-			d->pElement = e;
-			d->iItemPosition = e->GetAbsoluteHeaderPos();
-			d->iRelPosition = e->GetRelativeHeaderPos();
-			d->iHeaderSize = e->GetHeaderSize();
-			if (!*pbDoClose) {
-				tree->SetItemData(hThis = Tree_Insert(tree,(char*)LPSTR_TEXTCALLBACK,hParent),
-				(DWORD)d);
+			wait_result = -1;
+			while (!*pbDoClose && wait_result != WAIT_OBJECT_0) {
+				wait_result = WaitForSingleObject(hSem_Loop, 100);
 			}
-			if (e->GetType() == ETM_CLBLOCK) {
-				EBMLM_CLBlock* block = (EBMLM_CLBlock*)e;
-				CLBLOCKHEADER hdr;
-	
-				CBuffer* buffer = block->Read(&hdr);
-				sprintf(msg,"stream: %d",hdr.iStream);
-				Tree_Insert(tree,msg,hThis);				
-				if (hdr.iFrameCountInLace) {
-					sprintf(msg,"number of frames: %d (%s)",hdr.iFrameCountInLace,
-						((hdr.iFlags & BLKHDRF_LACINGNEW) == BLKHDRF_LACINGEBML)?"EBML":
-						((hdr.iFlags & BLKHDRF_LACINGNEW) == BLKHDRF_LACINGCONST)?"const":
-						((hdr.iFlags & BLKHDRF_LACINGNEW) == BLKHDRF_LACING)?"xiph":"");
-					
-					int* ifs = (int*)(hdr.cFrameSizes->GetData());
-					HTREEITEM h = Tree_Insert(tree,msg,hThis);				
-					for (int i=0;i<hdr.iFrameCountInLace;i++) {
-						char cSize[20]; QW2Str(*ifs++,cSize, 1);
-						sprintf(msg,"frame size: %s bytes", cSize);
-						Tree_Insert(tree, msg, h);
+			  
+			if (wait_result == WAIT_OBJECT_0) {
+				d = new EBMLITEM_DESCRIPTOR;
+				d->pElement = e;
+				d->iItemPosition = e->GetAbsoluteHeaderPos();
+				d->iRelPosition = e->GetRelativeHeaderPos();
+				d->iHeaderSize = e->GetHeaderSize();
+				
+				if (e->GetLevel() >= 1) 
+					e->CheckCRC();
+
+				if (!*pbDoClose) 
+					tree->SetItemData(hThis = Tree_Insert(tree,
+						(char*)LPSTR_TEXTCALLBACK,hParent),
+						(DWORD)d);
+				
+				if (e->GetType() == IDVALUE(MID_CL_BLOCK) ||
+					e->GetType() == IDVALUE(MID_CL_SIMPLEBLOCK)) {
+					EBMLM_CLBlock* block = (EBMLM_CLBlock*)e;
+					CLBLOCKHEADER hdr;
+
+					CBuffer* buffer = block->Read(&hdr);
+					sprintf(msg,"stream: %d %s%s",hdr.iStream,
+						((hdr.iFlags & BLKHDRF_KEYFRAME) == BLKHDRF_KEYFRAME)?"keyframe ":"",
+						((hdr.iFlags & BLKHDRF_DISCARDABLE) == BLKHDRF_DISCARDABLE)?"discardable ":"");
+					Tree_Insert(tree,msg,hThis);				
+					if (hdr.frame_sizes.size() > 1) {
+						sprintf(msg,"number of frames: %d %s ",hdr.frame_sizes.size(),
+							((hdr.iFlags & BLKHDRF_LACINGNEW) == BLKHDRF_LACINGEBML)?"(EBML lacing)":
+							((hdr.iFlags & BLKHDRF_LACINGNEW) == BLKHDRF_LACINGCONST)?"(constant lacing)":
+							((hdr.iFlags & BLKHDRF_LACINGNEW) == BLKHDRF_LACING)?"(xiph lacing)":"");
+						
+						HTREEITEM h = Tree_Insert(tree,msg,hThis);				
+						for (size_t i=0;i<hdr.frame_sizes.size();i++) {
+							char cSize[20]; QW2Str(hdr.frame_sizes[i],cSize, 1);
+							sprintf(msg,"frame size: %s bytes", cSize);
+							Tree_Insert(tree, msg, h);
+						}
 					}
+					char cTC[64]; cTC[0]=0; 
+					QW2Str((__int64)((__int16)(hdr.iTimecode)), cTC, 1);
+
+					sprintf(msg,"time code, relative to cluster: %s", 
+						cTC,0);
+					Tree_Insert(tree,msg,hThis);	
+					cTC[0]=0;
+					if (e->GetType() == IDVALUE(MID_CL_BLOCK)) {
+						QW2Str((__int64)(__int16)hdr.iTimecode +((EBMLM_Cluster*)e->GetParent()->GetParent())->GetTimecode(), cTC, 1);
+					} else {
+						QW2Str((__int64)(__int16)hdr.iTimecode +((EBMLM_Cluster*)e->GetParent())->GetTimecode(), cTC, 1);
+					}
+					sprintf(msg,"absolute time code: %s", cTC);
+					Tree_Insert(tree,msg,hThis);	
+					e->Delete();
 				}
-				sprintf(msg,"time code, relative to cluster: %d", (__int16)(hdr.iTimecode),0);
-				Tree_Insert(tree,msg,hThis);	
-				char cTC[20]; cTC[0]=0; QW2Str((__int64)(__int16)hdr.iTimecode +((EBMLM_Cluster*)e->GetParent()->GetParent())->GetTimecode(), cTC, 1);
-				sprintf(msg,"absolute time code: %s", cTC);
-				Tree_Insert(tree,msg,hThis);	
-			}
 
-			ReleaseSemaphore(hSem_Loop, 1, NULL);
-			WaitForSingleObject(hSem_Loop, INFINITE);
-			
-			ADD_CHILDREN_DATA* a = NULL;
-			switch (e->GetType()) {
-				case ETM_CLBLOCKGROUP:
-				case ETM_SEGMENTINFO:
-				//AddChildren(tree, hThis, e, pbDoClose, hSemaphore);
-					a = new ADD_CHILDREN_DATA;
-					ZeroMemory(a,sizeof(*a));
-					a->eParent = eParent;
-					a->hParent = hParent;
-					a->tree = tree;
-					a->pbDoClose = pbDoClose;
-					a->iFlag = 0;
-					AfxBeginThread((AFX_THREADPROC)AddChildren_Thread, a);
+				ADD_CHILDREN_DATA* a = NULL;
+
+				if (e->GetType() == IDVALUE(MID_CL_BLOCKGROUP) /*||
+					e->GetType() == IDVALUE(MID_SEGMENTINFO)*/) {
+						a = new ADD_CHILDREN_DATA;
+						ZeroMemory(a,sizeof(*a));
+						a->eParent = e;
+						a->hParent = hThis;
+						a->tree = tree;
+						a->pbDoClose = pbDoClose;
+						a->iFlag = 0;
+						DWORD dwID;
+						CreateThread(NULL, 1<<20, AddChildren_Thread, a, 
+							0, &dwID);
+						
+						RECT r;
+						tree->GetItemRect(hParent, &r, false);
+						tree->InvalidateRect(&r, false);
+						tree->UpdateWindow();
+						//if (!*pbDoClose)
+						//	tree->Expand(hThis,TVE_EXPAND);
+						
+				}
+
+				if (e->GetType() == IDVALUE(MID_CL_BLOCK) ||
+					e->GetType() == IDVALUE(MID_CL_SIMPLEBLOCK)) {
+					
+/*					if (!*pbDoClose) 
+						tree->Expand(hThis,TVE_EXPAND);*/
+				}
+
+				e->SeekStream(0);
+				e = e->GetSucc();
+
+				if (!bExpanded) {
 					if (!*pbDoClose) {
-						tree->Expand(hThis,TVE_EXPAND);
+						HTREEITEM hSelected = tree->GetSelectedItem();
+						tree->Expand(hParent,TVE_EXPAND);
+						tree->EnsureVisible(hSelected);
 					}
-			}
+				
+					bExpanded = true;
+				}
 
-			switch (e->GetType()) {
-				case ETM_CLBLOCK:
-					if (!*pbDoClose) tree->Expand(hThis,TVE_EXPAND);
-					break;
+				ReleaseSemaphore(hSem_Loop, 1, NULL);
 			}
-
-			e->SeekStream(0);
-			e = e->GetSucc();
-			ReleaseSemaphore(hSem_Loop, 1, NULL);
-			ReleaseSemaphore(hSemaphore_1, 1, NULL);
-			if (!bExpanded) {
-				if (!*pbDoClose) tree->Expand(hParent,TVE_EXPAND);
-				bExpanded = true;
-			}
-		  }
 		}
 	}
 
-	if (!*pbDoClose) tree->Expand(hParent,TVE_EXPAND);
-	if (cSemaphore_Finished) {
-		ReleaseSemaphore(hSemaphore_Finished, 1, NULL);
-		CloseHandle(hSemaphore_Finished);
-	}
+//	if (!*pbDoClose) 
+//		tree->Expand(hParent,TVE_EXPAND);
+
+
+	RECT r;
+	tree->GetItemRect(hParent, &r, false);
+	tree->InvalidateRect(&r, false);
+	tree->UpdateWindow();
+
 	CloseHandle(hSem_Loop);
 
 	iDepth--;
 }
 
 
-int AddChildren_Thread(void* pData)
+DWORD WINAPI AddChildren_Thread(void* pData)
 {
 	ADD_CHILDREN_DATA* acd = (ADD_CHILDREN_DATA*)pData;
-//	HANDLE hSem3 = CreateSemaphore(NULL, 0, 1, sem_name[2]);
 
 	if (acd->eParent->GetLength()) {
-		HANDLE hSem = OpenSemaphore(SEMAPHORE_ALL_ACCESS, false, sem_name[0]);
-		if (!hSem) {
-			hSem = CreateSemaphore(NULL, 0, 1, sem_name[0]);
-		} else {
-			WaitForSingleObject(hSem, INFINITE);
-		}
 
-		acd->hSemaphore_1 = hSem;
+		AddChildren(acd->tree, acd->hParent, acd->eParent, 
+			acd->pbDoClose);
 
-		AddChildren(acd->tree, acd->hParent, acd->eParent, acd->pbDoClose, acd->hSemaphore_1, 
-			acd->cSemaphore_Finished);
-
-		CloseHandle(acd->hSemaphore_1);
 	}
 	acd->iFlag = 1;
 	delete acd;
@@ -268,31 +307,57 @@ void CEBMLTreeDlg::CleanChildren(HTREEITEM hParent)
 		m_EBMLTree.Expand(hItem,TVE_COLLAPSE);
 		if (d) {
 			d->pElement->Delete();
+			delete d->pElement;
+			d->pElement = NULL;
 		}
+		
 		CleanChildren(hItem);
 		hNext = m_EBMLTree.GetNextSiblingItem(hItem);
 		m_EBMLTree.DeleteItem(hItem);
+		
 		if (d) {
-			delete d->pElement;
 			delete d;
 		}
+		
 		hItem = hNext;
 	}
 }
 
+void CEBMLTreeDlg::RecreateTreeFont()
+{
+	CFont* font = new CFont;
+	
+	if (!font->CreateFont(-font_size, 0, 0, 0, FW_NORMAL, false, false,
+		false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, FF_ROMAN, "Microsoft Sans Serif") &&
+		!font->CreateFont(-font_size, 0, 0, 0, FW_NORMAL, false, false,
+		false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		DEFAULT_QUALITY, FF_ROMAN, "Microsoft Sans Serif"))
+			return;
+		
+	GetAttribs()->SetInt("tree_font_size", font_size);
+
+	CFont* old_font = m_EBMLTree.GetFont();
+	m_EBMLTree.SetFont(font);
+	delete old_font;
+}
+
 BOOL CEBMLTreeDlg::OnInitDialog() 
 {
-	CDialog::OnInitDialog();
+	CResizeableDialog::OnInitDialog();
 	
 	// TODO: Zusätzliche Initialisierung hier einfügen
 	
 	m_EBMLTree.InitUnicode();
 	
 	source->Seek(0);
+	fThreadsafe = source->IsEnabled(CACHE_THREADSAFE);
+	source->Enable(CACHE_THREADSAFE);
 	e_matroska = new EBML_Matroska(source,0);
 
 	bDoClose = false;
 	iDepth = 0;
+	font_size = 12;
 	
 	ADD_CHILDREN_DATA* a = new ADD_CHILDREN_DATA;
 	ZeroMemory(a,sizeof(*a));
@@ -300,14 +365,44 @@ BOOL CEBMLTreeDlg::OnInitDialog()
 	a->tree = &m_EBMLTree;
 	a->eParent = e_matroska;
 	a->pbDoClose = &bDoClose;
-	a->hSemaphore_1 = NULL;
+//	a->hSemaphore_1 = NULL;
 	a->iFlag = 0;
 
 	//AddChildren(&m_EBMLTree, 0, e_matroska, &bDoClose, 0, "semamphore_close");
-	AfxBeginThread((AFX_THREADPROC)AddChildren_Thread, a);
+	DWORD dwID;
+	CreateThread(NULL, 1<<20, AddChildren_Thread, a, NULL, &dwID);
 	m_Absolute.SetCheck(1);
 	OnAbsolute();
 	m_Relative.SetCheck(0);
+
+	int w, h;
+	GetBorder(w, h);
+
+	AttachWindow(m_OK, ATTB_RIGHT, m_hWnd, -16);
+	AttachWindow(*GetDlgItem(IDC_FONT_LARGER), ATTB_RIGHT, m_OK);
+	AttachWindow(*GetDlgItem(IDC_FONT_LARGER), ATTB_TOP, m_OK, ATTB_BOTTOM, 1);
+	AttachWindow(*GetDlgItem(IDC_FONT_SMALLER), ATTB_RIGHT, *GetDlgItem(IDC_FONT_LARGER), ATTB_LEFT, -1);
+	AttachWindow(*GetDlgItem(IDC_FONT_SMALLER), ATTB_TOPBOTTOM, *GetDlgItem(IDC_FONT_LARGER));
+
+	AttachWindow(m_EBMLTree, ATTB_TOP, m_hWnd, h + 16);
+	AttachWindow(m_EBMLTree, ATTB_BOTTOM, m_hWnd, -16);
+	AttachWindow(m_Relative, ATTB_RIGHT, m_OK);
+	AttachWindow(m_Absolute, ATTB_RIGHT, m_OK);
+	AttachWindow(m_Relative, ATTB_LEFT, m_OK);
+	AttachWindow(m_Absolute, ATTB_LEFT, m_OK);
+	AttachWindow(m_EBMLTree, ATTB_RIGHT, m_OK, ATTB_LEFT, -16);
+	AttachWindow(m_EBMLTree, ATTB_LEFT, m_hWnd, 16);
+
+	CFont* font = new CFont;
+	font->CreateFont(-font_size, 0, 0, 0, FW_NORMAL, false, false,
+		false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		DEFAULT_QUALITY, DEFAULT_PITCH, "Microsoft Sans Serif");
+	
+	m_EBMLTree.SetFont(font);
+
+	font_size = (int)GetAttribs()->GetIntWithDefault("tree_font_size", 12);
+
+	RecreateTreeFont();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX-Eigenschaftenseiten sollten FALSE zurückgeben
@@ -330,21 +425,21 @@ void CEBMLTreeDlg::OnSelchangedTree1(NMHDR* pNMHDR, LRESULT* pResult)
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
 	
 	EBMLITEM_DESCRIPTOR* d = (EBMLITEM_DESCRIPTOR*)m_EBMLTree.GetItemData(item->hItem);
-	if (d && item) {
+	if (d && item && !bDoClose) {
 
 	//	if (d->pElement->GetType() == ETM_SEGMENT) {
-			ADD_CHILDREN_DATA* a = new ADD_CHILDREN_DATA;
-			ZeroMemory(a,sizeof(*a));
-			a->tree = &m_EBMLTree;
-			a->hParent = item->hItem;
-			a->eParent = d->pElement;
-			a->pbDoClose = &bDoClose;
-			a->iFlag = 0;
-			AfxBeginThread((AFX_THREADPROC)AddChildren_Thread, a);
+		ADD_CHILDREN_DATA* a = new ADD_CHILDREN_DATA;
+		ZeroMemory(a,sizeof(*a));
+		a->tree = &m_EBMLTree;
+		a->hParent = item->hItem;
+		a->eParent = d->pElement;
+		a->pbDoClose = &bDoClose;
+		a->iFlag = 0;
+		AfxBeginThread((AFX_THREADPROC)AddChildren_Thread, a);
 
-			m_EBMLTree.InvalidateRect(NULL);
-			m_EBMLTree.UpdateWindow();
-			m_EBMLTree.Expand(item->hItem, TVE_EXPAND);
+//			m_EBMLTree.InvalidateRect(NULL);
+//			m_EBMLTree.UpdateWindow();
+//			m_EBMLTree.Expand(item->hItem, TVE_EXPAND);
 	/*	} else {
 			AddChildren(&m_EBMLTree, item->hItem, d->pElement, &bDoClose, NULL, NULL);
 		}*/
@@ -365,13 +460,15 @@ void CEBMLTreeDlg::OnOK()
 	if (iDepth) {  // don't hang here, otherwise it will completely hang
 		Sleep(100);
 		PostMessage(WM_COMMAND, IDOK, 0);
-
 	} else {
 	//	CloseHandle(hSem_close);
 		CleanChildren(0);
 		e_matroska->Delete();
 		delete e_matroska;
-		CDialog::OnOK();
+
+		delete m_EBMLTree.GetFont();
+
+		CResizeableDialog::OnOK();
 	}
 }
 
@@ -394,4 +491,52 @@ void CEBMLTreeDlg::OnFullexpand()
 //	HTREEITEM* hItem = m_EBMLTree.GetRootItem();
 	
 
+}
+
+void CEBMLTreeDlg::OnBnClickedFontLarger()
+{
+	// TODO: Fügen Sie hier Ihren Kontrollbehandlungscode für die Benachrichtigung ein.
+
+	font_size++;
+	RecreateTreeFont();
+}
+
+void CEBMLTreeDlg::OnBnClickedFontSmaller()
+{
+	// TODO: Fügen Sie hier Ihren Kontrollbehandlungscode für die Benachrichtigung ein.
+	if (font_size > 1) 
+		font_size--;
+	
+	RecreateTreeFont();
+}
+
+
+void CEBMLTreeDlg::OnBnClickedOk()
+{
+	bDoClose = true;
+
+	if (iDepth) {  // don't hang here, otherwise it will completely hang
+		Sleep(100);
+		PostMessage(WM_COMMAND, IDOK, 0);
+	} else {
+		source->SetFlag(CACHE_THREADSAFE, fThreadsafe);
+		CleanChildren(0);
+		e_matroska->Delete();
+		delete e_matroska;
+
+		delete m_EBMLTree.GetFont();
+
+		CResizeableDialog::OnOK();
+	}
+}
+
+void CEBMLTreeDlg::OnSysCommand(UINT nID, LPARAM lParam)
+{
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein, und/oder benutzen Sie den Standard.
+	if (nID == SC_CLOSE) {
+		PostMessage(WM_COMMAND, IDOK, 0);
+		return;
+	}
+
+	CResizeableDialog::OnSysCommand(nID, lParam);
 }

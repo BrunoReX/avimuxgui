@@ -2,6 +2,12 @@
 #include "silence.h"
 #include "audiosource_aac.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 	///////////////////////////////////////////
 	// AAC audio source - reading ATDS files //
 	///////////////////////////////////////////
@@ -32,9 +38,11 @@ AACSOURCE::AACSOURCE(STREAM* s)
 
 int AACSOURCE::Open(STREAM* s)
 {
-	void* pBuffer = new char[2<<17];
 
 	if (!s) return AS_ERR;
+	if (s->GetSize() <= 0)
+		return AS_ERR;
+
 	if (AUDIOSOURCEFROMBINARY::Open(s)==AS_ERR) return AS_ERR;
 	bitsource=new BITSTREAM;
 	bitsource->Open(s);
@@ -42,11 +50,21 @@ int AACSOURCE::Open(STREAM* s)
 	// ADTS Header?
 	s->SetOffset(0);	 
 	s->Seek(0);
+	
+	void* pBuffer = new char[2<<17];
+
 	if (ReadFrame_ADTS(pBuffer,NULL,NULL)==AS_ERR) {
-		return 0;
+		bitsource->Close();
+		delete bitsource;
+		delete [] pBuffer;
+		return AS_ERR;
 	};
 
-	delete pBuffer;
+	delete[] pBuffer;
+	SetFrameMode(1);
+
+	if (GetFrequency() <= 24000)
+		FormatSpecific(MMSSFS_AAC_SETSBR, 1);		
 
 	return 1;
 }
@@ -179,6 +197,27 @@ int AACSOURCE::GetProfile()
 	return aacinfo.dwProfile;
 }
 
+void AACSOURCE::GetProfileString(char* buf, int buf_len)
+{
+	char* AAC_prof_name = NULL;
+
+	if (buf_len < 8)
+		return;
+
+	if ((int)FormatSpecific(MMSGFS_AAC_ISSBR)) 
+		AAC_prof_name = "HE";
+	else switch (FormatSpecific(MMSGFS_AAC_PROFILE)) {
+		case AAC_ADTS_PROFILE_LC: AAC_prof_name = "LC"; break;
+		case AAC_ADTS_PROFILE_LTP: AAC_prof_name = "LTP"; break;
+		case AAC_ADTS_PROFILE_MAIN: AAC_prof_name = "MAIN"; break;
+		case AAC_ADTS_PROFILE_SSR: AAC_prof_name = "SSR"; break;
+		default: AAC_prof_name = "unknown";
+	}
+	
+	_snprintf(buf, buf_len, "%s-AAC", AAC_prof_name);
+	buf[buf_len - 1] = 0;
+}
+
 int AACSOURCE::GetMPEGVersion()
 {
 	return aacinfo.dwMPEGVersion;
@@ -229,7 +268,7 @@ int Check_AAC_CFR(void* pData)
 		(*p->pStatus) = (DWORD)(1000 * iPos / iFileSize);
 	}
 
-	delete pBuffer;
+	delete[] pBuffer;
 	p->s->SetCFRFlag(iRes);
 	p->s->Seek(0);
 	ReleaseSemaphore(p->hSem, 1, NULL);
@@ -343,7 +382,6 @@ int AACFROMAVI::Open(AVIFILEEX* s, int j)
 	SetChannelCount(*b++>>3 & 0x7);
 	SetDefault(!(avifile->GetStreamHeader(stream)->dwFlags & AVISF_DISABLED));
 
-
 	return 1;
 }
 
@@ -365,8 +403,17 @@ int AACFROMAVI::doRead(void* lpDest, DWORD dwMicroSecDesired, DWORD *lpdwMicroSe
 
 int AACFROMAVI::Seek(__int64 qwPos)
 {
-	if (!qwPos) SetCurrentTimecode(0);
+	if (!qwPos) 
+		SetCurrentTimecode(0);
 	return avifile->SeekByteStream(stream, qwPos);
+}
+
+void AACFROMAVI::ReInit()
+{
+	if (!avifile)
+		return;
+
+	Seek(0);
 }
 
 __int64 AACFROMAVI::GetExactSize()

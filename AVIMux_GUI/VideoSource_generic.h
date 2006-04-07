@@ -1,8 +1,9 @@
 #ifndef I_VIDEOSOURCE_GENERIC
 #define I_VIDEOSOURCE_GENERIC
 
-#include "multimedia_source.h"
+#include "../multimedia_source.h"
 #include "avifile.h"
+#include <vector>
 
 const int VS_OK			= 0x01;
 const int VS_ERROR		= -0x01;
@@ -13,13 +14,15 @@ typedef struct
 
 	int		iCount;
 	__int64	iThis;
-	__int64	iReferences[2];
+	__int64	iReferences[256];
 } REFERENCE_INFO;
 
 typedef struct
 {
 	int		iWidth;
 	int		iHeight;
+
+	RECT	rcCrop;
 } RESOLUTION;
 
 class VIDEOSOURCE: public MULTIMEDIASOURCE
@@ -32,10 +35,12 @@ class VIDEOSOURCE: public MULTIMEDIASOURCE
 	protected:
 //		void				SetLatestReference(int iCount, __int64 iRef1 = 0, __int64 iRef2 = 0);
 		void				SetReferencedFramesAbsolute(int iCount, __int64 iThis, __int64 iRef1 = 0, __int64 iRef2 = 0);
+		void				SetReferencedFramesAbsolute(__int64 iThis, std::vector<__int64> &iRef);
 	public:
 		VIDEOSOURCE(void);
 		~VIDEOSOURCE(void);
 		DWORD		virtual Close(bool bCloseSource);
+		void		virtual GetCropping(RECT* r);
 		void		virtual *GetFormat(void);
 		int			virtual GetFormatSize(void);
 		DWORD		virtual GetFourCC(void);
@@ -56,8 +61,8 @@ class VIDEOSOURCE: public MULTIMEDIASOURCE
 		bool		virtual IsCFR(void);
 		int			virtual InvalidateCache() { return 0; };
 		AVIStreamHeader virtual *GetAVIStreamHeader(void);
-		void		virtual* GetUserData(void) { return lpUserData; }
-		void		virtual SetUserData(void* lpData) { lpUserData=lpData; }
+//		void		virtual* GetUserData(void) { return lpUserData; }
+//		void		virtual SetUserData(void* lpData) { lpUserData=lpData; }
 		void		virtual SetOutputResolution(RESOLUTION* r);
 		void		virtual GetOutputResolution(RESOLUTION* r);
 };

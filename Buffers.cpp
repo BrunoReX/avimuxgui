@@ -1,16 +1,19 @@
-/*
-
-
-
-*/
-
 #include "stdafx.h"
 #include "Buffers.h"
 #include "stdio.h"
 #include "memory.h"
 #include "stdlib.h"
-#include "string.h"
+#include "strings.h"
 #include "matroska.h"
+
+#ifdef DEBUG_NEW
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+#endif
+
 
 void reverse(char* source, char* dest, int iCount)
 {
@@ -25,6 +28,7 @@ CBuffer::CBuffer()
 	iSize=0;
 	lpData=NULL;
 	iAllocedSize=0;
+	external = 0;
 }
 
 CBuffer::CBuffer(int _iSize, void* _lpData, int iFlags)
@@ -32,6 +36,7 @@ CBuffer::CBuffer(int _iSize, void* _lpData, int iFlags)
 	iRefCount = 0;
 	iSize=0;
 	lpData=NULL;
+	external = 0;
 	iAllocedSize=0;
 	SetSize(_iSize);
 	if (_lpData) SetData(_lpData);
@@ -50,12 +55,54 @@ int CBuffer::GetSize(void)
 void CBuffer::SetSize(int _iSize)
 {
 	if ((iSize<_iSize) || (iSize > 2*_iSize)) {
-		if (iSize && lpData) delete lpData;
-		lpData= new char[_iSize+1];
+		if (iSize && lpData) 
+			free(lpData);
+		
+		lpData=(char*)malloc(_iSize+1);
+		
 		((BYTE*)lpData)[_iSize] = 0;
+		
 		iSize=_iSize;
+		
 		iAllocedSize=iSize;
 	}
+}
+
+void CBuffer::Resize(int new_size)
+{
+	if (!iSize) {
+		SetSize(new_size);
+		return;
+	}
+
+	lpData = realloc(lpData, 1+new_size);
+
+
+	((BYTE*)lpData)[new_size] = 0;
+
+	iSize = new_size;
+	iAllocedSize = new_size;
+}
+
+void CBuffer::Prepend(int pos, void* data, int len)
+{
+	int old_size = iSize;
+
+	Resize(iSize + len);
+	memmove(((char*)lpData)+len+pos, ((char*)lpData)+pos, iSize-len-pos);
+	memmove(((char*)lpData)+pos, data, len);
+}
+
+void CBuffer::Cut(int pos, int len)
+{
+	if (pos >= iSize)
+		return;
+
+	int bytes_to_copy = iSize - pos - len;
+
+	memmove(((BYTE*)lpData)+pos, ((BYTE*)lpData)+pos+len, bytes_to_copy);
+
+	iSize -= len;
 }
 
 void CBuffer::IncRefCount()
@@ -72,7 +119,13 @@ bool CBuffer::DecRefCount()
 {
 	iRefCount--;
 	if (!iRefCount) {
-		delete lpData;
+		if (!external) { 
+			if (lpData)
+				free(lpData);
+		}
+		else
+			delete lpData;
+
 		lpData = NULL;
 		iSize=0;
 	}
@@ -220,26 +273,14 @@ void CBuffer::SetRefCount(int i)
 {
 	iRefCount = i;
 }
-/*
-CMultimediaBuffer::CMultimediaBuffer()
+
+void CBuffer::SetExternal(void* lpsource, int size)
 {
-	qwStart_ns = 0;
+	iSize = size;
+	lpData = lpsource;
+	external = 1;
 }
 
-CMultimediaBuffer::~CMultimediaBuffer()
-{
-}
-
-void CMultimediaBuffer::SetTimeStamp(__int64 qwTime)
-{
-	qwStart_ns = qwTime;
-}
-
-__int64 CMultimediaBuffer::GetTimeStamp(void)
-{
-	return qwStart_ns;
-}
-*/	
 void CStringBuffer::Set(char* s, int iFlags)
 {
 	bASCII = false;
@@ -263,7 +304,7 @@ void CStringBuffer::Set(char* s, int iFlags)
 	}
 
 	if (iFlags & CSB_UTF16) {
-		b[2]->SetSize(2+2*wcslen((unsigned short*)s));
+		b[2]->SetSize(2+2*wcslen((const wchar_t*)s));
 		b[2]->SetData(s);
 		bUTF16 = true;
 		iOutputFormat = CSB_UTF16;
@@ -297,13 +338,23 @@ int CStringBuffer::SetOutputFormat(int iFormat)
 	return iFormat;
 }
 
+
+void CStringBuffer::IncRefCount()
+{
+	b[0]->IncRefCount();
+	b[1]->IncRefCount();
+	b[2]->IncRefCount();
+	
+	CBuffer::IncRefCount();
+}
+
 bool CStringBuffer::DecRefCount()
 {
 	DecBufferRefCount(&b[0]);
 	DecBufferRefCount(&b[1]);
 	DecBufferRefCount(&b[2]);
 	
-	return !!b[0];
+	return !!CBuffer::DecRefCount();
 }
 
 void* CStringBuffer::GetData()
@@ -313,7 +364,7 @@ void* CStringBuffer::GetData()
 
 void CStringBuffer::Prepare(int iFormat)
 {
-	char* d;
+	char* d = NULL;
 
 	// if only UTF16 is present, set UTF8 as well
 	if (!bUTF8 && !bASCII && bUTF16) {
@@ -332,7 +383,7 @@ void CStringBuffer::Prepare(int iFormat)
 				bASCII = true;
 			}
 			if (bUTF8) {
-				UTF82Str(b[2]->AsString(), &d);
+				UTF82Str(b[1]->AsString(), &d);
 				b[0]->SetSize(strlen(d)+1);
 				b[0]->SetData(d);
 				bASCII = true;
@@ -340,13 +391,16 @@ void CStringBuffer::Prepare(int iFormat)
 			break;
 		case CSB_UTF8:
 			if (bASCII) {
-				Str2UTF8(b[1]->AsString(),&d);
-				b[0]->SetSize(strlen(d)+1);
-				b[0]->SetData(d);
+				Str2UTF8(b[0]->AsString(),&d);
+				b[1]->SetSize(strlen(d)+1);
+				b[1]->SetData(d);
 				bUTF8 = true;
 			}
 			break;
 	}
+
+	if (d)
+		delete d;
 }
 
 char* CStringBuffer::Get(void)
@@ -370,19 +424,23 @@ CStringBuffer::CStringBuffer()
 	bUTF8 = false;
 	bUTF16 = false;
 
-	b[0] = new CBuffer(CBN_REF1);
-	b[1] = new CBuffer(CBN_REF1);
-	b[2] = new CBuffer(CBN_REF1);
+	b[0] = new CBuffer(0, NULL, CBN_REF1);
+	b[1] = new CBuffer(0, NULL, CBN_REF1);
+	b[2] = new CBuffer(0, NULL, CBN_REF1);
+
+	SetRefCount(1);
 }
 
 CStringBuffer::CStringBuffer(char* s, int iFlags)
 {
-	b[0] = new CBuffer(CBN_REF1);
-	b[1] = new CBuffer(CBN_REF1);
-	b[2] = new CBuffer(CBN_REF1);
+	lpData = NULL;
+
+	b[0] = new CBuffer(0, NULL, CBN_REF1);
+	b[1] = new CBuffer(0, NULL, CBN_REF1);
+	b[2] = new CBuffer(0, NULL, CBN_REF1);
 
 	Set(s, iFlags);
-	
+
 	if (iFlags & CBN_REF1) SetRefCount(1);
 }
 
@@ -394,8 +452,13 @@ CAttribs::CAttribs()
 
 CAttribs::CAttribs(int iSize)
 {
-	iEntryCount = 32;
+	iEntryCount = iSize;
 	Init();
+}
+
+CAttribs::~CAttribs()
+{
+	Delete();
 }
 
 void CAttribs::Init()
@@ -404,8 +467,11 @@ void CAttribs::Init()
 	ZeroMemory(pEntries, sizeof(ATTRIBUTE_ENTRY*)*iEntryCount);
 }
 
+#define __ASSERT(a, b) if(!a) printf("%s\n", b);
+
 int CAttribs::Position(char* cName)
 {
+	__ASSERT(iEntryCount > 0 && iEntryCount < 64, "CAttribs::Position(): Bad iEntryCount")
 	int j=0;
 
 	while (*cName) {
@@ -432,14 +498,35 @@ ATTRIBUTE_ENTRY* CAttribs::Find(char* cName)
 {
 	char* n;
 	CAttribs* r = Resolve(cName, &n);
-	return r->FindInLine(n, Position(n));
+
+	if (!r)
+		return NULL;
+
+	ATTRIBUTE_ENTRY* ae = r->FindInLine(n, Position(n));
+
+	return ae;
 }
 
 CAttribs* CAttribs::GetAttr(char* cName)
 {
-	ATTRIBUTE_ENTRY* e = Find(cName);
+	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	while (*cName) {
+	if (*cName != ' ')
+			t[i++]=*cName++;
+		else {
+			changed = 1;
+			t[i++]='_';
+			cName++;
+		}
+	}
+	t[i++]=0;
 
-	if (e) return (CAttribs*)e->pData;
+    ATTRIBUTE_ENTRY* e = Find(t);
+
+	free(t);
+
+	if (e) 
+		return (CAttribs*)e->pData;
 	
 	return NULL;
 }
@@ -482,7 +569,7 @@ CAttribs* CAttribs::Resolve(char* cPath, char** cName)
 		d=next+1;
 	}
 
-	if (cName) *cName = &cPath[(DWORD)d-(DWORD)c];
+	if (cName) *cName = &cPath[(size_t)d-(size_t)c];
 	delete c;
 
 	return a;
@@ -527,15 +614,33 @@ void CAttribs::DeleteLine(int iLine)
 
 void CAttribs::Delete()
 {
-	for (int i=0;i<iEntryCount;i++) {
+	for (int i=0;i<iEntryCount;i++)
 		DeleteLine(i);
-	}
-	delete pEntries;
+
+	if (pEntries)
+		delete pEntries;
+
 	pEntries = NULL;
+	iEntryCount = 0;
 }
 
 void CAttribs::SetInt(char* cName, __int64 pData)
 {
+	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	while (*cName) {
+	if (*cName != ' ')
+			t[i++]=*cName++;
+		else {
+			changed = 1;
+			t[i++]='_';
+			cName++;
+		}
+	}
+	t[i++]=0;
+
+	cName = t;
+
+
 	ATTRIBUTE_ENTRY*	entry = Find(cName);
 
 	if (!entry) {
@@ -546,31 +651,168 @@ void CAttribs::SetInt(char* cName, __int64 pData)
 		} else {
 			char msg[200];
 			msg[0]=0;
-			sprintf(msg, "Wrong type in CAttribs::Set: for Element %s", cName);
-			MessageBox(0, msg, "Error", MB_OK | MB_ICONERROR);
+			sprintf(msg, "Wrong type in CAttribs::Set for Element %s", cName);
+			MessageBoxA(0, msg, "Error", MB_OK | MB_ICONERROR);
 		}
 	}
+
+	free(t);
+}
+
+void CAttribs::SetStr(char* cName, char* value)
+{
+	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	while (*cName) {
+	if (*cName != ' ')
+			t[i++]=*cName++;
+		else {
+			changed = 1;
+			t[i++]='_';
+			cName++;
+		}
+	}
+	t[i++]=0;
+
+	cName = t;
+
+
+	ATTRIBUTE_ENTRY*	entry = Find(cName);
+
+	if (!entry) {
+		Add(cName, 0, ATTRTYPE_UTF8, value);
+	} else {
+		if (entry->iType == ATTRTYPE_UTF8 || entry->iType == ATTRTYPE_ASCII) {
+			entry->pData = realloc(entry->pData, 1+strlen(value));
+			memcpy(entry->pData, value, strlen(value));
+		} else {
+			char msg[200];
+			msg[0]=0;
+			sprintf(msg, "Wrong type in CAttribs::Set for Element %s", cName);
+			MessageBoxA(0, msg, "Error", MB_OK | MB_ICONERROR);
+		}
+	}
+
+	free(t);
 }
 
 __int64 CAttribs::GetInt(char* cName) 
 {
+	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	while (*cName) {
+	if (*cName != ' ')
+			t[i++]=*cName++;
+		else {
+			changed = 1;
+			t[i++]='_';
+			cName++;
+		}
+	}
+	t[i++]=0;
+
+	cName = t;
+	
 	ATTRIBUTE_ENTRY*	entry = Find(cName);
 
 	if (entry && entry->pData) {
-		return (*(__int64*)entry->pData);
+		if (entry->iType == ATTRTYPE_INT64) {
+			free(t);
+			__int64 d = *(__int64*)entry->pData; 
+			return (d);
+		}
+
+		if (entry->iType == ATTRTYPE_ASCII && entry->iFlags == ATTRTYPE_UTF8) {
+			free(t);
+			__int64 d = _atoi64((char*)entry->pData);
+			return (d);
+		}
 	}
 
 	char msg[200];
 	msg[0]=0;
 	sprintf(msg, "Requested uninitialized integer:%c%c GetInt for Element %s", 13,10,cName);
-	MessageBox(0, msg, "Error", MB_OK | MB_ICONERROR);
+	MessageBoxA(0, msg, "Error", MB_OK | MB_ICONERROR);
+
+	free(t);
 
 	return 0;
 }
 
+int CAttribs::GetStr(char* cName, char** cDest) 
+{
+	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	while (*cName) {
+	if (*cName != ' ')
+			t[i++]=*cName++;
+		else {
+			changed = 1;
+			t[i++]='_';
+			cName++;
+		}
+	}
+	t[i++]=0;
+
+	cName = t;
+	
+	ATTRIBUTE_ENTRY*	entry = Find(cName);
+
+	if (entry && entry->pData) {
+		free(t);
+
+		if (entry->iType == ATTRTYPE_ASCII || entry->iType == ATTRTYPE_UTF8) {
+			int l = strlen((char*)entry->pData);
+			(*cDest) = (char*)calloc(1, 1+l);
+			memcpy(*cDest, entry->pData, l);
+			return l;
+		}
+
+		if (entry->iType == ATTRTYPE_INT64) {
+			char c[32]; c[0]=0;
+			_snprintf(c, 32, "%I64d", *((__int64*)entry->pData));
+			int l = strlen(c);
+			(*cDest) = (char*)calloc(1, 1+l);
+			memcpy(*cDest, entry->pData, l);
+			return l;
+		}
+
+		*cDest = NULL;
+		return 0;
+	}
+
+	char msg[200];
+	msg[0]=0;
+	sprintf(msg, "Requested uninitialized string:%c%c GetInt for Element %s", 13,10,cName);
+	MessageBoxA(0, msg, "Error", MB_OK | MB_ICONERROR);
+
+	free(t);
+
+
+	return 0;
+}
+__int64 CAttribs::GetIntWithDefault(char* cName, __int64 _default)
+{
+	if (!Exists(cName))
+		return _default;
+
+	return GetInt(cName);
+}
+
 int CAttribs::Exists(char* cName)
 {
-	ATTRIBUTE_ENTRY*	entry = Find(cName);
+	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	while (*cName) {
+	if (*cName != ' ')
+			t[i++]=*cName++;
+		else {
+			changed = 1;
+			t[i++]='_';
+			cName++;
+		}
+	}
+	t[i++]=0;
+
+	ATTRIBUTE_ENTRY*	entry = Find(t);
+
+	free(t);
 
 	return (!!entry);
 }
@@ -588,6 +830,10 @@ void CAttribs::DuplicateLine(CAttribs* a, int iLine)
 		switch (e->iType) {
 			case ATTRTYPE_INT64: 
 				a->AddInt(e->cName, 0, *(__int64*)e->pData);
+				break;
+			case ATTRTYPE_UTF8:
+			case ATTRTYPE_ASCII:
+				a->Add(e->cName, FATTR_ADDATTR_CREATE, e->iType, e->pData);
 				break;
 			case ATTRTYPE_ATTRIBS:
 				a->Add(e->cName, FATTR_ADDATTR_DONTCREATE, ATTRTYPE_ATTRIBS, 
@@ -607,6 +853,41 @@ CAttribs* CAttribs::Duplicate()
 	}
 
 	return d;
+}
+
+void CAttribs::CopyLine(CAttribs* a, int iLine)
+{
+	ATTRIBUTE_ENTRY* e = pEntries[iLine];
+
+	while (e) {
+		switch (e->iType) {
+			case ATTRTYPE_INT64: 
+				a->SetInt(e->cName, *(__int64*)e->pData);
+				break;
+			case ATTRTYPE_UTF8:
+			case ATTRTYPE_ASCII:
+				a->SetStr(e->cName, (char*)e->pData);
+				break;
+			case ATTRTYPE_ATTRIBS:
+				if (!a->Exists(e->cName)) {
+					a->Add(e->cName, FATTR_ADDATTR_DONTCREATE, ATTRTYPE_ATTRIBS, 
+						((CAttribs*)e->pData)->Duplicate());
+				} else {
+					GetAttr(e->cName)->CopyTo(a->GetAttr(e->cName));
+				}
+				break;
+		}
+		e = e->pNext;
+	}
+}
+
+
+void CAttribs::CopyTo(CAttribs* target)
+{
+	for (int i=0;i<iEntryCount;i++) {
+		CopyLine(target, i);	
+	}
+
 }
 
 void CAttribs::Export(CAttribs* a)
@@ -665,79 +946,59 @@ void CAttribs::Add(char* cName, int iFlags, int iType, void* pData)
 	}
 
 	a->Add2Line(position,entry);
+
+//	free(t);
 }
 
-/*
-CList::CList()
-{
-	data=NULL;
-	next=NULL;
-	bEmpty=true;
-}
+CAttribs::operator XMLNODE*() {
+	XMLNODE* pNode = NULL;
 
-bool CList::IsEmpty()
-{
-	return bEmpty;
-}
+	if (!iEntryCount)
+		return NULL;
 
-CList* CList::GetNext()
-{
-	return next;
-}
+	for (int j=0;j<iEntryCount;j++) {
+		ATTRIBUTE_ENTRY* e = pEntries[j];
 
-CList::~CList()
-{
-}
-
-void CList::SetNext(CList* list)
-{
-	next = list;
-}
-
-void CList::SetData(CBuffer* lpBuffer)
-{
-	CBuffer* olddata = data;
-	data = lpBuffer;
-	data->IncRefCount();
-	DecBufferRefCount(&olddata);
-	bEmpty=false;
-}
-
-CBuffer* CList::GetData()
-{
-	return data;
-}
-
-CList* CList::GetPrev()
-{
-	return prev;
-}
-
-void CList::SetPrev(CList* lpPrev)
-{
-	prev = lpPrev;
-}
-
-void CList::Insert(CBuffer* lpBuffer,int dwFlag)
-{
-	switch (dwFlag)
-	{
-		case LISTINS_BEGIN:	{
-				CList*  lnew = new CList;
-				GetNext()->prev=lnew;
-				lnew->prev=this;
-				lnew->SetData(lpBuffer);
-				lnew->SetNext(GetNext());
-				SetNext(lnew);
+		while (e) {
+			if (e->iType == ATTRTYPE_ATTRIBS) {
+				XMLNODE* node = xmlAddSibling(&pNode, e->cName, "", false);
+				node->pChild = *(CAttribs*)e->pData;
+				
+			} else
+			if (e->iType == ATTRTYPE_INT64) {
+				char c[16]; c[0]=0;
+				sprintf(c, "%I64d", *(__int64*)e->pData);
+				xmlAddSibling(&pNode, e->cName, c, false);
 			}
-		case LISTINS_END:	{
-				CList*  lnew = new CList;
-				GetNext()->prev=lnew;
-				lnew->prev=this;
-				lnew->SetData(lpBuffer);
-				lnew->SetNext(GetNext());
-				SetNext(lnew);
-			}
+			e = e->pNext;
+		}
 	}
+
+	return pNode;
 }
-*/
+
+int CAttribs::Import(XMLNODE* xml)
+{
+	if (!xml)
+		return 1;
+
+	if (xml->pChild || !xml->cValue || !xml->cValue[0]) {
+		CAttribs* a = GetAttr(xml->cNodeName);
+		if (!a) {
+			Add(xml->cNodeName, FATTR_ADDATTR_CREATE, ATTRTYPE_ATTRIBS, NULL);
+			a = GetAttr(xml->cNodeName);
+		}
+		a->Import((XMLNODE*)xml->pChild);
+	} else {
+		if (isint(xml->cValue)) {
+			int i = atoi(xml->cValue);
+			SetInt(xml->cNodeName, i);
+		} else {
+			Add(xml->cNodeName, FATTR_ADDATTR_CREATE, ATTRTYPE_UTF8, xml->cValue);
+		}
+	}
+
+	Import((XMLNODE*)xml->pNext);
+
+	return 1;
+}

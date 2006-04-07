@@ -16,14 +16,21 @@
 
 #include "SplitPointsDlg.h"
 
+typedef struct {
+	int		nom;
+	int		den;
+	double  frate;
+} FRAME_RATE;
+
 class CSetFramerateDlg : public CDialog
 {
 // Konstruktion
 public:
-	double		dFramerate;
+	FRAME_RATE	fr;
+
 	CSetFramerateDlg(CWnd* pParent = NULL);   // Standardkonstruktor
-	void		SetData(double dData);
-	double		GetData(void);
+	void		SetData(FRAME_RATE* f);
+	void		GetData(FRAME_RATE* result);
 	void		Refresh(void);
 	bool		bAllowEditUpdate;
 	DWORD		dwUnit;

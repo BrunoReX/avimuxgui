@@ -7,7 +7,9 @@ int	MODE2FORM2SOURCE::Open(STREAM* lpSource)
 	LISTHEADER		lhHdr;
 	CHUNKHEADER		chHdr;
 
-	if (!lpSource) return STREAM_ERR;
+	if (!lpSource) 
+		return STREAM_ERR;
+	
 	dwPosition=0;
 	dwSectors=0;
 	CheckCRC(false);
@@ -76,15 +78,11 @@ int MODE2FORM2SOURCE::ReadRAWSector(RAWSECTOR* lpDest,DWORD* lpdwCRC_OK)
 
 		if (dwRead!=2352) return 0;
 
-		if (lpdwCRC_OK) 
-		{
-			if (bCheckCRC)
-			{
+		if (lpdwCRC_OK) {
+			if (bCheckCRC) {
 				result = build_edc((unsigned char*)lpDest, 16, 16+8+2324-1);
 				*lpdwCRC_OK=(result==(*(DWORD*)&(lpbDest[2348])))?1:0;
-			}
-			else
-			{
+			} else {
 				*lpdwCRC_OK=1;
 			}
 		}
@@ -95,6 +93,13 @@ int MODE2FORM2SOURCE::ReadRAWSector(RAWSECTOR* lpDest,DWORD* lpdwCRC_OK)
 
 int MODE2FORM2SOURCE::Close()
 {
+	STREAM* s = NULL;
+
+	if (s = GetSource()) {
+		s->Close();
+		delete s;
+	}
+
 	SetSource(NULL);
 	return STREAM_OK;
 }

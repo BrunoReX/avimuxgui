@@ -2,15 +2,17 @@
 #define I_MATROSKABLOCK
 
 #include "ebml_matroska.h"
+#include <vector>
 
-typedef struct 
+class CLBLOCKHEADER
 {
+public:
+	CLBLOCKHEADER();
 	int			iStream;
 	int			iTimecode;
 	int			iFlags;
-	int			iFrameCountInLace;
-	CBuffer*	cFrameSizes;
-} CLBLOCKHEADER;
+	std::vector<int> frame_sizes;
+};
 
 // Cluster Block
 class EBMLM_CLBlock : public EBML_MatroskaElement
@@ -18,7 +20,7 @@ class EBMLM_CLBlock : public EBML_MatroskaElement
 	private:
 		CLBLOCKHEADER*	hdr;
 	public:
-		~EBMLM_CLBlock();
+		virtual ~EBMLM_CLBlock();
 		void	virtual Delete();
 		EBMLM_CLBlock(STREAM* s,EBMLElement* p);
 		GETTYPSTR;

@@ -18,7 +18,7 @@ typedef struct
 	char*				lpcName;
 	STREAM*				file;
 	STREAM*				source;
-	STREAM*				cache;
+//	STREAM*				cache;
 
 	union {
 		AVIFILEEX*			AVIFile;
@@ -31,13 +31,14 @@ typedef struct
 		
 	};
 	MODE2FORM2SOURCE*	lpM2F2;
+	OGGFILE*			OGGFile;
 	WAVEFILE*			lpwav;
 	bool				bM2F2CRC;
 	bool				bInUse;
 	bool				bMP3VBF_forced;
 	bool				bAddedImmediately;
-	DWORD				dwPosInList;
-
+	int					file_id;
+	int					current_pos;
 } FILE_INFO;
 
 const int FILETYPE_AVI     = 0x001;

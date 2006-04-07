@@ -14,10 +14,11 @@ typedef struct
 	DWORD	dwChannels;
 	float	fBitrate;
 	DWORD	dwFrameSize;
+	__int64	nano_seconds_per_frame;
 	DWORD	dwFrequency;
 } DTSINFO, *LPDTSINFO;
 
-class DTSSOURCE: public CBRAUDIOSOURCE
+class DTSSOURCE: public AUDIOSOURCEFROMBINARY//CBRAUDIOSOURCE
 {
 	private:
 		DTSINFO		dtsinfo;
@@ -42,6 +43,8 @@ class DTSSOURCE: public CBRAUDIOSOURCE
 		int		virtual GetFrequency(void);
 		int		virtual GetFrameSize();
 		bool	virtual IsCBR();
+		__int64	virtual	GetFrameDuration();
+		int		virtual GetStrippableHeaderBytes(void* pBuffer, int max);
 
 };
 

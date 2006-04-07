@@ -1,16 +1,18 @@
 /*
 
-	CLASS to read and write OGG files. Unless crappy libogg,
-	it can write pages of user-specified size. Also, it will
-	always return packets, not segments
+    As libogg contains artifical limits with the only purpose
+	to annoy people (like the limit of 4 kB per OGG page), I
+	can't use it.
 
- */
+    Also, the code in OGGFile.c returns packets, not segments
+
+*/
 
 
 #ifndef I_OGGFILE
 #define I_OGGFILE
 
-#include "streams.h"
+#include "../basestreams.h"
 
 typedef struct
 {
@@ -99,34 +101,50 @@ class PACKETIZER: public STREAM
 		PACKETIZER();
 		int			virtual ReadPacket(BYTE* bDest, __int64* iTimestamp = NULL);
 		__int64		virtual GetUnstretchedDuration(void);
+		void        virtual ReInit();
+		int		virtual	GetName(char* lpDest);
+		int		virtual GetLanguageCode(char* lpDest);
 };
+
+typedef struct
+{
+	int		count;
+	int*	serial_nbr;
+} OGG_STREAM_SERIAL_NUMBERS;
 
 class OGGFILE: public PACKETIZER
 {
 	private:
-		STREAM*			source;
-		OGG_FILEDATA	data;
-		OGG_PAGE*		pages;
-		int				current_page_index;
-		OGG_PAGE*		current_page;
-		OGG_WRITE_PAGE  write_page;
-		OGG_WRITE_STATE write_state;
+		STREAM*						source;
+		OGG_FILEDATA				data;
+		OGG_PAGE*					pages;
+		int							current_page_index;
+		OGG_PAGE*					current_page;
+		OGG_WRITE_PAGE				write_page;
+		OGG_WRITE_STATE				write_state;
+		OGG_STREAM_SERIAL_NUMBERS	stream_serial_numbers;	
+		void			ScanForStreams();
 	protected:
-		int			DeletePage(OGG_PAGE* p);
-		int			GetNextPageIndex();
-		STREAM*		GetSource();
-		STREAM*		GetDest();
+		int				DeletePage(OGG_PAGE* p);
+		int				GetNextPageIndex();
+		STREAM*			GetSource();
+		STREAM*			GetDest();
 
-		int			FindPage(__int64 iPosition);
-		int			IsEndOfCurrentPage();
-		int			IsPacketContinuedOnNextPage();
-		int			LoadNextPage();
-		int			LoadPage(int dest_index);
-		int			ReadPacketFromCurrentPage(BYTE* cDest);
-		int			SeekIntoCurrentPage(int iOffset);
-		int			WriteSegment(void* pData, int iSize);
-		int			WritePreparedPageToDisc();
-		bool		PageLocked();
+		int				FindPage(__int64 iPosition);
+		int				IsEndOfCurrentPage();
+		int				IsPacketContinuedOnNextPage();
+		int				LoadNextPage();
+		int				LoadPage(int dest_index);
+		void			GetCurrentPageHeader(OGG_PAGE* dest);
+		int				ReadPacketFromCurrentPage(BYTE* cDest);
+		int				SeekIntoCurrentPage(int iOffset);
+		int				WriteSegment(void* pData, int iSize);
+		int				WritePreparedPageToDisc();
+		bool			PageLocked();
+		void			InsertStreamSerialNumber(int i);
+		int				FindStreamSerialNumberIndex(int serial);
+		void virtual	ReInit();
+
 	public:
 		OGGFILE();
 		OGGFILE(STREAM* lpStream, DWORD dwAccess = OGG_OPEN_READ);
@@ -134,6 +152,7 @@ class OGGFILE: public PACKETIZER
 		__int64		GetLatestGranulePos();
 		__int64		GetPos();
 		__int64		GetSize();
+		int			GetNumberOfStreams();
 		bool		IsEndOfStream();
 		int			Open(STREAM* lpStream, DWORD dwAccess);
 		int			SetMaxPageSize(int iMaxSize);

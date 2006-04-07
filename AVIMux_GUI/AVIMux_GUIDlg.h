@@ -16,14 +16,18 @@
 #include "SourceFileListbox.h"
 #include "SetStoreFileOptionsDlg.h"
 #include "VideoSourceListBox.h"
-#include "SubtitlesListBox.h"
 #include "ProgressList.h"
 #include "FillASIs.h"
 #include "Languages.h"
 #include "ProtocolListCtrl.h"
 #include "..\Chapters.h"
+#include "ResolutionEdit.h"
 #include "audiosourcetree.h"
 #include "windows.h"
+#include "ResizeableDialog.h"
+#include "afxwin.h"
+#include <vector>
+
 int Thread_OnStart(void* pData);
 
 __int64	GetLaceSetting(char* cName, CAttribs* settings, int iFlags = 0);
@@ -34,10 +38,15 @@ static HANDLE hGlobalMuxSemaphore;
 
 #define APL_ASCII 0x01
 #define APL_UTF8  0x02
+HWND	GetFocushWnd(CWnd* CWnd);
 
-class CAVIMux_GUIDlg : public CDialog
+//int MessageBoxU(HWND hWnd, char* pText, char* pTitle, UINT uType);
+
+class CAVIMux_GUIDlg : public CResizeableDialog
 {
 private:
+	HWND			hTitleEdit;
+
 	UINT			uiMessage;
 	int				iUnicode_possible;
 	int				chapter_level;
@@ -46,15 +55,34 @@ private:
 	bool			bAddAS_immed;
 	void			ApplyStreamSettings(void);
 	void			ApplyCurrentLanguageCode(void);
-	void			ApplyCurrentLanguageName(void);
+
 	HANDLE			hLogFile;
-	char			cLogFileName[1024];
+	char			cLogFileName[65536];
 	void			OnGetAudiodispinfo(NMHDR* pNMHDR, LRESULT* pResult);
 	CAttribs*		settings;
-	char			lastjobfile[500];
-	char			cfgfile[500];
-// Konstruktion
+	
+	char			lastjobfile[65536];
+	char			cfgfile[65536];
+	char			guifile[65536];
+	char			lngcodefile[65535];
+	char			appdir[65536];
+
+	int				current_language_index;
+	int				auto_apply_file_title;
+
+	int				tab_stop_hist;
+	HTREEITEM		hDelayedStream;
+
+	bool			ManualTabStopOrder();
+	void			SaveGUIConfig();
+	
+	void			UpdateProtocolColumn();
+
+	std::vector<CFont*> additional_fonts;
+
+	// Konstruktion
 public:
+	void			UpdateProgressList();
 	CAVIMux_GUIDlg(CWnd* pParent = NULL);	// Standard-Konstruktor
 	void			AddFile (CFileDialog* cfd);
 	int				iCurrentView;
@@ -91,20 +119,32 @@ public:
 	void			UpdateLanguage(void);
 	void			UpdateAudiodelay(void);
 	void			OnAddFile();
-	void			doAddFile(char* lpcName, int iFormat = FILETYPE_UNKNOWN);
+	void			doAddFile(char* lpcName, int iFormat = FILETYPE_UNKNOWN, 
+		int delete_file = 0, HANDLE hSemaphore = NULL);
 
 	void			AddAudioStream(AUDIO_STREAM_INFO* asi);
 	void			AddSubtitleStream(SUBTITLE_STREAM_INFO* ssi);
+	void			AddVideoStream(VIDEO_STREAM_INFO* vsi);
 
+	void			BuildFileAndStreamDependency(DWORD file_to_remove,
+		std::vector<HTREEITEM>& hitems, 
+		std::vector<DWORD>& stream_numbers,
+		std::vector<DWORD>& file_numbers_in_list);
+
+	afx_msg void OnClear();
+	afx_msg void OnStop();
 
 // Dialogfelddaten
 	//{{AFX_DATA(CAVIMux_GUIDlg)
 	enum { IDD = IDD_AVIMUX_GUI_DIALOG };
-	CEdit	m_StatusLine;
+	CButton	m_Chapter_Editor;
+	CStatic	m_Stream_Lng_Label;
+	CResolutionEdit	m_OutputResolution;
+	CUserDrawEdit	m_Prg_Dest_File;
+	CUserDrawEdit	m_StatusLine;
 	CComboBox	m_Stream_Lng;
 	CStatic	m_OutputResolution_Label;
-	CEdit	m_OutputResolution;
-	CAudioSourceTree	m_AudioTree;
+	CAudioSourceTree	m_StreamTree;
 	CStatic	m_Title_Label;
 	CEdit	m_Title;
 	CStatic	m_VideoStretchFactor_Label;
@@ -113,10 +153,10 @@ public:
 	CProtocolListCtrl	m_Protocol;
 	CButton	m_Output_Options_Button;
 	CButton	m_Start_Button;
+	CButton m_Cancel_Button;
 	CStatic	m_Open_Files_Label;
 	CEdit	m_Prg_Frames;
 	CStatic	m_Prg_Frames_Label;
-	CEdit	m_Prg_Dest_File;
 	CStatic	m_Prg_Dest_File_Label;
 	CProgressCtrl	m_Prg_Legidx_Progress;
 	CButton	m_Progress_Group;
@@ -132,18 +172,16 @@ public:
 	CButton	m_No_Subtitles;
 	CButton	m_No_Audio;
 	CStatic	m_Video_Headline;
-	CStatic	m_Subtitles_Headline;
+	CStatic	m_Subtitles_Label;
 	CStatic	m_AvailableStreams_Header;
-	CStatic	m_Audio_Headline;
+	CStatic	m_Audio_Label;
 	CListCtrl	m_Enh_Filelist;
 	CStatic	m_Audiodelay_Label;
 	CEdit	m_Audiodelay;
-	CStatic	m_Audioname_Label;
 	CEdit	m_AudioName;
 	CStatic	m_Subname_Label;
 	CStatic	m_Protocol_Label;
 	CEdit	m_SubtitleName;
-	CVideoSourceListBox	m_VideoSources;
 	CSourceFileListBox	m_SourceFiles;
 	//}}AFX_DATA
 
@@ -153,6 +191,7 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV-Unterstützung
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
+	virtual BOOL OnNotify(WPARAM wParam, LPARAM lParam, LRESULT* pResult);
 	//}}AFX_VIRTUAL
 
 // Implementierung
@@ -168,13 +207,10 @@ protected:
 	virtual void OnOK();
 	afx_msg void OnStart();
 	virtual void OnCancel();
-	virtual void OnSave();
-	virtual void OnClear();
-	afx_msg void OnStop();
+	afx_msg void OnSave();
 	afx_msg void OnAddFileList();
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnMaxsizeExtended();
-	afx_msg void OnUsemaxsize();
 	afx_msg void OnLoad();
 	afx_msg void OnOutputoptions();
 	afx_msg void OnNoAudio();
@@ -191,13 +227,25 @@ protected:
 	afx_msg void OnEditchangeStreamLng();
 	afx_msg void OnSelchangeStreamLng();
 	afx_msg void OnEditupdateStreamLng();
-	afx_msg void OnUpdateAudioname();
 	afx_msg void OnBeginlabeleditAudiotree(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnEndlabeleditAudiotree(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnChangeOutputresolution();
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
-	afx_msg void OnReturnAudiotree(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnChapterEditor();
+	afx_msg void OnDestroy();
+	afx_msg void OnKillfocusStreamLng();
+	afx_msg void OnKillfocusAudiotree(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnKillfocusDelay();
+	afx_msg void OnSetfocusDelay();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	CButton m_Stop_Button;
+	afx_msg void OnLvnItemchangedProgressList(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnBnClickedLeave();
+	afx_msg void OnBnClickedCancel();
+	afx_msg void OnLbnDblclkSourcefilelist();
 };
 
 //{{AFX_INSERT_LOCATION}}

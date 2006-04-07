@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "multimedia_source.h"
 #include "math.h"
-#include "malloc.h"
 #include "memory.h"
+#include "stdlib.h"
 #include "string.h"
 
 MULTIMEDIASOURCE::MULTIMEDIASOURCE()
@@ -19,6 +19,9 @@ MULTIMEDIASOURCE::MULTIMEDIASOURCE()
 
 MULTIMEDIASOURCE::~MULTIMEDIASOURCE()
 {
+	delete size_guesser;
+//	if (lpcName)
+//		free (lpcName);
 }
 
 void MULTIMEDIASOURCE::SetCompressionAlgo(int algo)
@@ -217,7 +220,6 @@ __int64 MULTIMEDIASOURCE::GuessTotalSize()
 
 int MULTIMEDIASOURCE::Close()
 {
-	delete size_guesser;
 	return doClose();
 }
 
@@ -305,4 +307,9 @@ void CSizeGuesser::SetTotalDuration(float f)
 __int64 MULTIMEDIASOURCE::GetFeature(__int64 iFeature)
 {
 	return 0;
+}
+
+int MULTIMEDIASOURCE::GetStrippableHeaderBytes(void* pBuffer, int max)
+{
+	return MMS_UNKNOWN;
 }

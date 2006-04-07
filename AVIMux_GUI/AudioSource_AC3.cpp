@@ -2,6 +2,12 @@
 #include "silence.h"
 #include "audiosource_ac3.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+
 	//////////////////////
 	// AC3 audio source //
 	//////////////////////
@@ -47,7 +53,18 @@ bool AC3SOURCE::IsCBR()
 	return true;
 }
 
-int AC3SOURCE::ReadFrame(void* lpDest,DWORD* lpdwMicroSecRead,__int64* lpqwNanoSecRead,bool bStoreAC3Info,bool bResync)
+int AC3SOURCE::GetStrippableHeaderBytes(void* pBuffer, int max)
+{
+	if (max > 0)
+		((unsigned char*)pBuffer)[0] = 0x0B;
+	if (max > 1)
+		((unsigned char*)pBuffer)[1] = 0x77;
+
+	return 2;
+}
+
+int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
+						 __int64* lpqwNanoSecRead, bool bStoreAC3Info,bool bResync)
 {
 	DWORD		dwFrequencies[4] = { 48000, 44100, 32000, 0 };
 	DWORD		dwBitrates[38]=
@@ -155,35 +172,40 @@ int AC3SOURCE::ReadFrame(void* lpDest,DWORD* lpdwMicroSecRead,__int64* lpqwNanoS
 	dwFrameSize=2*dwFrameSizes[dwFreqIndex][dwBitrateIndex];
 	dwChannels=dwChannelIDs[dwChannelIndex];
 
-	if (bStoreAC3Info)
-	{
+	if (bStoreAC3Info) {
 		ac3info.dwChannels=dwChannels;
 		ac3info.dwBitrate=dwBitrate;
 		ac3info.dwFrameSize=dwFrameSize;
 		ac3info.dwFrequency=dwFrequencies[dwFreqIndex];
 	}
 
-	if (!dwReturnSilence)
-	{
+	if (!dwReturnSilence) {
 		dwRead=GetSource()->Read(&(((BYTE*)lpDest)[7]),dwFrameSize-7)+7;
 	}
 
-	if (dwRead!=dwFrameSize)
-	{
+	if (dwRead!=dwFrameSize) {
 		dwRead=0;
 	}
 
 	double z=(dwRead/dwBitrate);
-	if (lpqwNanoSecRead) *lpqwNanoSecRead=round(8000000*z);
-	if (lpdwMicroSecRead) *lpdwMicroSecRead=(DWORD)round(8000*z);
+
+	if (lpqwNanoSecRead) 
+		*lpqwNanoSecRead=round(8000000*z);
+	
+	if (lpdwMicroSecRead) 
+		*lpdwMicroSecRead=(DWORD)round(8000*z);
 	
 	if (dwReturnSilence) dwReturnSilence--;
 
 	return dwRead;
 }
 
-int AC3SOURCE::doRead(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdwMicroSecRead,__int64* lpqwNanoSecRead)
+int AC3SOURCE::doRead(void* lpDest,DWORD dwMicroSecDesired,
+					  DWORD* lpdwMicroSecRead,__int64* lpqwNanoSecRead)
 {
+	if (IsEndOfStream())
+		return 0;
+
 	BYTE*		lpbDest=(BYTE*)lpDest;
 	DWORD		dwMSR=0,dwMSR_Total=0;
 	__int64	qwNSR=0,qwNSR_Total=0;
@@ -202,15 +224,18 @@ int AC3SOURCE::doRead(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdwMicroSecRe
 		}
 	}
 
-	for (i=0;i<dwFramesToRead;i++)
-	{
+	for (i=0;i<dwFramesToRead;i++) {
 		dwRead=ReadFrame(&lpbDest[dwReadTotal],&dwMSR,&qwNSR,false,true);
 		dwReadTotal+=dwRead;
 		dwMSR_Total+=dwMSR;
 		qwNSR_Total+=qwNSR;
 	}
-	if (lpdwMicroSecRead) *lpdwMicroSecRead = dwMSR_Total;
-	if (lpqwNanoSecRead) *lpqwNanoSecRead = qwNSR_Total;
+	
+	if (lpdwMicroSecRead) 
+		*lpdwMicroSecRead = dwMSR_Total;
+	
+	if (lpqwNanoSecRead) 
+		*lpqwNanoSecRead = qwNSR_Total;
 
 	return dwReadTotal;
 }
@@ -220,13 +245,15 @@ int AC3SOURCE::Open(STREAM* lpStream)
 	char	Buffer[10240];
 	int		iOffset=0;
 
-//	AUDIOSOURCE::Open(lpStream);
+	if (!lpStream || lpStream->GetSize() <= 0)
+		return AS_ERR;
+
 	dwRCBUserData=0;
 	lpRCB=NULL;
 	dwReturnSilence=0;
 	lpbFirstFrame=NULL;
 	ZeroMemory(Buffer,sizeof(Buffer));
-	int	iRes=CBRAUDIOSOURCE::Open(lpStream);
+	int	iRes=AUDIOSOURCEFROMBINARY::Open(lpStream);
 	GetSource()->SetOffset(0);
 	GetSource()->Seek(0);
 	if (iRes==AS_OK)
@@ -235,11 +262,14 @@ int AC3SOURCE::Open(STREAM* lpStream)
 		if (ReadFrame(Buffer,NULL,NULL,true,true)) {
 			GetSource()->SetOffset((DWORD)(GetSource()->GetPos()-(__int64)ac3info.dwFrameSize));
 		} else {
-			return 0;
+			return AS_ERR;
 		}
 	}
 	GetSource()->Seek(0);
+	
 	lpbFirstFrame=new byte[ac3info.dwFrameSize];
+	
+	
 	int dwOldRange = GetResyncRange();
 	SetResyncRange(0);
 	ReadFrame(lpbFirstFrame,NULL,&ac3info.iFrameDuration,false,false);
@@ -288,15 +318,19 @@ int AC3SOURCE::GetFrequency()
 
 int AC3SOURCE::doClose()
 {
-	if (silence)
-	{
+//	return CBRAUDIOSOURCE::doClose();
+
+	return 1;
+}
+
+AC3SOURCE::~AC3SOURCE()
+{
+	if (silence) {
 		silence->Close();
 		delete silence;
 		_silence = NULL;
 	}
 	if (lpbFirstFrame) free (lpbFirstFrame);
-	return CBRAUDIOSOURCE::doClose();
 }
-
 
 #pragma pack(pop)

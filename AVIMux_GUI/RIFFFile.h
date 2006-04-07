@@ -37,10 +37,10 @@ class RIFFFILE
 	    STREAM*				source;
 	public:
 		RIFFFILE(void);
-		~RIFFFILE(void);
-		bool				virtual	LocateData(DWORD dwFourCC,char** lpBuffer,DWORD* dwParentPos,void* lpDest,DWORD dwLength, DWORD dwType);
-		void						SetSource(STREAM* lpSource) { source=lpSource; }
-		STREAM*						GetSource(void) { return source; }
+		virtual ~RIFFFILE(void);
+		bool		virtual	LocateData(DWORD dwFourCC,char** lpBuffer,DWORD* dwParentPos,void* lpDest,DWORD dwLength, DWORD dwType);
+		void		virtual SetSource(STREAM* lpSource) { source=lpSource; }
+		STREAM		virtual *GetSource(void) { return source; }
 
 		HANDLE				hDebugFile;
 		STREAM*				dest;

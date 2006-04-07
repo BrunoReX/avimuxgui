@@ -52,6 +52,8 @@ protected:
 	//}}AFX_DISPATCH
 	DECLARE_DISPATCH_MAP()
 	DECLARE_INTERFACE_MAP()
+public:
+	afx_msg void OnSize(UINT nType, int cx, int cy);
 };
 
 /////////////////////////////////////////////////////////////////////////////

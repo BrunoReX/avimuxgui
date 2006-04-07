@@ -14,6 +14,9 @@
 const int DAI_DF_FRAMES		= 0x01;
 const int DAI_DF_DURATION	= 0x02;
 
+int FormatOutputFileName(char* cDest, char* cFormat, char* cRawFileName,
+						 int iCurrentFile, SPLIT_POINT_DESCRIPTOR* pSPD,
+						 int* flags = NULL);
 
 typedef struct 
 {
@@ -27,7 +30,6 @@ typedef struct
 	DWORD				dwNbrOfVideoStreams;
 	DWORD				dwNbrOfSubs;
 	DWORD				dwMaxFiles;
-	__int64				qwMaxSize;
 
 // duration
 	int					iDurationFlags;
@@ -35,7 +37,6 @@ typedef struct
 	__int64				iMaxDuration;
 
 
-	DWORD				dwPreload;
 	char*				lpFileName;
 	DWORD				dwPadding;
 	char*				lpFormat;
@@ -49,6 +50,9 @@ typedef struct
 	int					iOverlapped;
 	HANDLE				hMuxingSemaphore, hMuxingStartedSemaphore;
 	CSplitPoints*		split_points;
+	DWORD				dwEstimatedNumberOfFiles;
+	__int64				qwEstimatedSize;
+
 // stretch factors
 	double				dVideoStretchFactor;
 

@@ -3,13 +3,33 @@
 #include "warnings.h"
 #include "integers.h"
 #include "Matroska_Block.h"
+#include <vector>
+
+#ifdef DEBUG_NEW
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
+#endif
+
+READBLOCK_INFO::READBLOCK_INFO()
+{
+	iStream = -1;
+	reference_types = 0;
+	qwDuration = 0;
+	iFlags = 0;
+	cData = NULL;
+	qwTimecode = 0;
+	iEnqueueCount = 0;	
+}
 
 EBMLM_Cluster::EBMLM_Cluster(STREAM* s,EBMLElement* p) 
 {
 	SetStream(s);
 	SetParent(p); 
 	DetermineLength(); 
-	SetType(ETM_CLUSTER); 
+	SetType(IDVALUE(MID_CLUSTER)); 
 	SetMulti(true); 
 	SetDataType(EBMLDATATYPE_MASTER); 
 	ClusterInfo=NULL;
@@ -18,9 +38,16 @@ EBMLM_Cluster::EBMLM_Cluster(STREAM* s,EBMLElement* p)
 	return; 
 } 
 
+EBMLM_Cluster::~EBMLM_Cluster()
+{
+	Delete();
+}
+
 void EBMLM_Cluster::Delete()
 {
-	delete ClusterInfo;
+	if (ClusterInfo)
+		delete ClusterInfo;
+	
 	ClusterInfo = NULL;
 }
 
@@ -28,13 +55,7 @@ __int64 EBMLM_Cluster::GetDuration()
 {
 	if (ClusterInfo && ClusterInfo->qwDuration) return ClusterInfo->qwDuration;
 
-/*	EBMLELEMENTLIST* e_Duration = NULL;
-	Search((void**)&e_Duration,(char*)MID_CL_DURATION,NULL);
-	if (e_Duration->iCount) {
-		int iDuration = (int)(ClusterInfo->qwDuration=e_Duration->pElement[0]->AsInt());
-		DeleteElementList(&e_Duration);
-		return iDuration;
-	} else*/ {
+	{
 		EBMLM_Cluster*	e_next = (EBMLM_Cluster*)FindNext((char*)MID_CLUSTER);
 		if (!ClusterInfo) {
 			RetrieveInfo();
@@ -53,132 +74,147 @@ char* EBMLM_Cluster::GetTypeString()
 // read a block
 int EBMLM_Cluster::ReadBlock(READBLOCK_INFO* pDest)
 {
-	EBMLELEMENTLIST*	e_Blocks = NULL;
 	EBMLM_CLBlockGroup*	e_BG	 = NULL; // not allocated
 	EBMLM_CLBlock*		e_Block  = NULL; // not allocated either
-	EBMLELEMENTLIST*	e_Ref    = NULL;
-	EBMLELEMENTLIST*	e_duration = NULL;
 	CLBLOCKHEADER		hdr;
 
-	EBMLELEMENTLIST**	pe_Cont  = NULL;
-	char* cid_Cont[] = {	(char*)MID_CL_BLOCK, 
-							(char*)MID_CL_REFERENCEBLOCK,
-							(char*)MID_CL_BLOCKDURATION 
+	EBMLElementVectors	pe_Cont;
+	char* cid_Cont[] = {	(char*)MID_CL_BLOCK, (char*)MID_CL_REFERENCEBLOCK,
+							(char*)MID_CL_BLOCKDURATION, (char*)MID_CL_BLOCKADDITIONS, NULL,
 	};
+	int occ_restr[] = { 1, 0, 2, 0, 0 };
+	SEARCHMULTIEX sme = { cid_Cont, NULL, occ_restr };
 
-	ZeroMemory(pDest,sizeof(READBLOCK_INFO));
+	bool block_group = 0;
+	bool simple_block = 0;
 	// get blockgroups
 
 	if (!e_CurrentBlockGroup) {
-		EBMLELEMENTLIST* e_BlockGroups = NULL;
+
+/*		EBMLELEMENTLIST* e_BlockGroups = NULL;
 		Search((void**)&e_BlockGroups,(char*)MID_CL_BLOCKGROUP,(char*)MID_CL_BLOCKGROUP);
-		e_CurrentBlockGroup = (EBMLM_CLBlockGroup*)e_BlockGroups->pElement[0];
+		e_CurrentBlockGroup = (EBMLM_CLBlockGroup*)(*e_BlockGroups)(0);
 		delete e_BlockGroups->pElement;
-		delete e_BlockGroups;
-	} else {
+		delete e_BlockGroups;*/
+		Create1stSub((EBMLElement**)&e_CurrentBlockGroup);
+	} /*else {*/
 		do {
 			EBMLElement* e_next = e_CurrentBlockGroup->GetSucc();
 			DeleteEBML(&e_CurrentBlockGroup);
 			e_CurrentBlockGroup = (EBMLM_CLBlockGroup*)e_next;
-		} while (e_CurrentBlockGroup && e_CurrentBlockGroup->GetType() != ETM_CLBLOCKGROUP);
-	}
+		} while (e_CurrentBlockGroup && 
+			e_CurrentBlockGroup->GetType() != IDVALUE(MID_CL_BLOCKGROUP) && 
+			e_CurrentBlockGroup->GetType() != IDVALUE(MID_CL_SIMPLEBLOCK)
+			);
+//	}
 
 	// end of cluster?
 	if (!e_CurrentBlockGroup) {
 		return READBL_ENDOFCLUSTER;
 	}
 
-	// get current blockgroup
-	e_BG = e_CurrentBlockGroup;
-	// find elements
-						
-	e_BG->SearchMulti((void***)&pe_Cont, cid_Cont, 3);
-	e_Blocks	= pe_Cont[0];
-	e_Ref		= pe_Cont[1];
-	e_duration	= pe_Cont[2];
+	if (e_CurrentBlockGroup->GetType() == IDVALUE(MID_CL_BLOCKGROUP)) {
 
-	// any blocks found in blockgroup?
-	if (!e_Blocks->iCount) {
-		B0rked("no Block found in Blockgroup");
-		return READBL_FILEB0RKED;
-	} else if (e_Blocks->iCount!=1) {
-		Note("more than one block in BlockGroup");
-	}
+		// get current blockgroup
+		e_BG = e_CurrentBlockGroup;
 
-	// only process 1st block atm
-	e_Block = (EBMLM_CLBlock*)e_Blocks->pElement[0];
-
-	// check references
-	if (e_Ref->iCount>2) {
-		Obfuscated("block refers to more than 2 other blocks");
-	} else if (e_Ref->iCount==0) {
-		pDest->iReferences = 0;
-	} else if (e_Ref->iCount==1) {
-		pDest->iReferencedFrames[0] = (int)FSSInt2Int(e_Ref->pElement[0]->GetData());
-		if (pDest->iReferencedFrames[0]<0) {
-			pDest->iReferences |= RBIREF_BACKWARD;
-		} else {
-			if (!pDest->iReferencedFrames[0]) {
-				Obfuscated("frame only refers to itself");
-			} else pDest->iReferences |= RBIREF_FORWARD;
+		// find elements
+		if (e_BG->SearchMulti(pe_Cont, sme) < 0) {
+			return READBL_FILEB0RKED;
 		}
-	} else if (e_Ref->iCount==2) {
-		if ((pDest->iReferencedFrames[0]=(int)FSSInt2Int(e_Ref->pElement[0]->GetData()))*
-			(pDest->iReferencedFrames[1]=(int)FSSInt2Int(e_Ref->pElement[1]->GetData()))<0) {
-			pDest->iReferences |= RBIREF_BIDIRECTIONAL;
-		} else Obfuscated("Frame refers to 2 other frames but is not bidirectional");
-	}
 
-	// duration indicated?
-	if (e_duration->iCount>1) {
-		B0rked("more than one 'duration' element encountered in 'BlockGroup'");
+		EBMLElementVector &e_Blocks			= pe_Cont[0];
+		EBMLElementVector &e_Ref			= pe_Cont[1];
+		EBMLElementVector &e_Duration		= pe_Cont[2];
+		EBMLElementVector &e_BlockAdditions	= pe_Cont[3];
+
+		if (e_Blocks.size() > 1 )
+			Note("more than one block in BlockGroup");
+
+
+		// check references
+		for (size_t j=0;j<e_Ref.size();j++) {
+			int ref = (int)FSSInt2Int(e_Ref[j]->GetData());
+			pDest->references.push_back(ref);
+	
+			if (ref>0)
+				pDest->reference_types |= RBIREF_FORWARD;
+		 
+			if (ref<0)
+				pDest->reference_types |= RBIREF_BACKWARD;
+		}
+		
+		if (e_Duration.size() == 1) {
+			pDest->iFlags |= RBIF_DURATION;
+			pDest->qwDuration = e_Duration[0]->AsInt();
+		}
+
+		// only process 1st block atm
+		e_Block = (EBMLM_CLBlock*)e_Blocks[0];
+
+		block_group = 1;
+	} else {
+		e_Block = (EBMLM_CLBlock*)e_CurrentBlockGroup;
+
+		simple_block = 1;
 	}
 
 	// load data
 	(pDest->cData = e_Block->Read(&hdr))->IncRefCount();
 	pDest->iStream = hdr.iStream;
-	pDest->iFlags = hdr.iFlags;
-
-	if (e_duration->iCount==1) {
-		pDest->iFlags |= RBIDUR_INDICATED;
-		pDest->qwDuration = e_duration->pElement[0]->AsInt();
+	//pDest->iFlags = hdr.iFlags;
+	if (hdr.iFlags & BLKHDRF_DISCARDABLE) {
+		pDest->iFlags |= RBIF_DISCARDABLE;
 	}
+	if (hdr.iFlags & BLKHDRF_KEYFRAME) {
+		pDest->references.clear();
+		pDest->iFlags |= RBIF_KEYFRAME;
+	}
+
+	if (simple_block) {
+		if ((hdr.iFlags & BLKHDRF_KEYFRAME) != BLKHDRF_KEYFRAME) {
+			pDest->references.push_back(0);
+			pDest->reference_types = RBIREF_BACKWARD;
+		}
+	}
+
 	
 	pDest->qwTimecode = GetTimecode() + (short)hdr.iTimecode;
-	pDest->iFrameCountInLace = hdr.iFrameCountInLace;
-	if (hdr.cFrameSizes) hdr.cFrameSizes->Refer(&pDest->cFrameSizes);
+	pDest->frame_sizes = hdr.frame_sizes;
+
 	iCurrentBlock++;
-	
-	DeleteElementLists(&pe_Cont, 3);
+
+	DeleteVectors(pe_Cont);
 
 	return READBL_OK;
 }
-
 bool EBMLM_Cluster::CheckIDs(char* iID,EBMLElement** p)
 {
 	DOCOMP(MID_CL_TIMECODE,EBMLM_CLTimeCode)
 	DOCOMP(MID_CL_PREVSIZE,EBMLM_CLPrevSize)
+	DOCOMP(MID_CL_SIMPLEBLOCK,EBMLM_CLBlock)
+
 	DOCOMP(MID_CL_POSITION,EBMLM_CLPosition)
+	DOCOMP(MID_CL_SILENTTRACKS, EBMLM_CLSilentTracks)
 	DOCOMPL(MID_CL_BLOCKGROUP,EBMLM_CLBlockGroup)
 }
 
 void EBMLM_Cluster::RetrieveInfo()
 {
-	EBMLELEMENTLIST*	e_Timecode = NULL;
+	EBMLElementVectors timecode;
 
 	if (!ClusterInfo) {
 		ClusterInfo = new CLUSTER_INFO;
-		ZeroMemory(ClusterInfo,sizeof(*ClusterInfo));
+		ZeroMemory(ClusterInfo,sizeof(CLUSTER_INFO));
 		ClusterInfo->qwPreviousSize = -2;
 	}
 
-	Search((void**)&e_Timecode,(char*)MID_CL_TIMECODE,(char*)MID_CL_TIMECODE); // stop after timecode has been found
-	if (e_Timecode->iCount!=1) {
-		B0rked("not exactly one Timecode in Cluster");
-	}
-
-	ClusterInfo->qwTimecode = e_Timecode->pElement[0]->AsInt();
-	DeleteElementList(&e_Timecode);
+	char* cids[] = { (char*)MID_CL_TIMECODE, NULL };
+	void* targets[] = { &ClusterInfo->qwTimecode, NULL };
+	int occ_restr[] = { 3, 0 };
+	SEARCHMULTIEX sme = { cids, targets, occ_restr };
+	SearchMulti(timecode, sme, (char*)MID_CL_TIMECODE);
+	DeleteVectors(timecode);
 }
 
 __int64 EBMLM_Cluster::GetPreviousSize()
@@ -193,7 +229,7 @@ __int64 EBMLM_Cluster::GetPreviousSize()
 	if (!e_PrevSize->iCount) {
 		ClusterInfo->qwPreviousSize = PREVSIZE_UNKNOWN;
 	} else {
-		ClusterInfo->qwPreviousSize = e_PrevSize->pElement[0]->AsInt();
+		ClusterInfo->qwPreviousSize = (*e_PrevSize)[0];
 	}
 	DeleteElementList(&e_PrevSize);
 	return ClusterInfo->qwPreviousSize;
@@ -202,8 +238,8 @@ __int64 EBMLM_Cluster::GetPreviousSize()
 
 __int64 EBMLM_Cluster::GetTimecode()
 {
-	if (!ClusterInfo) {
+	if (!ClusterInfo)
 		RetrieveInfo();
-	}
+
 	return ClusterInfo->qwTimecode;
 }

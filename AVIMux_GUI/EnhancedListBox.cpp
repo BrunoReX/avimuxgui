@@ -157,6 +157,10 @@ void CEnhancedListBox::AllowMoving(bool bAllowMoving)
 	bMovingAllowed=bAllowMoving;
 }
 
+void CEnhancedListBox::RedoNumbering()
+{
+}
+
 void CEnhancedListBox::OnMouseMove(UINT nFlags, CPoint point) 
 {
 	// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen und/oder Standard aufrufen
@@ -170,10 +174,12 @@ void CEnhancedListBox::OnMouseMove(UINT nFlags, CPoint point)
 			if (i>iItemMButtonDown)
 			{
 				ItemDown();
+				RedoNumbering();
 			}
 			if (i<iItemMButtonDown)
 			{
 				ItemUp();
+				RedoNumbering();
 			}
 			iItemMButtonDown=i;
 		}

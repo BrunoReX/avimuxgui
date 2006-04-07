@@ -7,11 +7,16 @@
 #include "AVIFile.h"
 #include "SourceFileListBox.h"
 #include "..\BaseStreams.h"
+#include <algorithm>
 
 #include "mode2form2reader.h"
 #include "VideoInformationDlg.h"
 #include "Languages.h"
 #include "..\Buffers.h"
+#include "..\UnicodeCalls.h"
+#include "UTF8Windows.h"
+#include "EBMLTreeDlg.h"
+#include "RIFFChunkTreeDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -45,6 +50,7 @@ BEGIN_MESSAGE_MAP(CSourceFileListBox, CEnhancedListBox)
 	//{{AFX_MSG_MAP(CSourceFileListBox)
 	ON_WM_RBUTTONUP()
 	ON_WM_DROPFILES()
+	ON_WM_PAINT()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -87,6 +93,54 @@ FILE_INFO* CSourceFileListBox::GetFileInfo(int i)
 	return (FILE_INFO*)c->GetData();
 }
 
+int CSourceFileListBox::FileID2Index(int id)
+{
+	for (int i=0; i<GetCount(); i++)
+		if (GetFileInfo(i)->file_id == id)
+			return i;
+
+	return -1;
+}
+
+void CSourceFileListBox::ItemDown()
+{
+	CEnhancedListBox::ItemDown();
+}
+
+void CSourceFileListBox::ItemUp()
+{
+	CEnhancedListBox::ItemUp();
+}
+
+void CSourceFileListBox::SortItems()
+{
+	int i;
+	for (i=0; i<GetCount(); SetSel(i++, 0));
+
+	for (int i=0; i<GetCount(); i++)
+		for (int j=0; j<GetCount()-i; j++)
+			for (int k=j; k<GetCount()-i; k++) {
+				FILE_INFO* f1 = GetFileInfo(j);
+				FILE_INFO* f2 = GetFileInfo(k);
+
+				if (f1 -> current_pos > f2->current_pos) {
+					SetSel(k);
+					ItemUp();
+					SetSel(k-1);
+				}
+
+			}
+
+	RedoNumbering();
+}
+
+void CSourceFileListBox::RedoNumbering()
+{
+	for (int i=0; i<GetCount(); i++)
+		GetFileInfo()->current_pos = 2*i;
+
+}
+
 void CSourceFileListBox::OnRButtonUp(UINT nFlags, CPoint point) 
 {
 	CMenu*		cmPopupMenu;
@@ -108,28 +162,22 @@ void CSourceFileListBox::OnRButtonUp(UINT nFlags, CPoint point)
 //	cmPopupMenu->AppendMenu(MF_STRING,IDM_OPENADVANCEDOPTIONS,cStr);
 //	bShowMenu=true;
 
-	if (GetCount())
-	{
+	if (GetCount())	{
 		lpFI = GetFileInfo();
-		//iIndex=GetCurSel();
-		//if (iIndex!=LB_ERR)
-		if (lpFI)
-		{
-//			cb = (CBuffer*)GetItemData(iIndex);
-//			lpFI=(FILE_INFO*)cb->GetData();
-
+		if (lpFI) {
 			if (bShowMenu) cmPopupMenu->AppendMenu(MF_SEPARATOR,0);
-			if ((!lpFI->bInUse)&&(lpFI->dwType&FILETYPE_AVI))
-			{
+/*			if ((!lpFI->bInUse)&& (
+				(lpFI->dwType & FILETYPE_AVI) ||
+				(lpFI->dwType & FILETYPE_MKV)))*/ {
 				cStr=LoadString(IDS_REMOVE);
 				cmPopupMenu->AppendMenu(MF_STRING,IDM_REMOVE,cStr);
 				bShowMenu=true;
 			}
+			
 			cStr=LoadString(IDS_CLEARALL);
 			cmPopupMenu->AppendMenu(MF_STRING,IDM_CLEARALL,cStr);
 			
-			if (lpFI->dwType& (FILETYPE_AVI | FILETYPE_MKV))
-			{
+			if (lpFI->dwType& (FILETYPE_AVI | FILETYPE_MKV)) {
 				if (bShowMenu) cmPopupMenu->AppendMenu(MF_SEPARATOR,0);
 				cStr=LoadString(IDS_VIDEOINFORMATION);
 				cmPopupMenu->AppendMenu(MF_STRING,IDM_VIDEOINFORMATION,cStr);
@@ -154,14 +202,19 @@ void CSourceFileListBox::OnRButtonUp(UINT nFlags, CPoint point)
 				}
 			}
 
-			if (lpFI->dwType&FILETYPE_M2F2)
-			{
+			if (lpFI->dwType&FILETYPE_M2F2) {
 				if (bShowMenu) cmPopupMenu->AppendMenu(MF_SEPARATOR,0);
 				cStr=LoadString(IDS_EXTRACTM2F2);
 				cmPopupMenu->AppendMenu(MF_STRING,IDM_EXTRACTM2F2,cStr);
 				cStr=LoadString(IDS_M2F2CRC);
 				cmPopupMenu->AppendMenu(MF_STRING | ((lpFI->bM2F2CRC)?MF_CHECKED:MF_UNCHECKED),IDM_M2F2CRC,cStr);
 				bShowMenu=true;
+			}
+
+		/*	if (lpFI->dwType&FILETYPE_MKV) */ {
+				if (bShowMenu) cmPopupMenu->AppendMenu(MF_SEPARATOR,0);
+				cmPopupMenu->AppendMenu(MF_STRING, IDM_EBMLTREE, "EBML Tree");
+				cmPopupMenu->AppendMenu(MF_STRING, IDM_RIFFTREE, "RIFF Tree");
 			}
 		}
 	}
@@ -231,6 +284,8 @@ int ExtractThread(EXTRACTM2F2_THREAD_DATA*	lpETD)
 	return 1;
 }
 
+int file_index_to_delete = -1;
+
 BOOL CSourceFileListBox::OnCommand(WPARAM wParam, LPARAM lParam) 
 {
 	FILE_INFO*	lpFI = NULL;
@@ -239,11 +294,12 @@ BOOL CSourceFileListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 	CWinThread*	thread;
 	CFileDialog*	cfd;
 	CVideoInformationDlg*	cvid;
+	CRIFFChunkTreeDlg*	crctd;
+	CEBMLTreeDlg* cetd;
 	CString		cStr1,cStr2;
-	int			iIndex;
 	CBuffer*		cb = NULL;
 	CAVIMux_GUIDlg*	cMainDlg = (CAVIMux_GUIDlg*)GetParent();
-
+	char c[65536]; c[0]=0;
 /*	iIndex=GetCurSel();
 	if (iIndex!=LB_ERR) {
 		cb = (CBuffer*)GetItemData(iIndex);
@@ -260,13 +316,6 @@ BOOL CSourceFileListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 			if (cfd->DoModal()==IDOK)
 			{
 				if (lpFI = GetFileInfo()) {
-/*				iIndex=GetCurSel();
-				if (iIndex!=LB_ERR)
-				{
-				
-					cb = (CBuffer*)GetItemData(iIndex);
-					lpFI=(FILE_INFO*)cb->GetData();
-*/
 					dest=new FILESTREAM;
 					if (dest->Open(cfd->GetPathName().GetBuffer(255),STREAM_WRITE)==STREAM_ERR)
 					{
@@ -288,59 +337,118 @@ BOOL CSourceFileListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 			if (lpFI = GetFileInfo()) {
 				(lpFI->bM2F2CRC)=!(lpFI->bM2F2CRC);
 			}
-/*			iIndex=GetCurSel();
-			if (iIndex!=LB_ERR)
-			{
-				cb = (CBuffer*)GetItemData(iIndex);
-				lpFI=(FILE_INFO*)cb->GetData();
-				(lpFI->bM2F2CRC)=!(lpFI->bM2F2CRC);
-			}*/
 			break;
 		case IDM_VIDEOINFORMATION:
 			if (lpFI = GetFileInfo()) {
-/*			iIndex=GetCurSel();
-			if (iIndex!=LB_ERR)
-			{
-				cb = (CBuffer*)GetItemData(iIndex);
-				lpFI=(FILE_INFO*)cb->GetData();*/
 				cvid=new CVideoInformationDlg;
 				cvid->SetFile(lpFI);
+
+				cvid->Attribs( ((CAVIMux_GUIDlg*)GetParent())->GetSettings()->GetAttr("gui/file_information"));
 				cvid->DoModal();
 				delete cvid;
 			}
 			break;
 		case IDM_REMOVE:
-			if (lpFI = GetFileInfo()) {
-			iIndex=GetCurSel();
-			if (iIndex!=LB_ERR)
-			{
-/*				CBuffer* cb = (CBuffer*)GetItemData(iIndex);
-				lpFI=(FILE_INFO*)cb->GetData();*/
-				if (lpFI->lpcName) free(lpFI->lpcName);
-				if (lpFI->lpM2F2)
-				{
-					lpFI->lpM2F2->Close();
-					delete lpFI->lpM2F2;
-					lpFI->lpM2F2=NULL;
+			if (file_index_to_delete > -1)
+				lpFI = GetFileInfo(file_index_to_delete);
+			else {
+				file_index_to_delete = GetCurSel();
+				lpFI = GetFileInfo();
+			}
+			if (lpFI) {
+				FILE_INFO* fi = lpFI;
+
+				if (!fi->bInUse) {
+
+					if (fi->lpcName) free(fi->lpcName);
+					fi->lpcName=NULL;
+					if (fi->dwType & FILETYPE_AVI) {
+						fi->AVIFile->Close(false);
+						delete fi->AVIFile;
+					}
+					if (fi->dwType & FILETYPE_MKV) {
+						fi->MKVFile->Close();
+						delete fi->MKVFile;
+					}
+					if (fi->source) {
+						fi->source->Close();
+						delete fi->source;
+					}
+
+					DecBufferRefCount(&cb);
+					DeleteString(file_index_to_delete);				
+				} else {
+					std::vector<HTREEITEM> htreeitems;
+					std::vector<DWORD> dwFileIndexes;
+					std::vector<DWORD> dwStreamNumbers;
+
+					cMainDlg->BuildFileAndStreamDependency(GetCurSel(),
+						htreeitems, dwStreamNumbers, dwFileIndexes);
+					std::sort(dwFileIndexes.begin(), dwFileIndexes.end());
+					sprintf(c, "%s: \n", LoadString(STR_FILELIST_REMOVE_FILES, LOADSTRING_UTF8));
+					for (size_t i=0; i<dwFileIndexes.size(); i++) {
+						FILE_INFO* f = GetFileInfo(dwFileIndexes[i]);
+						strcat(c, "  ");
+						strcat(c, f->lpcName);
+						strcat(c, "\x0D");
+					}
+
+					strcat(c, "\x0D");
+					strcat(c, LoadString(STR_FILELIST_REMOVE_STREAMS, LOADSTRING_UTF8));
+					strcat(c, ": \n");
+					for (size_t i=0; i<dwStreamNumbers.size(); i++) {
+						char d[16]; d[0]=0;
+						sprintf(d, "  %d: ", dwStreamNumbers[i]);
+						strcat(c, d);
+
+						char buf[512];
+						TV_DISPINFO tvi;
+						tvi.item.pszText = buf;
+						tvi.item.cchTextMax = 256;
+						tvi.item.mask = TVIF_TEXT;
+						tvi.item.hItem = htreeitems[i];
+
+						LRESULT lres;
+					
+						cMainDlg->m_StreamTree.OnTvnGetdispinfo((NMHDR*)&tvi, &lres);
+						
+						strcat(c, tvi.item.pszText);
+						strcat(c, "\x0D");
+					}
+					strcat(c, "\x0D");
+					strcat(c, LoadString(STR_FILELIST_REMOVE_CONTINUE, LOADSTRING_UTF8));
+
+				//	char* u  = NULL;
+				//	fromUTF8(c, &u);
+				//	char* hdr = NULL;
+				//	fromUTF8(LoadString(STR_GEN_WARNING, LOADSTRING_UTF8), &hdr);
+				
+					int msg_res = MessageBoxUTF8(NULL, c, LoadString(STR_GEN_WARNING, LOADSTRING_UTF8),
+						MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING);
+
+				//	int msg_res = (*UMessageBox())(0, u, hdr, MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING);
+					if (msg_res == IDYES) {
+						int i;
+						for (i=0;i<(int)htreeitems.size();i++)
+							cMainDlg->m_StreamTree.DeleteItem(htreeitems[i]);
+						std::sort(dwFileIndexes.begin(), dwFileIndexes.end());
+						for (i=dwFileIndexes.size()-1;i>=0;i--) {
+							int k = dwFileIndexes[i];
+							FILE_INFO* f = GetFileInfo(k);
+							f->bInUse = false;
+							file_index_to_delete = k;
+							SendMessage(WM_COMMAND, IDM_REMOVE);
+						}
+					}
+
+				//	free(u);
+				//	free(hdr);
+
 				}
-				if (lpFI->cache)
-				{
-					lpFI->cache->Close();
-					delete lpFI->cache;
-				}
-				if (lpFI->AVIFile)
-				{
-					lpFI->AVIFile->Close(false);
-					delete lpFI->AVIFile;
-				}
-				if (lpFI->file)
-				{
-					lpFI->file->Close();
-					delete lpFI->file;
-				}	
-				DeleteString(iIndex);				
-				DecBufferRefCount(&cb);
-			}}
+
+				file_index_to_delete = -1;
+			}
+
 			break;
 		case IDM_ADDFILE:
 			cMainDlg->PostMessage(cMainDlg->GetUserMessageID(),IDM_ADDFILE);
@@ -351,6 +459,21 @@ BOOL CSourceFileListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 		case IDM_CLEARALL:
 			cMainDlg->PostMessage(cMainDlg->GetUserMessageID(),IDM_CLEARALL);
 			break;
+		case IDM_EBMLTREE:
+			cetd = new CEBMLTreeDlg;
+			cetd->Attribs( ((CAVIMux_GUIDlg*)GetParent())->GetSettings()->GetAttr("gui/ebml_tree"));
+			cetd->SetSource(lpFI->source);
+			cetd->DoModal();
+			delete cetd;
+			break;
+		case IDM_RIFFTREE:
+			crctd = new CRIFFChunkTreeDlg;
+			crctd->Attribs( ((CAVIMux_GUIDlg*)GetParent())->GetSettings()->GetAttr("gui/riff_tree"));
+			crctd->SetSource(lpFI->source);
+			crctd->DoModal();
+			delete crctd;
+			break;
+
 	}
 
 	if (lpFI && (lpFI->dwType & FILETYPE_MKV) == FILETYPE_MKV) {
@@ -367,18 +490,103 @@ void CSourceFileListBox::OnDropFiles(HDROP hDropInfo)
 {
 	// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen und/oder Standard aufrufen
 	DWORD	dwCount;
-	char*	lpcName;
 	CAVIMux_GUIDlg*  cdlg;
 
 	dwCount=DragQueryFile(hDropInfo,0xFFFFFFFF,NULL,NULL);
 
 	for (int i=0;i<(int)dwCount;i++)
 	{
-		lpcName = (char*)calloc(1,1000);
-		DragQueryFile(hDropInfo,i,lpcName,1000);
+		int size = (*UDragQueryFile())((uint32)hDropInfo, i, NULL, 0);
+		char* temp = (char*)calloc(2, size + 1);
+		char* lpcName = NULL;	
+
+		(*UDragQueryFile())((uint32)hDropInfo, i, temp, size + 1);
+		
+		toUTF8(temp, &lpcName);
+		free(temp);
+
 		cdlg = (CAVIMux_GUIDlg*)GetParent();
 		cdlg->PostMessage(cdlg->GetUserMessageID(),IDM_DOADDFILE,(LPARAM)lpcName);
 	}
 
 	CEnhancedListBox::OnDropFiles(hDropInfo);
+}
+
+void CSourceFileListBox::OnPaint() 
+{
+//	CPaintDC dc(this); // device context for painting
+	CEnhancedListBox::OnPaint();
+	
+	// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen
+	
+	// Kein Aufruf von CEnhancedListBox::OnPaint() für Zeichnungsnachrichten
+}
+
+void CSourceFileListBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct) 
+{
+	// TODO: Code einfügen, um das angegebene Element zu zeichnen
+	CDC	dc;
+	LPDRAWITEMSTRUCT d = lpDrawItemStruct;
+	FILE_INFO* lpFI = GetFileInfo(d->itemID);
+
+	if (!lpFI)
+		return;
+
+    dc.Attach(d->hDC);
+	COLORREF crOldBkColor = dc.GetBkColor();
+	COLORREF bkColor;
+
+	char* u = NULL;
+	CFont* font = GetFont();
+	
+	int j = fromUTF8(lpFI->lpcName, &u);
+	if (IsUnicode())
+		j /= 2;
+
+	if (lpFI->bInUse) {
+		if ((d->itemState & ODS_SELECTED)/* && (d->itemState & ODA_SELECT)*/) {
+			dc.SetTextColor(GetSysColor(COLOR_HIGHLIGHTTEXT));
+			bkColor = (GetSysColor(COLOR_HIGHLIGHT));
+		} else {
+			dc.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
+			bkColor = (GetSysColor(COLOR_WINDOW));
+		}
+	} else {
+		if ((d->itemState & ODS_SELECTED) /*&& (d->itemState & ODA_SELECT)*/) {
+			dc.SetTextColor(GetSysColor(COLOR_HIGHLIGHTTEXT));
+			bkColor = (GetSysColor(COLOR_HIGHLIGHT));
+		} else {
+			dc.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
+			bkColor = (GetSysColor(COLOR_WINDOW));
+		}
+	}
+
+	dc.SetTextAlign(TA_LEFT);
+
+	dc.SetBkMode(TRANSPARENT);
+	dc.SelectObject(font);
+
+	LOGBRUSH b;
+	b.lbColor = bkColor;
+	b.lbStyle = BS_SOLID;
+	HBRUSH brush = CreateBrushIndirect(&b);
+
+	LOGPEN p;
+	p.lopnColor = 0;
+	p.lopnStyle = PS_NULL;
+	HPEN pen = CreatePenIndirect(&p);
+
+	dc.SelectObject(brush);
+	dc.SelectObject(pen);
+	d->rcItem.right++;
+	d->rcItem.bottom++;
+	dc.Rectangle(&d->rcItem);
+
+	(*UTextOut())(dc,d->rcItem.left,d->rcItem.top,u,j-1);
+
+	DeleteObject(brush);
+	DeleteObject(pen);
+	
+	dc.Detach();
+	free(u);
 }

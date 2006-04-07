@@ -13,7 +13,8 @@
 #include "SplitPointList.h"
 #include "AVIFile.h"
 #include "resource.h"
-#include "dynarray.h"
+#include "../dynarray.h"
+#include "../chapters.h"
 
 const int SPD_BEGIN	=	0x00000001;
 const int SPD_END   =   0x00000002;
@@ -30,6 +31,8 @@ typedef struct
 	__int64		iEnd;       // milliseconds or chapter index
 	CDynIntArray* aChapBegin;
 	CDynIntArray* aChapEnd;
+	CChapters*  chapter;
+	int			iIndex;
 	CStringBuffer* cOrgText;
 } SPLIT_POINT_DESCRIPTOR;
 

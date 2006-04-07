@@ -6,6 +6,8 @@ const int MMS_VIDEO		= 0x01;
 const int MMS_AUDIO		= 0x02;
 const int MMS_SUBTITLES = 0x03;
 
+const int MMS_UNKNOWN   = -0x7FFFFFFF;
+
 typedef struct
 {
 		__int64				iCurrentTimecode;	// contains timecode of last read frame			
@@ -24,7 +26,9 @@ typedef struct
 
 const int COMP_NONE = 0x00;
 const int COMP_ZLIB = 0x01;
+const int COMP_HDRSTRIPPING = 0x04;
 const int COMP_UNKNOWN = -0x01;
+
 
 typedef struct
 {
@@ -60,6 +64,9 @@ const int MMSIC_BITRATE				= -0x00000010;
 const int MMSIC_FORMATTAG			= -0x00000011;
 const int MMSIC_IDSTRING			= -0x00000012;
 const int MMSIC_CHANNELS			= -0x00000013;
+const int MMSIC_COMPRESSION			= -0x00000014;
+const int MMSIC_MPEG_LAYERVERSION   = -0x00000015;
+const int MMSIC_MPEG_VERSION        = -0x00000016;
 
 const int FRAMEDURATION_UNKNOWN     = -0x00000001;
 
@@ -134,10 +141,12 @@ class MULTIMEDIASOURCE
 		void		virtual	SetMaxLength(__int64 iLength, int iFlags = 0);
 		void		virtual SetStretchFactor(double dFactor);
 		void		virtual SetDefault(int bDefault);
+
+		int			virtual GetStrippableHeaderBytes(void* pBuffer, int max);
 		int			virtual IsDefault();
 
 		MULTIMEDIASOURCE(void);
-		~MULTIMEDIASOURCE(void);
+		virtual ~MULTIMEDIASOURCE(void);
 };
 
 

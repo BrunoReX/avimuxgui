@@ -4,9 +4,8 @@
 #ifndef I_AVIINDICES
 #define I_AVIINDICES
 
-#include "stdafx.h"
+//#include "stdafx.h"
 #include "..\basestreams.h"
-//#include "vfw.h"
 #include "rifffile.h"
 #include "avistructs.h"
 
@@ -24,6 +23,7 @@ const int AVI_INDEX_2FIELD		= 0x01;
 const int AVI_VIDEOSTREAM = 0x01;
 const int AVI_AUDIOSTREAM = 0x02;
 const int AVI_TEXTSTREAM  = 0x03;
+const int INDEXTYPE_UNCHANGED = 0x00;
 
 bool IsMP3SampleCount(int x);
 

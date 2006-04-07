@@ -113,11 +113,17 @@ void CEBMLTree::GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult)
 			
 			EBMLElement* e = d->pElement;
 			QW2Str(d->iHeaderSize, b, 1);
+			strcat(c, "header: ");
 			strcat(c, b);
-			strcat(c, ": ");
-			QW2Str(e->GetLength(),b,1);
+			strcat(c, " bytes, data: ");
+			
+			if (e->IsLengthUndefined())
+				strcpy(b, "<undefined>");
+			else
+				QW2Str(e->GetLength(),b,1);
+			
 			strcat(c,b);
-			strcat(c," bytes at ");
+			strcat(c," bytes, pos.: ");
 			QW2Str((!iMode)?d->iRelPosition:d->iItemPosition, b, 1);
 			strcat(c,b);
 			strcat(c,"): ");
@@ -129,10 +135,9 @@ void CEBMLTree::GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult)
 					break;
 				case EBMLDATATYPE_BIN:
 					strcpy(b,"binary");
-
 					break;
 				case EBMLDATATYPE_INT:
-					QW2Str(e->AsInt(),b,1);
+					QW2Str(e->GetData()->AsBSWInt(),b,1);
 					break;
 				case EBMLDATATYPE_SINT:
 					QW2Str(FSSInt2Int(e->GetData()),b,1);
@@ -145,11 +150,10 @@ void CEBMLTree::GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult)
 					break;
 				case EBMLDATATYPE_UTF8:
 					strcpy(b,e->GetData()->AsString());
-//					UTF82Str(e->GetData()->AsString(),b);
 					break;
 				case EBMLDATATYPE_HEX:
 					j=0;
-					if (d->pElement->GetType() == ETM_SEEKID) {
+					if (d->pElement->GetType() == IDVALUE(MID_MS_SEEKID)) {
 						for (i=0;i<MID_4BYTEDESCR_COUNT;i++) {
 							if (Comp_EBMLIDs(e->GetData()->AsString(),
 								MID_4BYTEDESCR[i].cID)) {
@@ -169,6 +173,18 @@ void CEBMLTree::GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult)
 
 			}
 			strcat(c,b);
+
+			if (e->IsMaster()) {
+				if (e->CheckCRC() == EBML_CRC_OK) {
+					strcat(c, " (CRC32 passed)");
+				} else
+				if (e->Verify()) {
+					strcat(c, " (parent CRC32 passed)");
+				}
+				if (e->CheckCRC() == EBML_CRC_FAILED) {
+					strcat(c, " (CRC32 failed!)");
+				}
+			}			
 		}
 	}
 

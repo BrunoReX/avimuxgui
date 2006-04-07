@@ -13,18 +13,23 @@
 #include "Languages.h"
 #include "..\basestreams.h"
 #include "AVIFile.h"
+#include "ResizeableDialog.h"
+#include "afxwin.h"
 
-class CRIFFChunkTreeDlg : public CDialog
+class CRIFFChunkTreeDlg : public CResizeableDialog
 {
 // Konstruktion
 private:
 	STREAM*		source;
 	void	RenderItem(FILE* file, HTREEITEM hItem, int iLevel);
+	//CRITICAL_SECTION critical_section;
+
+//	HTREEITEM InsertItem(HTREEITEM hParent, char* cText);
 public:
 	CRIFFChunkTreeDlg(CWnd* pParent = NULL);   // Standardkonstruktor
 	void	SetSource(STREAM*	lpSource);
 	STREAM* GetSource(void);
-
+/*
 	void ParseAVIH(HTREEITEM hParent,CHUNKHEADER ch);
 	void ParseSTRH(HTREEITEM hParent,CHUNKHEADER ch);
 	void ParseINDX(HTREEITEM hParent,CHUNKHEADER ch);
@@ -32,7 +37,7 @@ public:
 
 	void InsertChunk(HTREEITEM hParent,CHUNKHEADER ch, int iType = 0);
 	void InsertList(HTREEITEM hParent,LISTHEADER lh);
-
+*/
 // Dialogfelddaten
 	//{{AFX_DATA(CRIFFChunkTreeDlg)
 	enum { IDD = IDD_RIFFCHUNKTREEDLG };
@@ -56,6 +61,14 @@ protected:
 	afx_msg void OnSave();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnDestroy();
+	afx_msg void OnBnClickedOk();
+	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+	afx_msg void OnTvnSelchangedTree1(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnBnClickedWait();
+	CButton m_WaitButton;
+	afx_msg void OnBnClickedWaitForCompleteTree();
 };
 
 //{{AFX_INSERT_LOCATION}}

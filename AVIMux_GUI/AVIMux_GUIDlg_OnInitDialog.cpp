@@ -1,58 +1,61 @@
+/*
+
+
+*/
+
+
 #include "stdafx.h"
 #include "AVIMux_GUIDlg.h"
 #include "global.h"
+#include "AVIMux_GUI.h"
+#include "..\UnicodeCalls.h"
+#include "UTF8Windows.h"
+#include "TABHandler.h"
+#include "LanguageCodes.h"
+#include "OSVersion.h"
+#include "../Filenames.h"
+#include "Version.h"
 
-void  MovieWindow_Up(CWnd* parent,CWnd* cWnd,DWORD dwHeight)
-{
-	RECT	rect;
-
-	cWnd->GetWindowRect(&rect);
-	parent->ScreenToClient(&rect);
-	rect.top-=dwHeight;
-	rect.bottom-=dwHeight;
-	cWnd->MoveWindow(&rect,true);
-}
-
-/*
-char* languages [][2] = {
-	{"English",""},
-	{"German", "ger"}, 
-	{"English", "eng"},
-	{"Finnish", "fin"},
-	{"French", "fre"},
-	{"Japanese", "jpn"},
-	{"Polish", "pol"},
-	{"Portuguese", "por"},
-
-	{"Russian", "rus"},
-	{"Spanish", "spa"},
-	{"undefined", "und" }
-};
-*/
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#undef THIS_FILE
+static char THIS_FILE[] = __FILE__;
+#endif
 
 BOOL CAVIMux_GUIDlg::OnInitDialog()
 {
 	char*	Buffer;
+	int		buffer_size = 65536;
 	int		i;
 	char*	dir;
 	char*	lf;
-	FILE*	f;
+	char	cwinver[64];
 
 	srand(GetTickCount());
+	settings = NULL;
+	tab_stop_hist = -1;
 	iUnicode_possible = 0;
 	bAddAS_immed = 1;
+	current_language_index = 0;
 
-	OSVERSIONINFOEX	ovi;
-	ovi.dwOSVersionInfoSize = sizeof(ovi);
-	GetVersionEx((OSVERSIONINFO*)&ovi);
-	iUnicode_possible = ovi.dwPlatformId == VER_PLATFORM_WIN32_NT;
+	GetOSVersionString(cwinver, 64);
+    
+	if (!IsOSWin2kplus()) {
+		char c[4096];
+		sprintf(c, "The following operating system has been found: %s. This application cannot run on Win 9x/ME/NT <=4. You need Windows 2000 or newer.", cwinver);
+		MessageBox(c, "Fatal Problem", MB_OK | MB_ICONERROR);
+		PostMessage(WM_QUIT);
+		return 0;
+	}
 
-	utf8_EnableRealUnicode(!!iUnicode_possible);
-	SendDlgItemMessage(IDC_AUDIOTREE, TVM_SETUNICODEFORMAT, iUnicode_possible, 0);
+	utf8_EnableRealUnicode(DoesOSSupportUnicode());
+//	printf("Unicode should be working\n");
+
 	bEditInProgess = 0;	
 
 	if (!(uiMessage = RegisterWindowMessage("mymessage_1"))) {
-		MessageBox("Could not register user-defined window message!","Error",MB_OK | MB_ICONERROR);
+		MessageBox("Could not register user-defined window message!",
+			"Error",MB_OK | MB_ICONERROR);
 		PostMessage(WM_QUIT,0,0);
 		return 0;
 	}
@@ -88,76 +91,113 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	dwLangs[14] = IDM_LANG15;
 	dwLangs[15] = IDM_LANG16;
 
-	Buffer=new char[512];
-	dir=new char[512];
-	lf=new char[512];
+	Buffer=new char[65536];
+	dir=new char[65536];
+	lf=new char[65536];
 
-	GetModuleFileName(NULL, dir, 512);
-	for (i=lstrlen(dir);i>0;i--)
-	{
-		if (dir[i]=='\\')
-		{
+	(*UGetModuleFileName())(NULL, Buffer, buffer_size/2);
+	toUTF8(Buffer, dir);
+	for (i=strlen(dir);i>0;i--) {
+		if (dir[i]=='\\') {
 			dir[i]=0;
 			i=-1;
 		}	
 	}
 
-	lstrcpy(cfgfile,dir);
-	lstrcat(cfgfile,"\\config.ini");
-	lstrcpy(lastjobfile,dir);
-	lstrcat(lastjobfile,"\\last-job.amg");
+	char* udir = NULL;
+	strcpy(appdir, dir);
+	fromUTF8(dir, &udir);
+	(*USetCurrentDirectory())(udir);
+	free(udir);
 
-	lstrcpy(lf,dir);
-	lstrcat(lf,"\\languages.amg");
+	char odir[65536];
+	Filename2LongFilename(dir, odir, sizeof(odir));
+	strcpy(dir, odir);
 
-	f=fopen(lf,"r");
-	if (!f)
-	{
-		MessageBox("Couldn't open file\n\nlanguages.amg","Error",MB_OK | MB_ICONERROR);
+	strcpy(cfgfile,dir);
+	strcat(cfgfile,"\\config.ini");
+	strcpy(lastjobfile,dir);
+	strcat(lastjobfile,"\\last-job.amg");
+
+	strcpy(guifile, dir);
+	strcat(guifile, "\\gui.amg.xml");
+
+	strcpy(lf,dir);
+	strcat(lf,"\\languages.amg");
+	Filename2LongFilename(lf, odir, sizeof(odir));
+	strcpy(lf, odir);
+
+	strcpy(lngcodefile, dir);
+	strcat(lngcodefile, "\\language_codes.txt");
+	Filename2LongFilename(lngcodefile, odir, sizeof(odir));
+	strcpy(lngcodefile, odir);
+
+	FILESTREAM* F = new FILESTREAM();
+	CTEXTFILE* textfile = new CTEXTFILE();
+
+	if (F->Open(lf, STREAM_READ) != STREAM_OK || textfile->Open(STREAM_READ, F) != STREAM_OK) {
+		MessageBox("Couldn't open file\n\nlanguages.amg\n\nPossible reasons are either that you have tried to run AVI-Mux GUI directly from a zip archive or that you deleted or removed this file.","Fatal error",MB_OK | MB_ICONERROR);
 		PostMessage(WM_QUIT);
 		return 0;
 	}
-	fgets(Buffer,200,f);
-	Buffer[lstrlen(Buffer)-1]=0;
+
+	textfile->SelectOutputFormat(CM_UTF8);
+	textfile->ReadLine(Buffer);
+	int equalsignpos = strcspn(Buffer, "=");
+	if (equalsignpos == strlen(Buffer)) {
+		MessageBox("languages.amg file is invalid\n\nExpected: number=<number_of_language_files>","Fatal error",MB_OK | MB_ICONERROR);
+		textfile->Close();
+		F->Close();
+		delete textfile;
+		delete F;
+		PostMessage(WM_QUIT);
+		return 0;
+	}
+	Buffer[equalsignpos]=0;
 	if (!strncmp(Buffer,"number",6))
 	{
 		DWORD dwLngCount = 0;
-		dwLanguages=atoi(&(Buffer[7]));
+		dwLanguages=atoi(Buffer+7);
 		lplpLanguages=(LANGUAGE_DESCRIPTOR**)new LANGUAGE_DESCRIPTOR[dwLanguages];
 		for (i=0;i<(int)dwLanguages;i++)
 		{
-			lstrcpy(lf,dir);
-			lstrcat(lf,"\\");
-			ZeroMemory(Buffer,512);
-			fgets(Buffer,200,f);
-			Buffer[lstrlen(Buffer)-1]=0;
+//			lstrcpy(lf,dir);
+//			lstrcat(lf,"\\");
+			lf[0]=0;
+			memset(Buffer, 0, buffer_size);
+			textfile->ReadLine(Buffer);
 			lstrcat(lf,Buffer);
+			Buffer[0]=0;
 			if (!(lplpLanguages[dwLngCount]=LoadLanguageFile(lf)))
 			{
-				wsprintf(Buffer,"Couldn't open language file:\n\n%s\n\nIf you changed the original directory stucture inside the downloaded file, then shame on you! If you use Win 9x/ME, the problem could be a language file using UTF-8 coding. Open the file in Windows Editor and resave it using ANSI coding in that case.",lf);
+				wsprintf(Buffer,"Couldn't open language file: \n\n%s\n\nIf you changed the original directory stucture inside the downloaded file, then shame on you! If you use Win 9x/ME, the problem could be a language file using UTF-8 coding. Open the file in Windows Editor and resave it using ANSI coding in that case.",lf);
 				MessageBox(Buffer,"Error",MB_OK | MB_ICONERROR);
 			} else dwLngCount++;
 		}
 		if (!dwLngCount) {
-			PostMessage(WM_QUIT);
 			wsprintf(Buffer,"Couldn't open any language file!");
 			MessageBox(Buffer,"Error",MB_OK | MB_ICONERROR);
+			PostMessage(WM_QUIT);
 			return 0;
 		}
 		dwLanguages = dwLngCount;
 	}
 
-	fclose(f);
+	textfile->Close();
+	delete textfile;
+	F->Close();
+	delete F;
+	
 	SetCurrentLanguage(lplpLanguages[0]);
 	cLogFileName[0]=0;
 	strcpy(cLogFileName, dir);
 	strcat(cLogFileName, "\\AVI-Mux GUI - Logfile - ");
 
-	delete dir;
-	delete lf;
-	delete Buffer;
+	delete[] dir;
+	delete[] lf;
+	delete[] Buffer;
 
-	CDialog::OnInitDialog();
+	CResizeableDialog::OnInitDialog();
 	UpdateLanguage();
 	m_Protocol.InitUnicode();
 	// Hinzufügen des Menübefehls "Info..." zum Systemmenü.
@@ -170,13 +210,14 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	
 // Einstellungen aus config.ini laden -- VERALTET!
 	ofOptions.dwFlags=0;
-	GetPrivateProfileString("config","maxsize","2000",Buffer,200,cfgfile);
-	sfOptions.dwMaxFileSize=atoi(Buffer);
-	GetPrivateProfileString("config","format","%s (%d).avi",Buffer,200,cfgfile);
+	GetPrivateProfileString("config","format","$Name ($Nbr)",Buffer,200,cfgfile);
+
+	if (strstr(Buffer, "%%d") || strstr(Buffer, "%%s"))
+		strcpy(Buffer, "$Name ($Nbr)");
+
 	sfOptions.lpcNumbering=new char[1+lstrlen(Buffer)];
 	lstrcpy(sfOptions.lpcNumbering,Buffer);
-	GetPrivateProfileString("config","preload","200",Buffer,200,cfgfile);
-	sfOptions.dwPreload=atoi(Buffer);
+	
 	GetPrivateProfileString("config","maxframes","0",Buffer,200,cfgfile);
 	sfOptions.dwFrames=atoi(Buffer);
 	GetPrivateProfileString("config","maxchunksize","0",Buffer,200,cfgfile);
@@ -185,16 +226,11 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	sfOptions.dwMaxFiles=atoi(Buffer);
 	GetPrivateProfileString("config","usemaxfiles","0",Buffer,200,cfgfile);
 	sfOptions.dwUseMaxFiles=atoi(Buffer);
-	GetPrivateProfileString("config","usenumbering","1",Buffer,200,cfgfile);
-	sfOptions.dwDontUseNumbering=!atoi(Buffer);
 	GetPrivateProfileString("config","mp3cbrframemode","1",Buffer,200,cfgfile);
 	i=GetPrivateProfileInt("config","avoidseekops",1,cfgfile);
-	sfOptions.dwUseMaxFileSize=GetPrivateProfileInt("config","usemaxsize",1,cfgfile);
 
 	sfOptions.bDispDoneDlg=true;
-	sfOptions.bDispOverwriteDlg=true;
 	sfOptions.bExitAfterwards=false;
-	sfOptions.iStdOutputFormat=0;
 
 	i=GetPrivateProfileInt("config","noaudio",0,cfgfile);
 	CheckDlgButton(IDC_NO_AUDIO,(i==1)?BST_CHECKED:BST_UNCHECKED);
@@ -221,7 +257,7 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 
 
 	i=GetPrivateProfileInt("config","openfileoptionsflags",
-		SOFO_AVI_REPAIRDX50 | SOFO_M2F2_DOM2F2CRCCHECK | SOFO_MP3_CHECKCBRASK,cfgfile);
+		SOFO_MP3_CHECKCBRASK,cfgfile);
 	ofOptions.dwFlags|=i;
 	
 	sfOptions.dwUseManualSplitPoints=0;
@@ -248,92 +284,35 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 // neue Quelldateilistbox
 	RECT	rect;
 	m_Enh_Filelist.GetWindowRect(&rect);
-	m_Enh_Filelist.InsertColumn(0,LoadString(STR_FILELIST_FILENAME),LVCFMT_LEFT,(rect.right-rect.left)/2);
-	m_Enh_Filelist.InsertColumn(1,LoadString(STR_FILELIST_MEDIATYPE),LVCFMT_LEFT,(rect.right-rect.left)/10);
-	m_Enh_Filelist.InsertColumn(2,LoadString(STR_FILELIST_FORMAT),LVCFMT_LEFT,(rect.right-rect.left)/10);
-	m_Enh_Filelist.InsertColumn(3,LoadString(STR_FILELIST_SIZE),LVCFMT_LEFT,(rect.right-rect.left)/10);
-// Protokollheader; Protokoll zurechtrücken
-	RECT	rect_label,rect_protocol,rect_files,rect_this;
-	
-	m_SourceFiles.GetWindowRect(&rect_files);
-	m_Protocol.GetWindowRect(&rect_protocol);
-	m_Protocol_Label.GetWindowRect(&rect_label);
-	ScreenToClient(&rect_files);
-	ScreenToClient(&rect_protocol);
-	ScreenToClient(&rect_label);
-
-	rect_label.left=rect_files.left;
-	m_Protocol_Label.MoveWindow(&rect_label);
-	rect_protocol.left=rect_files.left;
-	m_Protocol.MoveWindow(&rect_protocol);
-
-// Status/Fortschrittsanzeige hochschieben
-	m_Open_Files_Label.GetWindowRect(&rect_label);
-	m_Progress_Group.GetWindowRect(&rect);
-	ScreenToClient(&rect_label);
-	ScreenToClient(&rect);
 
 	m_VideoStretchFactor.SetWindowText("1");
 
-	DWORD	dwDeltaH = rect.top - rect_label.top;
-	
-	MovieWindow_Up(this,&m_Progress_Group,dwDeltaH);
-	MovieWindow_Up(this,&m_Prg_Dest_File,dwDeltaH);
-	MovieWindow_Up(this,&m_Prg_Dest_File_Label,dwDeltaH);
-	MovieWindow_Up(this,&m_Prg_Frames,dwDeltaH);
-	MovieWindow_Up(this,&m_Prg_Frames_Label,dwDeltaH);
-	MovieWindow_Up(this,&m_Prg_Legidx_Label,dwDeltaH);
-	MovieWindow_Up(this,&m_Prg_Legidx_Progress,dwDeltaH);
-	MovieWindow_Up(this,&m_Prg_Progress,dwDeltaH);
-	MovieWindow_Up(this,&m_Prg_Progress_Label,dwDeltaH);
-	MovieWindow_Up(this,&m_Progress_List,dwDeltaH);
-	
-	RECT r;
-	m_AudioName.GetWindowRect(&r);
-	ScreenToClient(&r);
-	r.bottom+=100;
-	m_Stream_Lng.MoveWindow(&r);
 
-	for (i=0;i<sizeof(languages)/sizeof(char*[2]);i++) {
-		Buffer[0]=0;
-		sprintf(Buffer,"%s - %s",languages[i][0],languages[i][1]);
-		m_Stream_Lng.SetItemData(m_Stream_Lng.AddString(Buffer),(LPARAM)languages[i][1]);
-	}
+	RECT r;
 
 	free (Buffer);
 
-	m_Start_Button.GetWindowRect(&rect);
-	GetWindowRect(&rect_this);
-
-	rect_this.bottom=rect.bottom+rect.bottom-rect.top+20;
-
-	MoveWindow(&rect_this,true);
-// protocole listbox headers
-	m_Prg_Dest_File.GetWindowRect(&rect);
-	dwDeltaH=abs(rect.top-rect.bottom);
-	m_Protocol.GetWindowRect(&rect);
+    m_Protocol.GetWindowRect(&rect);
 	m_Protocol.InsertColumn(0,"Time",LVCFMT_CENTER,(rect.right-rect.left)/7);
-	m_Protocol.InsertColumn(1,"Message",LVCFMT_LEFT,(rect.right-rect.left)*6/7-2-dwDeltaH);
+	m_Protocol.InsertColumn(1,"Message",LVCFMT_LEFT,(rect.right-rect.left)*6/7-2);
 
-// create font for protocol
-	CFont *font;
-	font = GetFont();
-	LOGFONT logfont;
-	font->GetLogFont(&logfont);
-
-	font = new CFont;
-
-	font->CreateFont(-11*logfont.lfHeight/8,0,0,0,500,false,false,false,DEFAULT_CHARSET,OUT_TT_PRECIS,
-		CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,FF_ROMAN,"Microsoft Sans Serif");
 // chapters
 	chapters = new CChapters();
 
-	m_Protocol.SetFont(font);
+	m_Prg_Dest_File.EnableWindow(0);
+	m_StreamTree.InitUnicode();
 
-	font = new CFont;
-	font->CreateFont(-11*logfont.lfHeight/8,0,0,0,500,false,false,false,DEFAULT_CHARSET,OUT_TT_PRECIS,
-		CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,FF_ROMAN,"Microsoft Sans Serif");
-	m_AudioTree.SetFont(font);
+/*	if (m_StreamTree.IsWindowUnicode() != !!m_StreamTree.IsUnicode()) {
+		MessageBox("Your system is b0rked: The result of IsUnicodeWindow() is inconsistent with the result of the CCM_GETUNICODEFORMAT message",
+			"Warning", MB_OK | MB_ICONERROR);
+	}
+*/
+	if (utf8_IsUnicodeEnabled() && !m_StreamTree.IsUnicode()) {
+		char c[8192]; c[0]=0;
+		sprintf(c, "Although this system is or pretends to be %s and supports Unicode, switching the stream tree to Unicode failed. Possible reasons are an archaic version of Internet Explorer (below 4.0) or you are running AVI-Mux GUI from an emulator not being able to switch tree views between ANSI and Unicode on runtime.\n\nThus, characters requiring Unicode will not be displayed correctly.", cwinver);
+		MessageBox(c, "Warning", MB_OK);
+	}
+
 	ButtonState_STOP();
 	m_Output_Options_Button.SetFocus();
 
@@ -349,37 +328,26 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 		CString strAboutMenu;
 		char*	cStr=LoadString(IDS_ABOUTBOX);
 		strAboutMenu=cStr;
-		if (!strAboutMenu.IsEmpty())
-		{	
+		if (!strAboutMenu.IsEmpty()) {	
 			pSysMenu->AppendMenu(MF_SEPARATOR);
 			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
 		}
 	}
 
-
 	char*	ncfgfn;
 	newz(char, 10+strlen(cfgfile), ncfgfn);
-	//ncfgfn=(char*)calloc(1,strlen(cfgfile)+10);
 	strcpy(ncfgfn,cfgfile);
 	strcat(ncfgfn,".amg");
+	PostMessage(GetUserMessageID(), IDM_DOADDFILE, (LPARAM)ncfgfn);
+
+	newz(char, 10+strlen(cfgfile), ncfgfn);
+	strcpy(ncfgfn,guifile);
 	PostMessage(GetUserMessageID(),IDM_DOADDFILE,(LPARAM)ncfgfn);
+
 	sfOptions.bB0rk = false;
 	sfOptions.i1stTimecode = 0;
-
-	if (__argc>1)
-	{
-		for (i=1;i<__argc;i++)
-		{
-			if (!stricmp(__argv[i],"-b0rk")) {
-				sfOptions.bB0rk = true;
-			} else {
-				char* f2load;// = (char*)calloc(1,1+strlen(__argv[i]));
-				newz(char,1+strlen(__argv[i]), f2load);
-				strcpy(f2load,__argv[i]);
-				PostMessage(GetUserMessageID(),IDM_DOADDFILE,(LPARAM)f2load);
-			}
-		}
-	}
+	sfOptions.active_avi_page = 1;
+	sfOptions.active_mkv_page = 1;
 
 	chapter_level = 0;
 	chap[0] = chapters;
@@ -390,8 +358,16 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 
 	settings = new CAttribs;
 	settings->SetInt("input/audio/mp3/check_cbr",23);
-	settings->SetInt("input/use cache", 1);
-	settings->SetInt("input/unbuffered", 1);
+	settings->SetInt("input/general/use cache", 1);
+	settings->SetInt("input/general/unbuffered", 1);
+	settings->SetInt("input/general/overlapped", 1);
+
+	settings->SetInt("input/avi/force mp3 vbr", 0);
+	settings->SetInt("input/avi/large chunks/ignore", 0);
+	settings->SetInt("input/avi/large chunks/repair", 0);
+	settings->SetInt("input/avi/repair DX50", 1);
+
+	settings->SetInt("input/m2f2/crc check", 1);
 
 	settings->SetInt("output/mkv/ac3/frames per block", 1);
 	settings->SetInt("output/mkv/displaywidth_height", 1);
@@ -400,7 +376,7 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	settings->SetInt("output/mkv/clusters/prevclustersize", 1);
 	settings->SetInt("output/mkv/clusters/position", 1);
 	settings->SetInt("output/mkv/clusters/limit first", 1);
-	settings->SetInt("output/mkv/clusters/index/on", 1);
+	settings->SetInt("output/mkv/clusters/index/on", 0);
 
 	settings->SetInt("output/mkv/lacing/general/length", 500);
 	settings->SetInt("output/mkv/lacing/general/use", 1);
@@ -419,17 +395,32 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	settings->SetInt("output/mkv/lacing/video/on", 0);
 	settings->SetInt("output/mkv/lacing/video/frames", 4);
 
-	settings->SetInt("output/mkv/force v1.0",1);
+	settings->SetInt("output/mkv/force v1",1);
+	settings->SetInt("output/mkv/force v2",0);
 	settings->SetInt("output/mkv/floats/width", 32);
 
 	settings->SetInt("output/mkv/cues/on",1);
 	settings->SetInt("output/mkv/cues/video/on",1);
 	settings->SetInt("output/mkv/cues/audio/on",1);
+	settings->SetInt("output/mkv/cues/subs/on",1);
 	settings->SetInt("output/mkv/cues/audio/only audio-only/on",0);
+	settings->SetInt("output/mkv/cues/write blocknumber", 1);
+	settings->SetInt("output/mkv/compression/header striping", 0);
+
+	settings->SetInt("output/mkv/cues/autosize", 1);
+	settings->SetInt("output/mkv/cues/minimum interval", 2000);
+	settings->SetInt("output/mkv/cues/size ratio", 20);
+	settings->SetInt("output/mkv/cues/target size ratio", 980);
+
 	settings->SetInt("output/mkv/TimecodeScale/mkv",500000);
 	settings->SetInt("output/mkv/TimecodeScale/mka",10000);
 	settings->SetInt("output/mkv/2nd Tracks",1);
 	settings->SetInt("output/mkv/randomize element order", 1);
+	settings->SetInt("output/mkv/headers/index in first seekhead", 1);
+	settings->SetInt("output/mkv/headers/size", 0);
+
+	settings->SetInt("output/mkv/hard linking", 0);
+	settings->SetInt("output/mkv/use a_aac", 0);
 
 	settings->SetInt("output/avi/opendml/riff avi size", 1);
 	settings->SetInt("output/avi/opendml/on", 1);
@@ -439,27 +430,267 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	settings->SetInt("output/avi/audio interleave/unit", AIU_KB);
 	settings->SetInt("output/avi/audio interleave/value", 100);
 
+	settings->SetInt("output/avi/audio preload", 200);
+
 	settings->SetInt("output/avi/ac3/frames per chunk", 2);
 	settings->SetInt("output/avi/dts/frames per chunk", 2);
 	settings->SetInt("output/avi/mp3/frames per chunk", 1);
 	settings->SetInt("output/avi/mp3/cbr frame mode", 1);
 	settings->SetInt("output/avi/reclists", 1);
 	settings->SetInt("output/avi/legacyindex", 1);
+	settings->SetInt("output/avi/move hdrl", 0);
 	settings->SetInt("output/general/logfile/on",0);
-	settings->SetInt("output/general/unbuffered", 0);
-	settings->SetInt("output/general/overlapped", 0);
+	settings->SetInt("output/general/unbuffered", 1);
+	settings->SetInt("output/general/overlapped", 1);
+	settings->SetInt("output/general/cache/enabled", 1);
+	settings->SetInt("output/general/cache/size per cacheline", 21);
+	settings->SetInt("output/general/cache/cachelines", 4);
+	settings->SetInt("output/general/overwritedlg", 1);
+	settings->SetInt("output/general/file size/max", 2030);
+	settings->SetInt("output/general/file size/limited", 0);
+	settings->SetInt("output/general/numbering/enabled", 0);
+	settings->SetInt("output/general/prefered format", 0);
+	settings->SetInt("output/general/check disk space/enabled", 1);
+	settings->SetInt("output/general/check disk space/lower limit", 10);
 
 	settings->SetInt("output/ogg/pagesize", 65025);
+
+	settings->Add("gui/chapter_editor", 0, ATTRTYPE_ATTRIBS, NULL); 
+	settings->Add("gui/file_information", 0, ATTRTYPE_ATTRIBS, NULL);
+	settings->Add("gui/ebml_tree", 0, ATTRTYPE_ATTRIBS, NULL);
+	settings->Add("gui/main_window", 0, ATTRTYPE_ATTRIBS, NULL);
+	settings->SetInt("gui/main_window/window_size/width", 800);
+	settings->SetInt("gui/main_window/window_size/height", 600);
+	settings->Add("gui/settings_window", 0, ATTRTYPE_ATTRIBS, NULL);
+	settings->Add("gui/riff_tree", 0, ATTRTYPE_ATTRIBS, NULL);
+
+	Attribs(settings->GetAttr("gui/main_window"));
+	ReinitPosition();
 
 	hLogFile = NULL;
 
 	char title[100]; title[0]=0; GetWindowText(title,100); CString c;
-	c.LoadString(IDS_VERSION_INFO);
+	char version[32];
+	GetAMGVersionString(version, sizeof(version));
 	strcat(title, " ");
-	strcat(title, c);
+	strcat(title, version);
 	SetWindowText(title);
+
+/*	CString windowtitle;
+	GetWindowText(windowtitle);
+	windowtitle += " - ";
+	windowtitle += cwinver;
+	SetWindowText(windowtitle);
+*/
 
 	m_Add_Video_Source.EnableWindow(0);
 
-	return false;  // Geben Sie TRUE zurück, außer ein Steuerelement soll den Fokus erhalten
+	m_StatusLine.SetDisabledTextColor(RGB(0,0,0));
+	m_Prg_Dest_File.SetDisabledTextColor(RGB(0,0,0));
+	m_Audiodelay.ShowWindow(SW_HIDE);
+	m_Audiodelay_Label.ShowWindow(SW_HIDE);
+
+	m_Stream_Lng.ShowWindow(SW_HIDE);
+	m_Stream_Lng_Label.ShowWindow(SW_HIDE);
+
+	m_Title.GetWindowRect(&r);
+	ScreenToClient(&r);
+
+	m_Title.ShowWindow(SW_HIDE);
+	hTitleEdit = m_Title.m_hWnd;
+
+
+/* load language codes from file */
+	LANGUAGE_CODES* lngcd = GetLanguageCodesObject();
+	F = new FILESTREAM;
+	textfile = new CTEXTFILE;
+	if (F->Open(lngcodefile, STREAM_READ) == STREAM_OK) {
+		textfile->Open(STREAM_READ, F);
+		textfile->SelectOutputFormat(CM_UTF8);
+		int j = 0;
+		char* buf = new char[j=1+(size_t)textfile->GetSize()];
+		textfile->Read(buf, j-1);
+		buf[j-1]=0;
+		if ((j=lngcd->LoadFromString(buf))<1) {
+			char c[65536];
+			sprintf(c, "Could not load language_codes.txt: Error parsing line %d", -j);
+			MessageBox(c, "Fatal Error",
+				MB_OK | MB_ICONERROR);
+			PostMessage(WM_QUIT);
+		}
+		delete buf;
+		textfile->Close();
+		delete textfile;
+		F->Close();
+		delete F;
+	} else {
+		MessageBox("Could not load language_codes.txt.", "Fatal Error",
+			MB_OK | MB_ICONERROR);
+		PostMessage(WM_QUIT);
+		return 0;
+	}
+
+	for (i=0;i<lngcd->GetCount();i++) {
+		char buf[65536];
+		buf[0]=0;
+		sprintf(buf , "%s - %s", lngcd->GetCode(i), lngcd->GetFullName(i));
+		m_Stream_Lng.SetItemData(m_Stream_Lng.AddString(buf),(LPARAM)lngcd->GetCode(i));
+	}
+
+	CreateEditUTF8(r, m_hWnd, GetInstance(), (HFONT)GetFont()->m_hObject, hTitleEdit);
+
+	if (__argc>1) {
+		for (i=1;i<__argc;i++)
+		{
+			if (!stricmp(__argv[i],"-b0rk")) {
+				sfOptions.bB0rk = true;
+			} else if (!stricmp(__argv[i], "-stdin")) {
+				char* f2load = new char[128];
+				strcpy(f2load, "*stdin*");
+				PostMessage(GetUserMessageID(),IDM_DOADDFILE,(LPARAM)f2load);
+			} else {
+				char* f2load;
+				newz(char,1+strlen(__argv[i]), f2load);
+				strcpy(f2load,__argv[i]);
+				PostMessage(GetUserMessageID(),IDM_DOADDFILE,(LPARAM)f2load);
+			}
+		}
+	}
+
+	int border = 16;
+
+/******************************************/
+/* create layout of page 1 of main window */
+/******************************************/
+
+	AttachWindow(m_Open_Files_Label, ATTB_LEFT, *this, border);
+	AttachWindow(m_Open_Files_Label, ATTB_RIGHT, *this, -border);
+	AttachWindow(m_SourceFiles, ATTB_LEFTRIGHT, m_Open_Files_Label);
+	AttachWindow(m_SourceFiles, ATTB_TOP, m_Open_Files_Label, ATTB_BOTTOM, 1);
+	AttachWindow(m_SourceFiles, *this, ATTB_HEIGHTRATIO, 1, 0.15);
+	AttachWindow(m_Add_Video_Source, ATTB_TOP, m_SourceFiles, ATTB_BOTTOM, 4);
+	AttachWindow(m_Add_Video_Source, ATTB_LEFTRIGHT, m_SourceFiles);
+
+	AttachWindow(m_OutputResolution, ATTB_TOP, m_Add_Video_Source, ATTB_BOTTOM, 16);
+	AttachWindow(m_OutputResolution, ATTB_RIGHT, m_SourceFiles);
+	AttachWindow(m_OutputResolution_Label, ATTB_RIGHT, m_OutputResolution, ATTB_LEFT, -2);
+	AttachWindow(m_OutputResolution_Label, ATTB_VCENTER, m_OutputResolution);
+
+	AttachWindow(m_Title_Label, ATTB_LEFT, m_Add_Video_Source, 2);
+	AttachWindow(m_Title_Label, ATTB_TOPBOTTOM, m_OutputResolution_Label);
+
+	AttachWindow(hTitleEdit, ATTB_VCENTER, m_Title_Label);
+	AttachWindow(hTitleEdit, ATTB_RIGHT, m_OutputResolution_Label, ATTB_LEFT, -8);
+	AttachWindow(hTitleEdit, ATTB_LEFT, m_Title_Label, ATTB_RIGHT, 4);
+
+	AttachWindow(m_No_Audio, ATTB_TOP, hTitleEdit, ATTB_BOTTOM, 1);
+	AttachWindow(m_No_Audio, ATTB_LEFT, hTitleEdit);
+
+	AttachWindow(m_Audio_Label, ATTB_VCENTER, m_No_Audio);
+	AttachWindow(m_Audio_Label, ATTB_LEFT, m_Title_Label);
+
+	AttachWindow(m_All_Audio, ATTB_LEFT, m_No_Audio, ATTB_RIGHT, 4);
+	AttachWindow(m_All_Audio, ATTB_VCENTER, m_No_Audio);
+	
+	AttachWindow(m_Default_Audio_Label, ATTB_LEFT, m_All_Audio, ATTB_RIGHT, 4);
+	AttachWindow(m_Default_Audio_Label, ATTB_VCENTER, m_No_Audio);
+
+	AttachWindow(m_Default_Audio, ATTB_LEFT, m_Default_Audio_Label, ATTB_RIGHT, 4);
+	AttachWindow(m_Default_Audio, ATTB_VCENTER, m_No_Audio);
+	
+	AttachWindow(m_No_Subtitles, ATTB_LEFT, m_No_Audio);
+	AttachWindow(m_No_Subtitles, ATTB_TOP, m_No_Audio, ATTB_BOTTOM, 1);
+
+	AttachWindow(m_Subtitles_Label, ATTB_VCENTER, m_No_Subtitles);
+	AttachWindow(m_Subtitles_Label, ATTB_LEFT, m_Audio_Label);
+
+	AttachWindow(m_All_Subtitles, ATTB_LEFT, m_All_Audio);
+	AttachWindow(m_All_Subtitles, ATTB_VCENTER, m_No_Subtitles);
+
+	AttachWindow(m_StatusLine, ATTB_BOTTOM, *this, ATTB_BOTTOM, -border);
+	AttachWindow(m_StatusLine, ATTB_LEFT, m_Open_Files_Label);
+	AttachWindow(m_StatusLine, ATTB_RIGHT, m_SourceFiles);
+
+	AttachWindow(m_StreamTree, ATTB_BOTTOM, m_StatusLine, ATTB_TOP, -4);
+	AttachWindow(m_StreamTree, ATTB_LEFT, m_SourceFiles);
+	AttachWindow(m_StreamTree, ATTB_TOP, m_No_Subtitles, ATTB_BOTTOM, 8);
+	
+	AttachWindow(m_Cancel_Button, ATTB_RIGHT, m_StatusLine);
+	AttachWindow(m_Cancel_Button, ATTB_BOTTOM, m_StreamTree);
+
+	AttachWindow(m_Start_Button, ATTB_RIGHT, m_Cancel_Button, ATTB_LEFT, -4);
+	AttachWindow(m_Start_Button, ATTB_BOTTOM, m_Cancel_Button);
+	AttachWindow(m_Stop_Button, ATTB_LEFTRIGHT | ATTB_TOPBOTTOM, m_Start_Button);
+	AttachWindow(m_StreamTree, ATTB_RIGHT, m_Start_Button, ATTB_LEFT, -8);
+
+	AttachWindow(m_Output_Options_Button, ATTB_BOTTOM, m_Start_Button, ATTB_TOP, -32);
+	AttachWindow(m_Output_Options_Button, ATTB_LEFT, m_Start_Button);
+	AttachWindow(m_Output_Options_Button, ATTB_RIGHT, m_Cancel_Button);
+	AttachWindow(m_Chapter_Editor, ATTB_LEFTRIGHT, m_Output_Options_Button);
+	AttachWindow(m_Chapter_Editor, ATTB_BOTTOM, m_Output_Options_Button, ATTB_TOP, -1);
+
+	AttachWindow(m_Audiodelay_Label, ATTB_LEFTRIGHT, m_Output_Options_Button);
+	AttachWindow(m_Audiodelay_Label, ATTB_TOP, m_StreamTree);
+
+	AttachWindow(m_Audiodelay, ATTB_TOP, m_Audiodelay_Label, ATTB_BOTTOM, 1);
+	AttachWindow(m_Audiodelay, ATTB_LEFT, m_Audiodelay_Label);
+	
+	AttachWindow(m_Stream_Lng_Label, ATTB_TOP, m_Audiodelay_Label);
+	AttachWindow(m_Stream_Lng_Label, ATTB_LEFTRIGHT, m_Audiodelay_Label);
+	AttachWindow(m_Stream_Lng, ATTB_TOP, m_Stream_Lng_Label, ATTB_BOTTOM, 1);
+	AttachWindow(m_Stream_Lng, ATTB_LEFTRIGHT, m_Stream_Lng_Label);
+
+	
+/******************************************/
+/* create layout of page 2 of main window */
+/******************************************/
+
+	AttachWindow(m_Progress_Group, ATTB_LEFT, *this, border);
+	AttachWindow(m_Progress_Group, ATTB_RIGHT, *this, -border);
+	AttachWindow(m_Progress_Group, ATTB_TOP, m_Open_Files_Label);
+
+	AttachWindow(m_Progress_List, ATTB_LEFT, m_Progress_Group, 8);
+	AttachWindow(m_Progress_List, ATTB_TOP, m_Progress_Group, 16);
+	AttachWindow(m_Progress_List, ATTB_RIGHT, m_Progress_Group, -8);
+
+	AttachWindow(m_Prg_Frames, ATTB_RIGHT, m_Progress_List);
+	AttachWindow(m_Prg_Frames, ATTB_TOP, m_Progress_List, ATTB_BOTTOM, 8);
+	AttachWindow(m_Prg_Frames_Label, ATTB_RIGHT, m_Prg_Frames, ATTB_LEFT, -1);
+	AttachWindow(m_Prg_Frames_Label, ATTB_VCENTER, m_Prg_Frames);
+
+	AttachWindow(m_Prg_Progress, ATTB_TOPBOTTOM, m_Prg_Frames);
+	AttachWindow(m_Prg_Progress, ATTB_RIGHT, m_Prg_Frames_Label, ATTB_LEFT, -4);
+	
+	AttachWindow(m_Prg_Progress_Label, ATTB_VCENTER, m_Prg_Progress);
+	AttachWindow(m_Prg_Progress_Label, ATTB_LEFT, m_Progress_List, 4);
+
+	AttachWindow(m_Prg_Dest_File_Label, ATTB_LEFT, m_Prg_Progress_Label);
+	AttachWindow(m_Prg_Legidx_Label, ATTB_LEFT, m_Prg_Dest_File_Label);
+
+	AttachWindow(m_Prg_Dest_File, ATTB_TOP, m_Prg_Progress, ATTB_BOTTOM, 1);
+	AttachWindow(m_Prg_Legidx_Progress, ATTB_TOP, m_Prg_Dest_File, ATTB_BOTTOM, 1);
+
+	AttachWindow(m_Prg_Legidx_Progress, ATTB_LEFT, m_Prg_Legidx_Label, ATTB_RIGHT, 1);
+	AttachWindow(m_Prg_Legidx_Progress, ATTB_RIGHT, m_Progress_List);
+	AttachWindow(m_Prg_Legidx_Label, ATTB_VCENTER, m_Prg_Legidx_Progress);
+
+	AttachWindow(m_Prg_Dest_File, ATTB_LEFTRIGHT, m_Prg_Legidx_Progress);
+	AttachWindow(m_Prg_Dest_File_Label, ATTB_VCENTER, m_Prg_Dest_File);
+	
+	AttachWindow(m_Prg_Progress, ATTB_LEFT, m_Prg_Legidx_Progress);
+	AttachWindow(m_Prg_Progress, ATTB_RIGHT, m_Prg_Frames_Label, ATTB_LEFT, -4);
+
+	AttachWindow(m_Protocol_Label, ATTB_TOP, m_Progress_Group, ATTB_BOTTOM, 8);
+	AttachWindow(m_Protocol_Label, ATTB_LEFT, m_Progress_Group);
+
+	AttachWindow(m_Protocol, ATTB_LEFT, m_Protocol_Label);
+	AttachWindow(m_Protocol, ATTB_TOP, m_Protocol_Label, ATTB_BOTTOM, 4);
+	AttachWindow(m_Protocol, ATTB_BOTTOM, m_Cancel_Button, ATTB_TOP, -8);
+	AttachWindow(m_Protocol, ATTB_RIGHT, m_Progress_Group);
+
+	auto_apply_file_title = 1;
+
+	TABHandler_install(hTitleEdit, m_OutputResolution.m_hWnd, false);
+
+	return false;  
 }

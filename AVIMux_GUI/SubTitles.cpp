@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "SubTitles.h"
 #include "Rifffile.h"
-#include "multimedia_source.h"
+#include "../multimedia_source.h"
 #include "..\utf-8.h"
 #include "global.h"
 
@@ -179,9 +179,9 @@ int SUBTITLESOURCELIST::RenderCodecPrivate(void* lpDest)
 
 }
 
-char* SUBTITLESOURCELIST::GetIDString()
+char* SUBTITLESOURCELIST::GetCodecID()
 {
-	return info.active_source->GetIDString();
+	return info.active_source->GetCodecID();
 }
 
 int SUBTITLESOURCELIST::GetFormat()
@@ -194,11 +194,13 @@ int SUBTITLESOURCELIST::IsCompatible(SUBTITLESOURCE* s)
 	if (!info.iCount) {
 		return MMS_COMPATIBLE;
 	} else {
-		if (GetFormat() == s->GetFormat() && GetCompressionAlgo() == s->GetCompressionAlgo()) {
-			return MMS_COMPATIBLE;
-		} else {
+		if (GetFormat() != s->GetFormat())
 			return MMSIC_FORMATTAG;
-		}
+		
+		if (GetCompressionAlgo() != s->GetCompressionAlgo()) 
+			return MMSIC_COMPRESSION;
+
+		return MMS_COMPATIBLE;
 	}
 }
 
@@ -337,7 +339,10 @@ SUBTITLESFROMMATROSKA::SUBTITLESFROMMATROSKA(MATROSKA* m, int iStream)
 		} else 
 		if (!strcmp(info.m->GetCodecID(),"S_TEXT/SSA")) {
 			info.iFormat = SUBFORMAT_SSA;
-		} 
+		} else
+		if (!strcmp(info.m->GetCodecID(),"S_TEXT/ASS")) {
+			info.iFormat = SUBFORMAT_SSA;
+		} else
 		if (!strcmp(info.m->GetCodecID(),"S_VOBSUB")) {
 			info.iFormat = SUBFORMAT_VOBSUB;
 		} 
@@ -359,7 +364,7 @@ int SUBTITLESFROMMATROSKA::RenderCodecPrivate(void* lpDest)
 
 int SUBTITLESFROMMATROSKA::GetCompressionAlgo()
 {
-	return info.m->GetTrackCompression(info.iStream);
+	return info.m->GetTrackCompression(info.iStream, 0);
 }
 
 __int64 SUBTITLESFROMMATROSKA::GetUnstretchedDuration()
@@ -372,7 +377,7 @@ bool SUBTITLESFROMMATROSKA::IsEndOfStream()
 	return info.m->IsEndOfStream(info.iStream);
 }
 
-char* SUBTITLESFROMMATROSKA::GetIDString()
+char* SUBTITLESFROMMATROSKA::GetCodecID()
 {
 	return info.m->GetCodecID();
 }
@@ -511,7 +516,7 @@ int SUBTITLESFROMMATROSKA::ReadLine(char* d)
 	int  i=0;
 	int  j=0;
 
-	if (!iCP_length) {
+	if (iCP_length<0) {
 		*d = 0;
 		return -1;
 	}
@@ -676,11 +681,11 @@ int SUBTITLES::ParseSRT()
 	iFirst = true;
 	while (ReadLine(cBuffer)>0)
 	{
-		iFirst = false;
-		if (atoi(cBuffer)!=(int)dwNumber)
+		if (atoi(cBuffer)<(int)dwNumber-1 || !atoi(cBuffer))
 		{
 			return false;
 		}
+		iFirst = false;
 		dwNumber++;
 		ReadLine(cBuffer);
 		lpCurrSub->dwNoPos=(lstrlen(cBuffer)<57);
@@ -713,9 +718,16 @@ int SUBTITLES::ParseSRT()
 
 		lpcBuffer=cBuffer;
 		bool	bFirst = true;
+		bool	bLineEmpty;
 		do
 		{
+			bLineEmpty = true;
 			iRead=ReadLine(lpcBuffer+2*(!bFirst));
+			if (iRead) {
+				for (int k=iRead-1;k>=0 && bLineEmpty;k--) {
+					if (lpcBuffer[k+2]!=0x20) bLineEmpty = false;
+				}
+			}
 			if (!bFirst && iRead>0) {
 				*lpcBuffer++ = 0x0D;
 				*lpcBuffer++ = 0x0A;
@@ -723,7 +735,7 @@ int SUBTITLES::ParseSRT()
 			lpcBuffer+= strlen(lpcBuffer);
 			bFirst = false;
 
-		} while (iRead>0);
+		} while (iRead>0 && !bLineEmpty);
 
 		lpCurrSub->lpcText=new char[lstrlen(cBuffer)+1];
 		lstrcpy(lpCurrSub->lpcText,cBuffer);
@@ -831,7 +843,7 @@ int SUBTITLESOURCE::ReadSSAHeader(void)
 	lpSSAHeader=new SSA_HEADER;
 	ZeroMemory(lpSSAHeader,sizeof(SSA_HEADER));
 
-	while ( ReadLine(cBuffer)>-1 && stricmp(cBuffer,"[V4 Styles]"))
+	while ( ReadLine(cBuffer)>-1 && (stricmp(cBuffer,"[V4 Styles]") && stricmp(cBuffer,"[V4+ Styles]")))
 	{
 		for (i=0;i<14;i++) {
 			StoreSSAHeaderInfo(header_attribs[i],cBuffer,&(lpSSAHeader->lpcArray[i]));
@@ -899,6 +911,11 @@ int SUBTITLESOURCE::ReadSSAStyles()
 				styles[dwStyleCount]->lpcArray[lpMembers[i]]=new char[1+dwLen];
 				ZeroMemory(styles[dwStyleCount]->lpcArray[lpMembers[i]],1+dwLen);
 				strncpy((char*)styles[dwStyleCount]->lpcArray[lpMembers[i]],cBuffer+iPos,dwLen);
+
+				char* c = (char*)styles[dwStyleCount]->lpcArray[lpMembers[i]];
+				while (c && c[0] == 0x20)
+					strcpy(c, c+1);
+
 				iPos+=strcspn(cBuffer+iPos,",")+1;
 			}
 			dwStyleCount++;
@@ -987,7 +1004,7 @@ int SUBTITLESOURCE::ReadSSAEvents(void)
 	lastsub=subs;
 	ZeroMemory(subs,sizeof(SUBTITLE_DESCRIPTOR));
 
-	while (ReadLine(cBuffer)>0)
+	while (ReadLine(cBuffer)>-1)
 	{
 		if (!strncmp("Dialogue: Marked",cBuffer,16))
 		{
@@ -1004,6 +1021,7 @@ int SUBTITLESOURCE::ReadSSAEvents(void)
 				}
 				lpCurrSub->lpSSA->lpcArray[lpMembers[i]]=new char[1+dwLen];
 				ZeroMemory(lpCurrSub->lpSSA->lpcArray[lpMembers[i]],1+dwLen);
+				char* cBuffer2 = cBuffer+iPos;
 				strncpy((char*)lpCurrSub->lpSSA->lpcArray[lpMembers[i]],cBuffer+iPos,dwLen);
 				iPos+=strcspn(cBuffer+iPos,",")+1;
 			}
@@ -1301,21 +1319,21 @@ int SUBTITLESOURCE::RenderSSAScriptInfo(char** lpcDest)
 	char*	lpcBegin = *lpcDest;
 
 	wsprintf(cBuffer,"[Script Info]");
-	lstrcpy(*lpcDest,cBuffer);
-	*lpcDest+=lstrlen(cBuffer);
-	wsprintf(*lpcDest,"%c%c",13,10);
+	strcpy(*lpcDest,cBuffer);
+	*lpcDest+=strlen(*lpcDest);
+	sprintf(*lpcDest,"%c%c",13,10);
 	*lpcDest+=2;
 
 	for (int i=0;i<14;i++)
 	{
 		if (lpSSAHeader->lpcArray[i])
 		{
-			wsprintf(cBuffer,"%s%s%c%c",header_attribs[i],lpSSAHeader->lpcArray[i],13,10);
-			lstrcpy(*lpcDest,cBuffer);
-			*lpcDest+=lstrlen(cBuffer);
+			sprintf(cBuffer,"%s%s%c%c",header_attribs[i],lpSSAHeader->lpcArray[i],13,10);
+			strcpy(*lpcDest,cBuffer);
+			*lpcDest+=strlen(*lpcDest);
 		}
 	}
-	wsprintf(*lpcDest,"%c%c",13,10);
+	sprintf(*lpcDest,"%c%c",13,10);
 	*lpcDest+=2;
 
 	return (*lpcDest - lpcBegin);
@@ -1326,42 +1344,54 @@ int SUBTITLESOURCE::RenderSSAStyles(char** lpcDest)
 	char	cBuffer[1024];
 	char*	lpcBegin = *lpcDest;
 
-	wsprintf(cBuffer,"[V4 Styles]");
-	lstrcpy(*lpcDest,cBuffer);
-	*lpcDest+=lstrlen(cBuffer);
-	wsprintf(*lpcDest,"%c%c",13,10);
+	sprintf(*lpcDest,"[V4 Styles]");
+	*lpcDest+=lstrlen(*lpcDest);
+	sprintf(*lpcDest,"%c%c",13,10);
 	*lpcDest+=2;
 
-	wsprintf(*lpcDest,"Format:");
-	*lpcDest+=lstrlen("Format:");
+	sprintf(*lpcDest,"Format:");
+	*lpcDest+=strlen(*lpcDest);
 	for (int i=0;i<18;i++)
 	{
 		*((*lpcDest)++)=32;
 		wsprintf(*lpcDest,style_attribs[i]);
-		*lpcDest+=lstrlen(*lpcDest);
+		*lpcDest+=strlen(*lpcDest);
 		if (i<17) *(*lpcDest)++=',';
 	}
-	wsprintf(*lpcDest,"%c%c",13,10);
+	sprintf(*lpcDest,"%c%c",13,10);
 	*lpcDest+=2;
 
 	for (int j=0;j<(int)dwNbrOfStyles;j++)
 	{
 		ZeroMemory(cBuffer,sizeof(cBuffer));
 		wsprintf(*lpcDest,"Style: ");
-		*lpcDest+=lstrlen("Style: ");
+		*lpcDest+=strlen(*lpcDest);
 
 		for (i=0;i<18;i++)
 		{
-			wsprintf(*lpcDest,"%s",lplpSSAStyles[j]->lpcArray[i]);
+			sprintf(*lpcDest,"%s",lplpSSAStyles[j]->lpcArray[i]);
 			*lpcDest+=lstrlen(*lpcDest);
-			if (i<17) *((*lpcDest)++)=',';
+			if (i<17) {
+				*((*lpcDest)++)=',';
+				*((*lpcDest)++)=' ';
+			}
 		}
-		wsprintf(*lpcDest,"%c%c",13,10);
+		sprintf(*lpcDest,"%c%c",13,10);
 		*lpcDest+=2;
 	}
-	wsprintf(*lpcDest,"%c%c",13,10);
+	sprintf(*lpcDest,"%c%c",13,10);
 	*lpcDest+=2;
 
+	return (*lpcDest - lpcBegin);
+}
+
+int SUBTITLESOURCE::RenderSSAHeaderAfterStyles(char** lpcDest)
+{
+	char*	lpcBegin = *lpcDest;
+
+	sprintf(*lpcDest, "[Events]%c%cFormat: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+		13, 10);
+	*lpcDest += strlen(*lpcDest);
 
 	return (*lpcDest - lpcBegin);
 }
@@ -1376,7 +1406,7 @@ int SUBTITLESOURCE::RenderCodecPrivate(void* lpDest)
 	if (GetFormat() == SUBFORMAT_SSA)  {
 		iSize += RenderSSAScriptInfo(&lpcDest);
 		iSize += RenderSSAStyles(&lpcDest);
-
+		iSize += RenderSSAHeaderAfterStyles(&lpcDest);
 		return iSize;
 	}
 
@@ -1422,7 +1452,7 @@ int SUBTITLES::RenderSSAEvent4MKV(SUBTITLE_DESCRIPTOR* lpCurrSub,char** lpcDest,
 	if (!lpCurrSub || !lpCurrSub->lpSSA || !lpCurrSub->lpSSA->sesStruct.lpcText) return 0;
 
 	wsprintf(cBuffer,"%d,,%s,%s,%s,%s,%s,%s,%s",
-		++iDisplayOrderCount,
+		iDisplayOrderCount++,
 		lpCurrSub->lpSSA->sesStruct.lpsssStyle->lpcName,
 		lpCurrSub->lpSSA->sesStruct.lpcName,
 		lpCurrSub->lpSSA->sesStruct.lpcMarginL,

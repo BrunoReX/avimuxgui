@@ -7,7 +7,7 @@ public shr64
 public Int2VSUInt_asm
 public zerobits64
 
-_CODE SEGMENT PARA PUBLIC USE32 "Data"
+_CODE SEGMENT PARA PUBLIC USE32 "Code"
 
 
 shr64 proc i, j

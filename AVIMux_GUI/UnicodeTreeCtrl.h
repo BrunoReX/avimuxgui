@@ -17,16 +17,15 @@ typedef struct
 	char*	cText;
 	bool	bAllocated;
 	DWORD	dwUserData;
-	
 } UNICODETREEITEM_DATA;
 
 class CUnicodeTreeCtrl : public CTreeCtrl, public CUnicodeBase
 {
 private:
-	int		mouse_x, mouse_y;
-	bool	b_rdown;
 // Konstruktion
 protected:
+	int		mouse_x, mouse_y;
+	bool	b_rdown;
 	void	virtual	GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult);
 	int		RenderItem(HTREEITEM hItem, char* cDest, int iDepth);
 public:
@@ -39,6 +38,7 @@ public:
 	DWORD	GetItemData(HTREEITEM);
 	char*	GetItemText(HTREEITEM);
 	void	SetItem(TVITEM* pItem);
+	bool	SetItemText(HTREEITEM hItem, LPCTSTR lpszItem);
 	void	ShowItemCheckBox(HTREEITEM, bool);
 	int		GetMouseX();
 	int		GetMouseY();
@@ -63,12 +63,15 @@ public:
 // Implementierung
 public:
 	virtual ~CUnicodeTreeCtrl();
+	afx_msg void OnGetdispinfo(NMHDR* pNMHDR, LRESULT* pResult);
 
 	// Generierte Nachrichtenzuordnungsfunktionen
 protected:
 	//{{AFX_MSG(CUnicodeTreeCtrl)
-	afx_msg void OnGetdispinfo(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnKeydown(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnReturn(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnDestroy();
+	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	//}}AFX_MSG
 
 	DECLARE_MESSAGE_MAP()

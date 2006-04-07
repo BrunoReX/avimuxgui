@@ -8,7 +8,7 @@ MODE2FORM2SOURCE  filter for reading of Mode 2 - Form 2 - RIFF-CDXA- files
 
 */
 
-#include "windows.h"
+//#include "windows.h"
 #include "RIFFFile.h"
 #include "..\basestreams.h"
 
