@@ -70,9 +70,11 @@ typedef struct {
 
 } TREE_ITEM_INFO;
 
-const int TIIID_ASI		= 0x01;
-const int TIIID_SSI		= 0x02;
-const int TIIID_VSI     = 0x04;
+const int TIIID_MSI     = 0x08;
+const int TIIID_ASI		= 0x01 | TIIID_MSI;
+const int TIIID_SSI		= 0x02 | TIIID_MSI;
+const int TIIID_VSI     = 0x04 | TIIID_MSI;
+
 const int TIIID_LNGCODE = 0x10;
 const int TIIID_STRNAME = 0x11;
 
@@ -138,6 +140,7 @@ protected:
 	DECLARE_INTERFACE_MAP()
 public:
 	afx_msg void OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 };
 
 /////////////////////////////////////////////////////////////////////////////

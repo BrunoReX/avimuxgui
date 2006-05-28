@@ -30,6 +30,7 @@ public:
 	void virtual ItemDown(void);
 	void virtual ItemUp(void);
 	void virtual RedoNumbering();
+	bool virtual CanMoveTo(int i, int direction);
 	void	AllowMoving(bool bAllowMoving);
 // Überschreibungen
 	// Vom Klassen-Assistenten generierte virtuelle Funktionsüberschreibungen
@@ -59,6 +60,11 @@ protected:
 	//}}AFX_DISPATCH
 	DECLARE_DISPATCH_MAP()
 	DECLARE_INTERFACE_MAP()
+public:
+	afx_msg void OnChar(UINT nChar, UINT nRepCnt, UINT nFlags);
+	afx_msg UINT OnGetDlgCode();
+	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
+	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 };
 
 /////////////////////////////////////////////////////////////////////////////

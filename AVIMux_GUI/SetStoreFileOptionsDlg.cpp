@@ -9,6 +9,8 @@
 #include "Trees.h"
 #include "ChapterDlg.h"
 #include "FormatText.h"
+#include "..\Filenames.h"
+#include ".\setstorefileoptionsdlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -52,7 +54,7 @@ void CSetStoreFileOptionsDlg::OnFinalRelease()
 static const int iLaceDefinitionCount = sizeof(cLaceDefinitionFormats)/sizeof(char*);
 static int iCurrentLaceDefinition = 0;
 static int iCurrentFloatWidthIndex = 0;
-#define page_count 9
+#define page_count 10
 
 void CSetStoreFileOptionsDlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -93,7 +95,7 @@ void CSetStoreFileOptionsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_MP3VBRFRAMECOUNT, m_MP3VBRFrameCount);
 	DDX_Control(pDX, IDC_MP3VBRFRAMECOUNT_LABEL, m_MP3VBRFrameCount_Label);
 	DDX_Control(pDX, IDC_SFO_O_AVISTRUCTURE2, m_AVI2);
-	DDX_Control(pDX, IDC_SFO_ALLOWUNBUFFEREDWRITE, m_Output_AllowUnbufferedWrite);
+	DDX_Control(pDX, IDC_OUTPUT_UNBUFFERED, m_Output_AllowUnbufferedWrite);
 	DDX_Control(pDX, IDC_SFO_ALLOWUNBUFFEREDREAD, m_Input_AllowUnbufferedRead);
 	DDX_Control(pDX, IDC_AVOIDSEEKOPS, m_UseInputCache);
 	DDX_Control(pDX, IDC_SFO_I_GENERAL, m_Input_General);
@@ -122,7 +124,7 @@ void CSetStoreFileOptionsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_LACEEXCEPTIONFORMATSPIN, m_LaceDefinitionFormat_Spin);
 	DDX_Control(pDX, IDC_LACEEXCEPTIONFORMAT, m_LaceDefinitionFormat);
 	DDX_Control(pDX, IDC_MKV_DISPWH, m_DisplayWidth_Height);
-	DDX_Control(pDX, IDC_OVERLAPPED, m_Overlapped);
+	DDX_Control(pDX, IDC_OUTPUT_OVERLAPPED, m_Overlapped);
 	DDX_Control(pDX, IDC_IMKV_CH_IMPORT, m_IMKV_chImport);
 	DDX_Control(pDX, IDC_IMKV_CHAPTERS_LABEL, m_IMKV_Chapters_Label);
 	DDX_Control(pDX, IDC_IMKV_Label, m_IMKV_Label);
@@ -139,7 +141,7 @@ void CSetStoreFileOptionsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_IMP3_CHECKALWAYS, m_IMP3_CheckAlways);
 	DDX_Control(pDX, IDC_IMP3_CHECKNEVER, m_IMP3_CheckNever);
 	DDX_Control(pDX, IDC_IMP3_ASK, m_IMP3_Ask);
-	DDX_Control(pDX, IDC_MKV_LACE, m_Lace);
+	DDX_Control(pDX, IDC_MKV_LACESTYLE_LABEL, m_Lace);
 	DDX_Control(pDX, IDC_LACESTYLE, m_Lacestyle);
 	DDX_Control(pDX, IDC_MKV_AC3FRAMESPERBLOCK_SPIN, m_MKVAC3FrameCount_Spin);
 	DDX_Control(pDX, IDC_MKV_AC3FRAMESPERBLOCK, m_MKVAC3FrameCount);
@@ -151,15 +153,16 @@ void CSetStoreFileOptionsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_RADIO_INPUT_AVIMP3, m_Radio_Input_AVIMP3);
 	DDX_Control(pDX, IDC_RADIO_INPUT_MKV, m_Radio_Input_MKV);
 	DDX_Control(pDX, IDC_RADIO_INPUT_GENERAL, m_Radio_Input_General);
+	DDX_Control(pDX, IDC_RADIO_GUI_GENERAL, m_Radio_GUI_General);
 	DDX_Control(pDX, IDC_1STCL_30sec, m_1st_Cluster_30sec);
 	DDX_Control(pDX, IDC_AUDIOINTERLEAVE, m_Audiointerleave);
-	DDX_Control(pDX, IDC_MP3CBRFRAMEMODE, m_MP3CBRMode);
-	DDX_Control(pDX, IDC_SPRELOAD, m_Preload_Label);
+	DDX_Control(pDX, IDC_AVI1_MP3CBRFRAMEMODE, m_MP3CBRMode);
+	DDX_Control(pDX, IDC_PRELOAD_LABEL, m_Preload_Label);
 	DDX_Control(pDX, IDC_PRELOAD, m_Preload);
-	DDX_Control(pDX, IDC_SAUDIOINTERLEAVE, m_Audiointerleave_Label);
-	DDX_Control(pDX, IDC_RECLISTS, m_Reclists);
-	DDX_Control(pDX, IDC_SFO_ODML_SETTINGS, m_OpenDML_settings);
-	DDX_Control(pDX, IDC_SFO_O_AVISTRUCTURE, m_AVI);
+	DDX_Control(pDX, IDC_AUDIOINTERLEAVE_LABEL, m_Audiointerleave_Label);
+	DDX_Control(pDX, IDC_AVI1_RECLISTS, m_Reclists);
+	DDX_Control(pDX, IDC_AVI1_ODML_LABEL, m_OpenDML_settings);
+	DDX_Control(pDX, IDC_AVI1_LABEL, m_AVI);
 	DDX_Control(pDX, IDC_MAXFRAMES, m_MaxFrames);
 	DDX_Control(pDX, IDC_SFO_OSP_FRAMES, m_Frames_Label);
 	DDX_Control(pDX, IDC_SFO_FRAMES, m_SFO_Frames);
@@ -175,7 +178,7 @@ void CSetStoreFileOptionsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_FORMAT, m_Format);
 	DDX_Control(pDX, IDC_MKV_POSITION, m_ClusterPosition);
 	DDX_Control(pDX, IDC_MKV_PREVSIZE, m_PrevClusterSize);
-	DDX_Control(pDX, IDC_SFO_STDIDXPERSTREAM, m_StdIndicesPerStream_Label);
+	DDX_Control(pDX, IDC_AVI1_STDIDXPERSTREAM_LABEL, m_StdIndicesPerStream_Label);
 	DDX_Control(pDX, IDC_AC3FRAMECOUNT, m_AC3FrameCount);
 	DDX_Control(pDX, IDC_CLUSTERTIME, m_ClusterTime);
 	DDX_Control(pDX, IDC_CLUSTERTIME_SPIN, m_ClusterTime_Spin);
@@ -206,6 +209,21 @@ void CSetStoreFileOptionsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_AVI_PAGE1, m_AVI_Page1);
 	DDX_Control(pDX, IDC_AVI_PAGE2, m_AVI_Page2);
 	//}}AFX_DATA_MAP
+	DDX_Control(pDX, IDC_MKV_MATROSKAVERSION, m_MKV_MatroskaVersion);
+	DDX_Control(pDX, IDC_AVI1_INTERLEAVE_LABEL, m_AVI1_Interleave);
+	DDX_Control(pDX, IDC_GUI_LABEL, m_GUI_General);
+	DDX_Control(pDX, IDC_GUI_GENERAL_LABEL, m_GUI_General_Label);
+	DDX_Control(pDX, IDC_GUI1_HIGHLIGH_USED_FILES, m_GUI_highlight_used_files);
+	DDX_Control(pDX, IDC_GUI1_HIGHLIGH_STREAM_SOURCE_FILES, m_GUI_highlight_stream_source_files);
+	DDX_Control(pDX, IDC_GUI1_ENABLEOVERWRITEWARNING, m_GUI_enable_overwrite_confirmation);
+	DDX_Control(pDX, IDC_GUI1_DONEDLG, m_GUI_DoneDlg);
+	DDX_Control(pDX, IDOK, m_OK);
+	DDX_Control(pDX, IDCANCEL, m_Cancel);
+	DDX_Control(pDX, IDC_DFN_NONE, m_Output_DFN_none);
+	DDX_Control(pDX, IDC_DFN_FIRST_SOURCE, m_Output_DFN_First_Filename);
+	DDX_Control(pDX, IDC_DFN_SEGMENT_TITLE, m_Output_DFN_Segment_title);
+	DDX_Control(pDX, IDC_DEFFILENAME_LABEL, m_Output_DFN_Label);
+	DDX_Control(pDX, IDC_OUTPUT_THREADED, m_Output_Thread);
 }
 
 BEGIN_MESSAGE_MAP(CSetStoreFileOptionsDlg, CResizeableDialog)
@@ -215,7 +233,7 @@ BEGIN_MESSAGE_MAP(CSetStoreFileOptionsDlg, CResizeableDialog)
 	ON_NOTIFY(UDN_DELTAPOS, IDC_CLUSTERSIZE_SPIN, OnDeltaposClustersizeSpin)
 	ON_BN_CLICKED(IDC_OPENDML, OnOpendml)
 	ON_NOTIFY(UDN_DELTAPOS, IDC_MKV_LACESIZE_SPIN, OnDeltaposMkvLacesizeSpin)
-	ON_BN_CLICKED(IDC_MKV_LACE, OnMkvLace)
+	ON_BN_CLICKED(IDC_MKV_LACESTYLE_LABEL, OnMkvLace)
 	ON_NOTIFY(UDN_DELTAPOS, IDC_CLUSTERTIME_SPIN, OnDeltaposClustertimeSpin)
 	ON_BN_CLICKED(IDC_USENUMBERING, OnUsenumbering)
 	ON_BN_CLICKED(IDC_USEMAXSIZE, OnUsemaxsize)
@@ -253,7 +271,11 @@ BEGIN_MESSAGE_MAP(CSetStoreFileOptionsDlg, CResizeableDialog)
 	ON_BN_CLICKED(IDC_FORCEMKV1, OnForcemkv1)
 	ON_BN_CLICKED(IDC_FORCEMKV2, OnForcemkv2)
 	ON_BN_CLICKED(IDC_INPUT_OVERLAPPED, OnInputOverlapped)
+	ON_BN_CLICKED(IDC_SFO_O_GENERAL, OnBnClickedSfoOGeneral)
+//	ON_WM_KILLFOCUS()
 	//}}AFX_MSG_MAP
+	ON_BN_CLICKED(IDC_RADIO_GUI_GENERAL, OnBnClickedGuiGeneral)
+	ON_BN_CLICKED(IDC_OUTPUT_THREADED, OnBnClickedOutputThreaded)
 END_MESSAGE_MAP()
 
 BEGIN_DISPATCH_MAP(CSetStoreFileOptionsDlg, CResizeableDialog)
@@ -328,16 +350,14 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 			
 			box->SetCurSel((int)settings->GetInt(cd->attrib));
 		}
+		if (cd->type == CONTROL_RADIOBUTTON) {
+			if (settings->GetInt(cd->attrib) == cd->value)
+				CheckDlgButton((int)cd->control, 1);
+		}
 	}
 
 	m_UseMaxFiles.SetCheck(!!sfoData.dwUseMaxFiles);
 	CheckDlgButton(IDC_USESPLITPOINTLIST,(sfoData.dwUseManualSplitPoints)?BST_CHECKED:BST_UNCHECKED);
-	m_STDI_RIFF.SetCheck(!!(settings->GetInt("output/avi/opendml/stdindex/pattern") == SIP_RIFF));
-	m_STDI_auto.SetCheck(!!(settings->GetInt("output/avi/opendml/stdindex/pattern") == SIP_AUTO));
-	m_STDI_Frames.SetCheck(!!(settings->GetInt("output/avi/opendml/stdindex/pattern") == SIP_FRAMES));
-
-	itoa((int)settings->GetInt("output/avi/audio interleave/value"),buffer,10);
-	SendDlgItemMessage(IDC_AUDIOINTERLEAVE,WM_SETTEXT,0,(LPARAM)buffer);
 
 	itoa(sfoData.dwFrames,buffer,10);
 	SendDlgItemMessage(IDC_MAXFRAMES,WM_SETTEXT,0,(LPARAM)buffer);
@@ -345,47 +365,22 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 	itoa(sfoData.dwMaxFiles,buffer,10);
 	SendDlgItemMessage(IDC_MAXFILES,WM_SETTEXT,0,(LPARAM)buffer);
 	
-	itoa((int)settings->GetInt("output/avi/opendml/stdindex/interval"),buffer,10);
-	SendDlgItemMessage(IDC_STDI_NBROFFRAMES,WM_SETTEXT,0,(LPARAM)buffer);
-	
 	itoa(sfoData.i1stTimecode,buffer,10);
 	m_1stTimestamp.SetWindowText(buffer);
-	itoa((int)settings->GetInt("output/avi/mp3/frames per chunk"), buffer, 10);
-	m_MP3VBRFrameCount.SetWindowText(buffer);
 	
 	itoa((int)settings->GetInt("output/avi/ac3/frames per chunk"),buffer,10);
 	m_AC3FrameCount.SetWindowText(buffer);
 	m_AC3FrameCount_spin.SetPos((int)settings->GetInt("output/avi/ac3/frames per chunk"));
 
-	itoa((int)settings->GetInt("output/avi/dts/frames per chunk"),buffer,10);
-	m_DTSFrameCount.SetWindowText(buffer);
-
 	m_DontWriteBlockSize.SetCheck(0);
 	
-	m_Overlapped.SetCheck((int)settings->GetInt("output/general/overlapped"));
-	m_Logfile.SetCheck((int)settings->GetInt("output/general/logfile/on"));
-
 	m_MKVHeaderSize.SetTextAlign(TA_CENTER);
 	
 	char c[20]; c[0]=0;
 
-
-	m_UseInputCache.SetCheck((int)settings->GetInt("input/general/use cache"));
-
-	itoa((int)settings->GetInt("output/avi/opendml/riff avi size"),c,10);
-	m_RIFFAVISize.SetWindowText(c);
-	
 	if (sfoData.lpcNumbering)
 	{
 		SendDlgItemMessage(IDC_FORMAT,WM_SETTEXT,0,(LPARAM)sfoData.lpcNumbering);
-	}
-	if ((int)settings->GetInt("output/avi/audio interleave/unit") == AIU_KB)
-	{
-		CheckDlgButton(IDC_AI_KB,BST_CHECKED);
-	}
-	else
-	{
-		CheckDlgButton(IDC_AI_FRAMES,BST_CHECKED);
 	}
 
 // Input: AVI/MP3
@@ -398,8 +393,7 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 	m_IAVI_IgnoreSize.SetWindowText(buffer);
 	m_chapters_from_filenames.SetCheck((ofoData.dwFlags&SOFO_CH_FROMFILENAMES)==SOFO_CH_FROMFILENAMES);
 	m_IMKV_chImport.SetCheck((ofoData.dwFlags&SOFO_CH_IMPORT)==SOFO_CH_IMPORT);
-	m_Input_AllowUnbufferedRead.SetCheck((int)settings->GetInt("input/general/unbuffered"));
-	m_Output_AllowUnbufferedWrite.SetCheck((int)settings->GetInt("output/general/unbuffered"));
+
 	switch (settings->GetInt("output/mkv/floats/width")) {
 		case 32: iCurrentFloatWidthIndex = 0; break;
 		case 64: iCurrentFloatWidthIndex = 1; break;
@@ -433,9 +427,10 @@ void CSetStoreFileOptionsDlg::UpdateData()
 	std::vector<CONTROL_DESCRIPTOR>::iterator cd;
 
 	for (cd = control_descriptors.begin();cd!=control_descriptors.end();cd++) {
-		if (cd->type == CONTROL_CHECKBOX)
+		if (cd->type == CONTROL_CHECKBOX) {
 			settings->SetInt(cd->attrib, !!((CButton*)cd->control)->GetCheck());
 			((CButton*)cd->control)->SetCheck(!!settings->GetInt(cd->attrib));
+		}
 		if (cd->type == CONTROL_INTEGER) {
 			CString s;
 			((CEdit*)cd->control)->GetWindowText(s);
@@ -443,6 +438,11 @@ void CSetStoreFileOptionsDlg::UpdateData()
 		}
 		if (cd->type == CONTROL_COMBOBOX) {
 			settings->SetInt(cd->attrib, ((CComboBox*)cd->control)->GetCurSel());
+		}
+		if (cd->type == CONTROL_RADIOBUTTON) {
+			if (IsDlgButtonChecked((int)cd->control)) {
+				settings->SetInt(cd->attrib, cd->value);
+			}
 		}
 		
 	}
@@ -454,9 +454,6 @@ void CSetStoreFileOptionsDlg::UpdateData()
 	sfoData.dwUseManualSplitPoints=!!(IsDlgButtonChecked(IDC_USESPLITPOINTLIST)==BST_CHECKED);
 	sfoData.dwUseMaxFiles=!!m_UseMaxFiles.GetCheck();
 	settings->SetInt("output/mkv/lacing/style", m_Lacestyle.GetCurSel());
-
-	SendDlgItemMessage(IDC_AUDIOINTERLEAVE,WM_GETTEXT,sizeof(buffer),(LPARAM)buffer);
-	settings->SetInt("output/avi/audio interleave/value", atoi(buffer));
 
 	SendDlgItemMessage(IDC_MAXFRAMES,WM_GETTEXT,sizeof(buffer),(LPARAM)buffer);
 	sfoData.dwFrames=atoi(buffer);
@@ -471,32 +468,10 @@ void CSetStoreFileOptionsDlg::UpdateData()
 	sfoData.lpcNumbering=(char*)malloc(lstrlen(buffer)+1);
 	lstrcpy(sfoData.lpcNumbering,buffer);
 
-	if (IsDlgButtonChecked(IDC_AI_KB)==BST_CHECKED) {
-		settings->SetInt("output/avi/audio interleave/unit", AIU_KB);
-	} else {
-		settings->SetInt("output/avi/audio interleave/unit", AIU_FRAME);
-	}
-
-	if (IsDlgButtonChecked(IDC_STDI_RIFF)==BST_CHECKED) {
-		settings->SetInt("output/avi/opendml/stdindex/pattern", SIP_RIFF);
-	} else
-	if (IsDlgButtonChecked(IDC_STDI_FRAMES)==BST_CHECKED) {
-		settings->SetInt("output/avi/opendml/stdindex/pattern", SIP_FRAMES);
-	} else
-	if (IsDlgButtonChecked(IDC_STDI_AUTO)==BST_CHECKED)	{
-		settings->SetInt("output/avi/opendml/stdindex/pattern", SIP_AUTO);
-	}
-
-	SendDlgItemMessage(IDC_STDI_NBROFFRAMES,WM_GETTEXT,sizeof(buffer),(LPARAM)buffer);
-	settings->SetInt("output/avi/opendml/stdindex/interval", atoi(buffer));
-
 	m_1stTimestamp.GetWindowText(s);
 	sfoData.i1stTimecode = atoi(s);
 	m_AC3FrameCount.GetWindowText(s);
 	settings->SetInt("output/avi/ac3/frames per chunk", atoi(s));
-
-
-	settings->SetInt("output/general/overlapped", !!m_Overlapped.GetCheck());
 
 	ofoData.dwFlags&=~SOFO_MP3_MASK;
 	ofoData.dwFlags&=~SOFO_CH_MASK;
@@ -510,21 +485,20 @@ void CSetStoreFileOptionsDlg::UpdateData()
 	m_IAVI_IgnoreSize.GetWindowText(s);
 	ofoData.dwIgnoreSize = atoi(s);
 
-	settings->SetInt("output/general/logfile/on", m_Logfile.GetCheck());
-	settings->SetInt("input/general/use cache", m_UseInputCache.GetCheck());
-	settings->SetInt("input/general/unbuffered", m_Input_AllowUnbufferedRead.GetCheck());
-	settings->SetInt("output/general/unbuffered", m_Output_AllowUnbufferedWrite.GetCheck());
+//	m_RIFFAVISize.GetWindowText(s);
+	settings->SetInt("output/avi/opendml/riff avi size", max(1, min(2044,
+		settings->GetInt("output/avi/opendml/riff avi size"))));
 
-	m_RIFFAVISize.GetWindowText(s);
-	settings->SetInt("output/avi/opendml/riff avi size", min(2044,atoi(s)));
+//	m_MP3VBRFrameCount.GetWindowText(s);
+//	j = atoi(s); if (!j) j=1;
+//	settings->SetInt("output/avi/mp3/frames per chunk", j);
 
-	m_MP3VBRFrameCount.GetWindowText(s);
-	j = atoi(s); if (!j) j=1;
-	settings->SetInt("output/avi/mp3/frames per chunk", j);
+//	m_DTSFrameCount.GetWindowText(s);
+//	j = atoi(s); if (!j) j=2;
+//	settings->SetInt("output/avi/dts/frames per chunk", min(50,j));
 
-	m_DTSFrameCount.GetWindowText(s);
-	j = atoi(s); if (!j) j=2;
-	settings->SetInt("output/avi/dts/frames per chunk", min(50,j));
+	settings->SetInt("output/avi/dts/frames per chunk", max(1, min(50,
+		settings->GetInt("output/avi/dts/frames per chunk"))));
 
 	j=iCurrentFloatWidthIndex;
 	int b[] = {32, 64, 80};
@@ -660,8 +634,8 @@ void CSetStoreFileOptionsDlg::OnOK()
 	UpdateData();
 
 	for (int i=0;i<page_count;i++) {
-		pages[i]->DeleteAll();
-		delete pages[i];
+//		pages[i]->DeleteAll();
+//		delete pages[i];
 	}
 
 	CResizeableDialog::OnOK();
@@ -694,16 +668,24 @@ void  Move(CWnd* cWnd, int _p)
 	cWnd->MoveWindow(&rect,true);
 }
 
-int z;
-#define DoForPage(a,b,c) for (z=0;z<a->GetCount();z++) { c((CWnd*)a->At(z),(int)b); }
+size_t z;
+//#define DoForPage(a,b,c) for (z=0;z<a->GetCount();z++) { c((CWnd*)a->At(z),(int)b); }
+#define _DoForPage(a,b,c) for (z=0;z<a.size();z++) { c((CWnd*)a.at(z),(int)b); }
+
+void InsertToPage(PAGE& pg, CWnd** wnd, int nbr)
+{
+	for (int i=0; i<nbr; i++)
+		pg.push_back(wnd[i]);
+}
 
 int CSetStoreFileOptionsDlg::ShowPage(int a) 
 {
-	for (int k=0;k<page_count;k++) { 
-		if (a!=k) DoForPage(pages[k], SW_HIDE, Show) 
+	for (size_t k=0;k<page_count;k++) { 
+		if (a!=k)// DoForPage(pages[k], SW_HIDE, Show) 
+			_DoForPage(_pages[k], SW_HIDE, Show) 
 	}
-	DoForPage(pages[a], SW_SHOW, Show);
-
+	//DoForPage(pages[a], SW_SHOW, Show);
+	_DoForPage(_pages[a], SW_SHOW, Show);
 	return 0;
 }
 
@@ -715,11 +697,20 @@ typedef struct
 
 char* std_outout_format_strings[] = { "AVI", "MKV", "" };
 
+
+
 BOOL CSetStoreFileOptionsDlg::OnInitDialog() 
 {
 	/* list of windows and corresponding ids in the language files */
 
 	WND_TEXT window_texts[] = {
+
+		/* Buttons */
+		{ &m_OK, STR_GEN_OK },
+		{ &m_Cancel, STR_GEN_CANCEL },
+
+		/* inner headline */
+		{ &m_Options, STR_SFO_OPTIONS },
 
 		/* AVI output */
 		{ &m_AVI, STR_SFO_O_AVISTRUCTURE },
@@ -739,6 +730,7 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		{ &m_Preload_Label, STR_SFO_OAS_S_PRELOAD },
 		{ &m_AVI2, STR_SFO_O_AVISTRUCTURE },
 		{ &m_MP3CBRMode, STR_SFO_OAS_CB_MP3CBRFRAMEMODE },
+		{ &m_AVI1_Interleave, STR_AVI1_INTERLEAVE_LABEL },
 
 		/* MKV output options */
 		{ &m_MKVOutputOptions, STR_SFO_O_MKVSTRUCTURE },
@@ -770,6 +762,7 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		{ &m_MKV_Hard_Linking, STR_SFO_O_MKV_HARDLINKING },
 		{ &m_Header_Stripping, STR_SFO_O_MKV_HEADERSTRIPPING },
 		{ &m_Create_A_AAC, STR_SFO_O_MKV_CREATE_AAAC },
+		{ &m_MKV_MatroskaVersion, STR_MKV1_MATROSKAVERSION_GROUP },
 
 		/* general output settings -> split */
 		{ &m_Split, STR_SFO_O_SPLIT },
@@ -779,6 +772,14 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		{ &m_Frames_Label, STR_SFO_OSP_S_FRAMES },
 		{ &m_UseMaxFiles, STR_SFO_OSP_CB_USEMAXNBROFFILES },
 		{ &m_Input_Overlapped, STR_SFO_I_OVERLAPPED },
+		{ &m_Output_DFN_Label, STR_SFO_FILENAME_LABEL },
+		{ &m_Output_DFN_First_Filename, STR_SFO_FILENAME_FIRSTFILE },
+		{ &m_Output_DFN_Segment_title, STR_SFO_FILENAME_TITLE },
+		{ &m_Output_DFN_none, STR_SFO_FILENAME_NONE },
+		{ &m_Overlapped, STR_SFO_OUTPUT_OVERLAPPED },
+		{ &m_Output_AllowUnbufferedWrite, STR_SFO_OUTPUT_UNBUFFERED },
+		{ &m_Logfile, STR_SFO_OUTPUT_LOGFILE },
+		{ &m_Output_Thread, STR_SFO_OUTPUT_THREADED },
 
 		/* AVI input settings */
 		{ &m_IAVI_Label, STR_OFO_S_AVIFILES },
@@ -808,6 +809,7 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		{ &m_Radio_MKV, STR_SFO_O_MKVSTRUCTURE_BTN },
 		{ &m_Radio_Output_General, STR_SFO_O_GENERAL },
 		{ &m_Radio_Input_General, STR_SFO_O_GENERAL },
+		{ &m_Radio_GUI_General, STR_SFO_O_GENERAL },
 
 		/* other stuff */
 		{ &m_chapters_from_filenames, STR_OFO_CH_FROMFILENAMES },
@@ -815,18 +817,28 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		{ &m_General, STR_SFO_O_GENERAL },
 		{ &m_UseInputCache, STR_SFO_O_AVOIDSEEKOPS },
 		{ &m_Input_General, STR_SFO_O_GENERAL },
+//		{ &m_GUI_General, STR_SFO_O_GENERAL },
 		{ &m_AC3FrameCount_Label, STR_SFO_OAS_AC3CPF },
-		{ &m_Write2ndCopyOfTracks, STR_SFO_O_MKV_2TRACKS }
+		{ &m_Write2ndCopyOfTracks, STR_SFO_O_MKV_2TRACKS },
 
+		/* GUI */
+		{ &m_GUI_highlight_used_files, STR_SGUI_LOWLIGHT },
+		{ &m_GUI_highlight_stream_source_files, STR_SGUI_HIGHLIGHT },
+		{ &m_GUI_enable_overwrite_confirmation, STR_SGUI_OVERWRITECONFIRMATION },
+		{ &m_GUI_DoneDlg, STR_SGUI_DONEDLG }
+		
 	};
 
 	#define CHECKBOX(a, b) { &a, CONTROL_CHECKBOX, b, NULL }
 	#define INTEGERBOX(a, b) { &a, CONTROL_INTEGER, b, NULL }
 	#define COMBOBOX(a, b, c) { &a, CONTROL_COMBOBOX, b, c }
+	#define RADIOBUTTON(a, b, c) { (void*)a, CONTROL_RADIOBUTTON, b, (char**)c }
 	
 	CONTROL_DESCRIPTOR control_descr [] = {
 	/* general input settings */
 		CHECKBOX(m_Input_Overlapped, "input/general/overlapped"),
+		CHECKBOX(m_UseInputCache, "input/general/use cache"),
+		CHECKBOX(m_Input_AllowUnbufferedRead, "input/general/unbuffered"),
 
 	/* AVI input settings */
 		CHECKBOX(m_IAVI_Try2RepairLargeChunks, "input/avi/large chunks/repair"),
@@ -841,6 +853,13 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		CHECKBOX(m_UseMaxSize, "output/general/file size/limited"),
 		CHECKBOX(m_UseNumbering, "output/general/numbering/enabled"),
 		COMBOBOX(m_CBStdOutputFormat, "output/general/prefered format", std_outout_format_strings),
+		CHECKBOX(m_Logfile, "output/general/logfile/on"),
+		CHECKBOX(m_Output_AllowUnbufferedWrite, "output/general/unbuffered"),
+		CHECKBOX(m_Overlapped, "output/general/overlapped"),
+		CHECKBOX(m_Output_Thread, "output/general/threaded"),
+		RADIOBUTTON(IDC_DFN_NONE, "gui/output/default_file_name_source", FILENAME_NOTHING),
+		RADIOBUTTON(IDC_DFN_FIRST_SOURCE, "gui/output/default_file_name_source", FILENAME_FROM_SOURCE_FILENAME),
+		RADIOBUTTON(IDC_DFN_SEGMENT_TITLE, "gui/output/default_file_name_source", FILENAME_FROM_SEGMENT_TITLE),
 
 	/* AVI output settings */
 		CHECKBOX(m_MakeLegacyIndex, "output/avi/legacyindex"),
@@ -849,7 +868,18 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		CHECKBOX(m_Reclists, "output/avi/reclists"),
 		CHECKBOX(m_MP3CBRMode, "output/avi/mp3/cbr frame mode"),
 		CHECKBOX(m_AddJUNK, "output/avi/move hdrl"),
+		INTEGERBOX(m_DTSFrameCount, "output/avi/dts/frames per chunk"),
+		INTEGERBOX(m_MP3VBRFrameCount, "output/avi/mp3/frames per chunk"),
 		INTEGERBOX(m_Preload, "output/avi/audio preload"),
+		INTEGERBOX(m_Audiointerleave, "output/avi/audio interleave/value"), 
+		
+		RADIOBUTTON(IDC_AI_KB, "output/avi/audio interleave/unit", AIU_KB),
+		RADIOBUTTON(IDC_AI_FRAMES, "output/avi/audio interleave/unit", AIU_FRAME),
+		INTEGERBOX(m_RIFFAVISize, "output/avi/opendml/riff avi size"),
+		RADIOBUTTON(IDC_STDI_RIFF, "output/avi/opendml/stdindex/pattern", SIP_RIFF),
+		RADIOBUTTON(IDC_STDI_AUTO, "output/avi/opendml/stdindex/pattern", SIP_AUTO),
+		RADIOBUTTON(IDC_STDI_FRAMES, "output/avi/opendml/stdindex/pattern", SIP_FRAMES),
+		INTEGERBOX(m_STDI_NumberOfFrames, "output/avi/opendml/stdindex/interval"),
 
 	/* MKV output settings */
 		CHECKBOX(m_ForceMKV1Compliance, "output/mkv/force v1"),
@@ -884,22 +914,23 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		CHECKBOX(m_ClusterPosition, "output/mkv/clusters/position"),
 		CHECKBOX(m_1st_Cluster_30sec, "output/mkv/clusters/limit first"),
 
+	/* GUI */
+		CHECKBOX(m_GUI_highlight_used_files, "gui/main_window/source_files/lowlight"),
+		CHECKBOX(m_GUI_highlight_stream_source_files, "gui/main_window/source_files/highlight"),
+		CHECKBOX(m_GUI_enable_overwrite_confirmation, "gui/general/overwritedlg"),
+		CHECKBOX(m_GUI_DoneDlg, "gui/general/finished_muxing_dialog")
+
 	};
 	#undef CHECKBOX
 	#undef INTEGERBOX
 	#undef COMBOBOX
+	#undef RADIOBUTTON
 
 	CResizeableDialog::OnInitDialog();
 
 	// TODO: Zusätzliche Initialisierung hier einfügen
 
 	SetWindowText(LoadString(STR_SFO_TITLE));
-
-	SendDlgItemMessage(IDOK,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_GEN_OK));
-	SendDlgItemMessage(IDCANCEL,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_GEN_CANCEL));
-
-	SendDlgItemMessage(IDC_SFO_OPTIONS,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_SFO_OPTIONS));
-	
 
 	for (int j=sizeof(window_texts)/sizeof(window_texts[0])-1;j>=0;j--)
 		window_texts[j].wnd->SetWindowText(LoadString(window_texts[j].string_id));
@@ -925,39 +956,36 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 
 	RefreshDlg();
 
+	PAGE pg;
+	pg.clear();
 	// general output settings
-	pages[0] = new CDynIntArray;
 	CWnd* page_general [] = { 
 		&m_General, &m_StdOutputFormat_Label,
 		&m_CBStdOutputFormat, &m_Split, &m_UseMaxFiles, &m_UseMaxFiles,
 		&m_UseMaxSize, &m_UseNumbering, &m_UseSplitPoints, &m_MaxFiles,
 		&m_MaxFileSize, &m_MaxSize_extended, &m_MaxFrames, &m_Format,
-		&m_Frames_Label, &m_Overlapped, &m_Logfile, &m_Output_AllowUnbufferedWrite
+		&m_Frames_Label, &m_Overlapped, &m_Logfile, &m_Output_AllowUnbufferedWrite,
+		&m_Output_DFN_First_Filename, &m_Output_DFN_none, &m_Output_DFN_Segment_title,
+		&m_Output_DFN_Label, &m_Output_Thread
 	};
-	pages[0]->Insert((int*)page_general, sizeof(page_general)/sizeof(int));
+	InsertToPage(pg, page_general, sizeof(page_general)/sizeof(CWnd*));
+	_pages.push_back(pg);
+	pg.clear();
 
 	// AVI output settings
-	pages[1] = new CDynIntArray;
 	CWnd* page_AVI [] = {
 		&m_AVI, &m_OpenDML, &m_OpenDML_settings, &m_Reclists,
 		&m_MP3CBRMode, &m_STDI_auto, &m_STDI_Frames, &m_STDI_NumberOfFrames,
 		&m_STDI_RIFF, &m_SFO_Frames, &m_StdIndicesPerStream_Label, &m_MakeLegacyIndex,
 		&m_Audiointerleave_Label, &m_Audiointerleave, &m_AI_Frames, &m_AI_KB,
 		&m_Preload, &m_Preload_Label, &m_RIFFAVISize, &m_RIFFAVISize_Label,
-		&m_RIFFAVISize_Unit, &m_AVI_Page1, &m_AVI_Page2, &m_Haalimode };
-	pages[1]->Insert((int*)page_AVI, sizeof(page_AVI)/sizeof(int));
-
-	// AVI output settings page 2
-	pages[7] = new CDynIntArray;
-	CWnd* page_AVI2 [] = {
-		&m_AVI2, &m_AC3FrameCount, &m_AC3FrameCount_Label, &m_AC3FrameCount_spin,
-		&m_MP3VBRFrameCount, &m_MP3VBRFrameCount_Label, &m_DTSFrameCount,
-		&m_DTSFrameCount_Label, &m_AddJUNK
-	};
-	pages[7]->Insert((int*)page_AVI2, sizeof(page_AVI2)/sizeof(int));
+		&m_RIFFAVISize_Unit, &m_AVI_Page1, &m_AVI_Page2, &m_Haalimode,
+		&m_AVI1_Interleave, &m_AddJUNK };
+	InsertToPage(pg, page_AVI, sizeof(page_AVI)/sizeof(CWnd*));
+	_pages.push_back(pg);
+	pg.clear();
 
 	// MKV output settings page 1
-	pages[2] = new CDynIntArray;
 	CWnd* pages_MKV [] = {
 		&m_MKVOutputOptions, &m_Lace, &m_LaceSize, &m_LaceSize_Spin,
 		&m_ClusterPosition, &m_ClusterSize, &m_ClusterSize_Label, &m_ClusterSize_Spin,
@@ -965,69 +993,99 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		&m_1st_Cluster_30sec, &m_Lacestyle, &m_LaceDefinitionFormat,
 		&m_LaceDefinitionFormat_Spin, &m_UseLaceDefinition, &m_LaceVideo, &m_LaceVideo_Count,
 		&m_LaceVideo_Spin, &m_ForceMKV1Compliance, &m_ForceMKV2Compliance, &m_MKV_Lacing,
-		&m_MKV_Cluster, &m_MKV_Page1, &m_MKV_Page2, &m_MKV_Page3, &m_IndexClustersInSeekhead };
+		&m_MKV_Cluster, &m_MKV_Page1, &m_MKV_Page2, &m_MKV_Page3, &m_MKV_MatroskaVersion,
+		&m_IndexClustersInSeekhead };
+	InsertToPage(pg, pages_MKV, sizeof(pages_MKV)/sizeof(CWnd*));
+	_pages.push_back(pg);
+	pg.clear();
+
+	// AVI input settings
+	CWnd* pages_Open_AVIMP3 [] = {
+		&m_IAVI_Label, &m_IMP3_Label, &m_IMP3_Ask, &m_IMP3_CheckAlways,
+		&m_IMP3_CheckNever, &m_IMP3_DispResult, &m_IAVI_ForceMP3VBR, 
+		&m_IAVI_IgnoreLargeChunks, &m_IAVI_IgnoreSize, &m_IAVI_RepairDX50,
+		&m_IAVI_Try2RepairLargeChunks, &m_IM2F2_CRCCheck, &m_IM2F2_Label};
+	InsertToPage(pg, pages_Open_AVIMP3, sizeof(pages_Open_AVIMP3)/sizeof(CWnd*));
+	_pages.push_back(pg);
+	pg.clear();
+
+	// MKV input settings
+	CWnd* pages_Open_MKV [] = {
+		&m_IMKV_Label, &m_IMKV_Chapters_Label, &m_IMKV_chImport };
+	InsertToPage(pg, pages_Open_MKV, sizeof(pages_Open_MKV)/sizeof(CWnd*));
+	_pages.push_back(pg);
+	pg.clear();
 
 	// MKV output settings page 2
-	pages[5] = new CDynIntArray;
 	CWnd* pages_MKV2 [] = {
 		&m_MKVOutputOptions2, &m_WriteCues, &m_WriteCues_Audio, &m_WriteCues_Subs,
 		&m_WriteCues_Audio_OnlyAudioOnly, &m_WriteCues_Video, &m_MKV_Cues,
-		&m_TimecodeScale_MKA,
-		&m_TimecodeScale_MKA_Label, &m_TimecodeScale_MKV, &m_TimecodeScale_MKV_Label,
-		&m_TimecodeScale, &m_Cue_Interval_Settings_Label,
+		&m_TimecodeScale_MKA, &m_TimecodeScale_MKA_Label, &m_TimecodeScale_MKV, 
+		&m_TimecodeScale_MKV_Label,	&m_TimecodeScale, &m_Cue_Interval_Settings_Label,
 		&m_Cue_Minimum_Interval, &m_Cue_Minimum_Interval_Label,
 		&m_Cues_Autosize, &m_Cues_size_per_stream_and_hour, 
 		&m_Cues_size_per_stream_and_hour_label,
 		&m_Cue_target_size_ratio, &m_Cue_target_size_ratio_label, &m_WriteCueBlockNumber
 	};
+	InsertToPage(pg, pages_MKV2, sizeof(pages_MKV2)/sizeof(CWnd*));
+	_pages.push_back(pg);
+	pg.clear();
+
+	// General input settings
+	CWnd* pages_Input_General [] = {
+		&m_Input_General, &m_chapters_from_filenames, &m_UseInputCache, 
+		&m_Input_AllowUnbufferedRead, &m_Input_Overlapped
+	};
+	InsertToPage(pg, pages_Input_General, sizeof(pages_Input_General)/sizeof(CWnd*));
+	_pages.push_back(pg);
+	pg.clear();
+
+	// AVI output settings page 2
+	CWnd* page_AVI2 [] = {
+		&m_AVI2, &m_AC3FrameCount, &m_AC3FrameCount_Label, &m_AC3FrameCount_spin,
+		&m_MP3VBRFrameCount, &m_MP3VBRFrameCount_Label, &m_DTSFrameCount,
+		&m_DTSFrameCount_Label
+	};
+	InsertToPage(pg, page_AVI2, sizeof(page_AVI2)/sizeof(CWnd*));
+	_pages.push_back(pg);
+	pg.clear();
+
 	// MKV output settings page 3
-	pages[8] = new CDynIntArray;
 	CWnd* pages_MKV3 [] = {
 		&m_Write2ndCopyOfTracks, &m_DisplayWidth_Height, &m_Randomize_Element_Order, 
 		&m_Nonclusters_in_first_SeekHead, &m_MKVHeaderSize, &m_MKVHeaderSize_Label,
 		&m_FloatWidth, &m_FloatWidth_Label, &m_FloatWidth_Spin, &m_Others, &m_MKV_Hard_Linking,
 		&m_MKVOutputOptions3, &m_Header_Stripping, &m_Create_A_AAC
 	};
-	pages[2]->Insert((int*)pages_MKV, sizeof(pages_MKV)/sizeof(int));
-	pages[5]->Insert((int*)pages_MKV2, sizeof(pages_MKV2)/sizeof(int));
-	pages[8]->Insert((int*)pages_MKV3, sizeof(pages_MKV3)/sizeof(int));
+	InsertToPage(pg, pages_MKV3, sizeof(pages_MKV3)/sizeof(CWnd*));
+	_pages.push_back(pg);
+	pg.clear();
+
+	CWnd* pages_GUI1 [] = {
+		&m_GUI_highlight_used_files, &m_GUI_highlight_stream_source_files,
+		&m_GUI_General_Label, &m_GUI_enable_overwrite_confirmation,
+		&m_GUI_DoneDlg
+	};
+	InsertToPage(pg, pages_GUI1, sizeof(pages_GUI1)/sizeof(CWnd*));
+	_pages.push_back(pg);
+	pg.clear();
 
 	// allow hackish settings to write incompliant files
 	if (sfoData.bB0rk) {
-		pages[2]->Insert((int)&m_1stTimestamp);
+/*		pages[2]->Insert((int)&m_1stTimestamp);
 		pages[2]->Insert((int)&m_1stTimestamp_Label);
 		pages[2]->Insert((int)&m_DontWriteBlockSize);
 		pages[2]->Insert((int)&m_MKV_AC3FramesPerBlock_Label);
 		pages[2]->Insert((int)&m_MKVAC3FrameCount);
-		pages[2]->Insert((int)&m_MKVAC3FrameCount_Spin);
+		pages[2]->Insert((int)&m_MKVAC3FrameCount_Spin);*/
 	}
 
-	// AVI input settings
-	pages[3] = new CDynIntArray;
-	CWnd* pages_Open_AVIMP3 [] = {
-		&m_IAVI_Label, &m_IMP3_Label, &m_IMP3_Ask, &m_IMP3_CheckAlways,
-		&m_IMP3_CheckNever, &m_IMP3_DispResult, &m_IAVI_ForceMP3VBR, &m_IAVI_IgnoreLargeChunks,
-		&m_IAVI_IgnoreSize, &m_IAVI_RepairDX50, &m_IAVI_Try2RepairLargeChunks, &m_IM2F2_CRCCheck,
-		&m_IM2F2_Label};
-	pages[3]->Insert((int*)pages_Open_AVIMP3,sizeof(pages_Open_AVIMP3)/sizeof(int));
 
-
-	// MKV input settings
-	pages[4] = new CDynIntArray;
-	CWnd* pages_Open_MKV [] = {
-		&m_IMKV_Label, &m_IMKV_Chapters_Label, &m_IMKV_chImport };
-	pages[4]->Insert((int*)pages_Open_MKV,sizeof(pages_Open_MKV)/sizeof(int));
-
-	// General input settings
-	pages[6] = new CDynIntArray;
-	CWnd* pages_Input_General [] = {
-		&m_Input_General, &m_chapters_from_filenames, &m_UseInputCache, 
-		&m_Input_AllowUnbufferedRead, &m_Input_Overlapped
-	};
-	pages[6]->Insert((int*)pages_Input_General, sizeof(pages_Input_General)/sizeof(int));
-
-	CWnd* windows[] = { &m_General, &m_AVI, &m_MKVOutputOptions, &m_IAVI_Label, &m_IMKV_Label,
-						&m_MKVOutputOptions2, &m_Input_General, &m_AVI2, &m_MKVOutputOptions3 };
+	CWnd* windows[] = { &m_General, &m_AVI, &m_MKVOutputOptions, 
+						&m_IAVI_Label, &m_IMKV_Label,
+						&m_MKVOutputOptions2, &m_Input_General,
+						&m_AVI2, &m_MKVOutputOptions3,
+						&m_GUI_General_Label };
 
 	RECT r1,r2;
 	for (i=0;i<sizeof(windows)/sizeof(windows[0]);i++) {
@@ -1035,18 +1093,19 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		m_Options.GetWindowRect(&r2);
 		ScreenToClient(&r1);
 		ScreenToClient(&r2);
+
 		int w1 = r1.right-r1.left+1;
 		int w2 = r2.right-r2.left+1;
 		int h1 = r1.bottom-r1.top;
 		int h2 = r2.bottom-r2.top;
-	
+
 		MOVEWINDOW m;
 		m.iX = r1.left-r2.left-(w2-w1)/2;
 		m.iY = r1.top-r2.top-2*(h2-h1)/3;
 		m.pParent = this;
-		DoForPage(pages[i],&m,Move);
+		_DoForPage(_pages[i],&m,Move);
 	}
-	windows[2]->GetWindowRect(&r1);
+	windows[0]->GetWindowRect(&r1);
 	m_Radio_AVI.GetWindowRect(&r2);
 
 	r1.right+=80 + r2.right-r2.left;
@@ -1056,9 +1115,9 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 	int k = (r1.right-r1.left)/2;
 	r1.left=(j-k);
 	r1.right=(j+k);
-	MoveWindow(&r1);
-	
-	pages[5]->Insert((int)&m_MKV_Page1);
+//	MoveWindow(&r1);
+
+	/*pages[5]->Insert((int)&m_MKV_Page1);
 	pages[5]->Insert((int)&m_MKV_Page2);
 	pages[5]->Insert((int)&m_MKV_Page3);
 	pages[8]->Insert((int)&m_MKV_Page1);
@@ -1067,6 +1126,18 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 
 	pages[7]->Insert((int)&m_AVI_Page1);
 	pages[7]->Insert((int)&m_AVI_Page2);
+*/
+	_pages[5].push_back(&m_MKV_Page1);
+	_pages[5].push_back(&m_MKV_Page2);
+	_pages[5].push_back(&m_MKV_Page3);
+	_pages[8].push_back(&m_MKV_Page1);
+	_pages[8].push_back(&m_MKV_Page2);
+	_pages[8].push_back(&m_MKV_Page3);
+
+	_pages[7].push_back(&m_AVI_Page1);
+	_pages[7].push_back(&m_AVI_Page2);
+
+	OnBnClickedOutputThreaded();
 
 	switch (sfoData.iActiveButton & 0x7) {
 		case 0: m_Radio_Output_General.SetCheck(1); OnRadioGeneral(); break;
@@ -1079,93 +1150,471 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 
 	m_AC3FrameCount.SetTextAlign(TA_CENTER);
 
-	/* align buttons for page selection */
-	HWND hwnd_input[] = { GetDlgItem(IDC_RADIO_INPUT_GENERAL)->m_hWnd,
-		GetDlgItem(IDC_RADIO_INPUT_AVIMP3)->m_hWnd, GetDlgItem(IDC_RADIO_INPUT_MKV)->m_hWnd, NULL };
-	AttachRow((HWND*)hwnd_input, 1);
+	int boxhdr2label_distance = 24;
+	int boxhdr2edit_distance = 20;
+	int boxend2nextbox_distance = 16;
+	int indent = 16;
+	int internal_left_border = 16;
+	int checkbox_distance = 5;
+	int buttons_distance = 1;
+	int hdrbuttons2firstbox_distance = 16;
+
+
+
+/************************************/
+/* align buttons for page selection */
+/************************************/
+
+	HWND hwnd_input[] = { *GetDlgItem(IDC_RADIO_INPUT_GENERAL),
+		*GetDlgItem(IDC_RADIO_INPUT_AVIMP3), 
+		*GetDlgItem(IDC_RADIO_INPUT_MKV), NULL };
+	
+	AttachRowBeneath(&hwnd_input[0], *GetDlgItem(IDC_INPUT_LABEL),
+		2, buttons_distance, ATTB_LEFTRIGHT, 0);
 
 	AttachWindow(GetDlgItem(IDC_RADIO_OUTPUT_GENERAL)->m_hWnd, ATTB_LEFTRIGHT,
 		GetDlgItem(IDC_RADIO_INPUT_GENERAL)->m_hWnd);
 
-	HWND hwnd_output[] = { GetDlgItem(IDC_RADIO_OUTPUT_GENERAL)->m_hWnd, 
-		GetDlgItem(IDC_RADIO_OUTPUT_AVI)->m_hWnd, GetDlgItem(IDC_RADIO_OUTPUT_MKV)->m_hWnd, NULL };
-	AttachRow((HWND*)hwnd_output, 1);
+	AttachWindow(*GetDlgItem(IDC_OUTPUT_LABEL), ATTB_LEFTRIGHT,
+		*GetDlgItem(IDC_INPUT_LABEL));
+	HWND hwnd_output[] = { *GetDlgItem(IDC_RADIO_OUTPUT_GENERAL), 
+		*GetDlgItem(IDC_RADIO_OUTPUT_AVI), 
+		*GetDlgItem(IDC_RADIO_OUTPUT_MKV), NULL };
+	AttachRowBeneath(hwnd_output, *GetDlgItem(IDC_OUTPUT_LABEL),
+		2, buttons_distance, ATTB_LEFTRIGHT, 0);
 
-	AttachWindow(GetDlgItem(IDCANCEL)->m_hWnd, ATTB_BOTTOM,
-		GetDlgItem(IDC_SFO_O_GENERAL)->m_hWnd);
-	AttachWindow(GetDlgItem(IDOK)->m_hWnd, ATTB_BOTTOM,
-		GetDlgItem(IDCANCEL)->m_hWnd, ATTB_TOP, -1);
+	AttachWindow(*GetDlgItem(IDC_GUI_LABEL), ATTB_LEFTRIGHT,
+		*GetDlgItem(IDC_OUTPUT_LABEL));
+	HWND hwnd_gui[] = { *GetDlgItem(IDC_RADIO_GUI_GENERAL),
+		NULL };
+	AttachRowBeneath(hwnd_gui, *GetDlgItem(IDC_GUI_LABEL),
+		2, buttons_distance, ATTB_LEFTRIGHT, 0);
+
+
+	AttachWindow(*GetDlgItem(IDCANCEL), ATTB_BOTTOM,
+		*GetDlgItem(IDC_SFO_O_GENERAL));
+	AttachWindow(*GetDlgItem(IDCANCEL), ATTB_LEFTRIGHT,
+		*GetDlgItem(IDC_RADIO_INPUT_GENERAL));
+	AttachWindow(*GetDlgItem(IDOK), ATTB_BOTTOM,
+		*GetDlgItem(IDCANCEL), ATTB_TOP, -1);
+	AttachWindow(*GetDlgItem(IDOK), ATTB_LEFTRIGHT,
+		*GetDlgItem(IDC_RADIO_INPUT_GENERAL));
+
+
+
+/******************/
+/* Generic Output */
+/******************/
+
+	/* file options */
+	AttachWindow(*GetDlgItem(IDC_STDOUTPUTFORMAT_LABEL), ATTB_TOP,
+		*GetDlgItem(IDC_SFO_O_GENERAL), boxhdr2label_distance);
+	AttachWindow(*GetDlgItem(IDC_STDOUTPUTFORMATS), ATTB_TOP,
+		*GetDlgItem(IDC_STDOUTPUTFORMAT_LABEL), ATTB_BOTTOM, 2);
+	HWND hwnd_output_file_options[] = { *GetDlgItem(IDC_STDOUTPUTFORMATS),
+		*GetDlgItem(IDC_OUTPUT_OVERLAPPED), *GetDlgItem(IDC_OUTPUT_UNBUFFERED),
+		*GetDlgItem(IDC_OUTPUT_THREADED), *GetDlgItem(IDC_LOGFILE), NULL
+	};
+	AttachRow(hwnd_output_file_options, checkbox_distance, ATTB_LEFT);
+
+	AttachWindow(*GetDlgItem(IDC_DEFFILENAME_LABEL), ATTB_LEFT, 
+		*GetDlgItem(IDC_LOGFILE));
+	AttachWindow(*GetDlgItem(IDC_DEFFILENAME_LABEL), ATTB_TOP,
+		*GetDlgItem(IDC_LOGFILE), ATTB_BOTTOM, 16);
+
+	HWND hwnd_dfn[] = {  
+		*GetDlgItem(IDC_DFN_NONE), *GetDlgItem(IDC_DFN_SEGMENT_TITLE),
+		*GetDlgItem(IDC_DFN_FIRST_SOURCE), NULL };
+	AttachRowBeneath(hwnd_dfn, *GetDlgItem(IDC_DEFFILENAME_LABEL), checkbox_distance,
+		checkbox_distance, ATTB_LEFT, indent);
+
+	/* file splitting */
+	AttachWindow(*GetDlgItem(IDC_SFO_O_SPLIT), ATTB_TOP,
+		hwnd_dfn[2], ATTB_BOTTOM, boxhdr2label_distance);
+	AttachWindow(*GetDlgItem(IDC_SFO_O_SPLIT), ATTB_BOTTOM,
+		*GetDlgItem(IDC_SFO_O_GENERAL));
+
+	AttachWindow(*GetDlgItem(IDC_MAXFILESIZE), ATTB_TOP,
+		*GetDlgItem(IDC_SFO_O_SPLIT), ATTB_TOP, boxhdr2edit_distance);
+	AttachLabel(*GetDlgItem(IDC_MAXFILESIZE),
+		*GetDlgItem(IDC_USEMAXSIZE));
+	AttachWindow(*GetDlgItem(IDC_USEMAXSIZE), ATTB_LEFT,
+		*GetDlgItem(IDC_LOGFILE));
+
+	HWND hwnd_split[] = { *GetDlgItem(IDC_MAXFILESIZE),
+		*GetDlgItem(IDC_MAXSIZE_EXTENDED), *GetDlgItem(IDC_FORMAT),
+		*GetDlgItem(IDC_MAXFRAMES), *GetDlgItem(IDC_MAXFILES), NULL
+	};
+	AttachRow(hwnd_split, checkbox_distance, ATTB_RIGHT);
+
+	AttachVCenterAndLeftBorder(*GetDlgItem(IDC_USESPLITPOINTLIST),
+		*GetDlgItem(IDC_MAXSIZE_EXTENDED), *GetDlgItem(IDC_USEMAXSIZE));
+	AttachVCenterAndLeftBorder(*GetDlgItem(IDC_USENUMBERING),
+		*GetDlgItem(IDC_FORMAT), *GetDlgItem(IDC_USESPLITPOINTLIST));
+	AttachVCenterAndLeftBorder(*GetDlgItem(IDC_SFO_OSP_FRAMES),
+		*GetDlgItem(IDC_MAXFRAMES), *GetDlgItem(IDC_USENUMBERING));
+	AttachVCenterAndLeftBorder(*GetDlgItem(IDC_USEMAXFILES),
+		*GetDlgItem(IDC_MAXFILES), *GetDlgItem(IDC_SFO_OSP_FRAMES));
+
+
+
+/*********************/
+/* AVI Output Page 1 */
+/*********************/
+
+	AttachWindow(*GetDlgItem(IDC_AVI1_RECLISTS), ATTB_TOP,
+		*GetDlgItem(IDC_AVI_PAGE1), ATTB_BOTTOM, hdrbuttons2firstbox_distance);
+	AttachWindowBeneath(*GetDlgItem(IDC_AVI1_MP3CBRFRAMEMODE), 
+		*GetDlgItem(IDC_AVI1_RECLISTS), checkbox_distance, ATTB_LEFT, 0);
+	AttachWindowBeneath(*GetDlgItem(IDC_MOVEHDRL),
+		*GetDlgItem(IDC_AVI1_MP3CBRFRAMEMODE), checkbox_distance, ATTB_LEFT, 0);
+	
+	AttachWindow(*GetDlgItem(IDC_AVI1_ODML_LABEL), ATTB_TOP,
+		*GetDlgItem(IDC_MOVEHDRL), ATTB_BOTTOM, boxend2nextbox_distance);
+	AttachWindow(*GetDlgItem(IDC_AVI1_ODML_LABEL), ATTB_LEFTRIGHT | ATTB_BOTTOM,
+		*GetDlgItem(IDC_AVI1_LABEL));
+
+	AttachWindow(*GetDlgItem(IDC_OPENDML), ATTB_TOP,
+		*GetDlgItem(IDC_AVI1_ODML_LABEL), ATTB_TOP, boxhdr2label_distance);
+	AttachWindowBeneath(*GetDlgItem(IDC_AVI1_STDIDXPERSTREAM_LABEL), 
+		*GetDlgItem(IDC_OPENDML), checkbox_distance, ATTB_LEFT, 0);
+	HWND hwnd_stdidx_settings [] = { *GetDlgItem(IDC_STDI_RIFF),
+		*GetDlgItem(IDC_STDI_FRAMES), *GetDlgItem(IDC_STDI_AUTO), NULL		
+	};
+	AttachRowBeneath(hwnd_stdidx_settings, *GetDlgItem(IDC_AVI1_STDIDXPERSTREAM_LABEL),
+		checkbox_distance, checkbox_distance, ATTB_LEFT, indent);
+	
+	AttachWindow(*GetDlgItem(IDC_STDI_NBROFFRAMES), ATTB_VCENTER,
+		*GetDlgItem(IDC_STDI_FRAMES));
+	AttachWindow(*GetDlgItem(IDC_STDI_NBROFFRAMES), ATTB_LEFT,
+		*GetDlgItem(IDC_STDI_FRAMES), ATTB_RIGHT, 1);
+
+	AttachWindow(*GetDlgItem(IDC_SFO_FRAMES), ATTB_VCENTER,
+		*GetDlgItem(IDC_STDI_NBROFFRAMES));
+	AttachWindow(*GetDlgItem(IDC_SFO_FRAMES), ATTB_LEFT,
+		*GetDlgItem(IDC_STDI_NBROFFRAMES), ATTB_RIGHT, 1);
+
+	/* legacy index settings */
+	AttachWindow(*GetDlgItem(IDC_MAKEIDX1), ATTB_TOP,
+		*GetDlgItem(IDC_STDI_AUTO), ATTB_BOTTOM, checkbox_distance);
+	AttachWindow(*GetDlgItem(IDC_MAKEIDX1), ATTB_LEFT,
+		*GetDlgItem(IDC_OPENDML));
+	AttachWindow(*GetDlgItem(IDC_RIFFAVISIZE), ATTB_TOP,
+		*GetDlgItem(IDC_MAKEIDX1), ATTB_BOTTOM, 2);
+	AttachLabel(*GetDlgItem(IDC_RIFFAVISIZE),
+		*GetDlgItem(IDC_RIFFAVISIZE_LABEL));
+	AttachLabel(*GetDlgItem(IDC_RIFFAVISIZE),
+		*GetDlgItem(IDC_RIFFAVISIZE_UNIT));
+
+	/* low overhead mode */
+	AttachWindow(*GetDlgItem(IDC_HAALIMODE), ATTB_TOP,
+		*GetDlgItem(IDC_RIFFAVISIZE), ATTB_BOTTOM, 2);
+	AttachWindow(*GetDlgItem(IDC_HAALIMODE), ATTB_LEFT,
+		*GetDlgItem(IDC_MAKEIDX1));
+
+	/* interleave group box */
+	AttachWindow(*GetDlgItem(IDC_AVI1_INTERLEAVE_LABEL), ATTB_TOP,
+		*GetDlgItem(IDC_HAALIMODE), ATTB_BOTTOM, boxend2nextbox_distance);
+	AttachWindow(*GetDlgItem(IDC_AVI1_INTERLEAVE_LABEL), ATTB_LEFTRIGHT | ATTB_BOTTOM,
+		*GetDlgItem(IDC_AVI1_LABEL));
+	
+
+	/* interleave value */
+	AttachWindow(*GetDlgItem(IDC_AUDIOINTERLEAVE), ATTB_TOP,
+		*GetDlgItem(IDC_AVI1_INTERLEAVE_LABEL), ATTB_TOP, boxhdr2edit_distance);
+	AttachVCenterAndLeftBorder(*GetDlgItem(IDC_AUDIOINTERLEAVE_LABEL), 
+		*GetDlgItem(IDC_AUDIOINTERLEAVE), *GetDlgItem(IDC_AVI1_INTERLEAVE_LABEL), internal_left_border);
+
+	/* units for interleave */
+	AttachWindowBeneath(*GetDlgItem(IDC_AI_FRAMES), *GetDlgItem(IDC_AUDIOINTERLEAVE),
+		checkbox_distance, ATTB_RIGHT, 0);
+	AttachWindow(*GetDlgItem(IDC_AI_KB), ATTB_RIGHT, 
+		*GetDlgItem(IDC_AI_FRAMES), ATTB_LEFT, 1);
+	AttachWindow(*GetDlgItem(IDC_AI_KB), ATTB_TOPBOTTOM, 
+		*GetDlgItem(IDC_AI_FRAMES));
+
+	/* preload */
+	AttachWindow(*GetDlgItem(IDC_PRELOAD), ATTB_TOP,
+		*GetDlgItem(IDC_AI_FRAMES), ATTB_BOTTOM, checkbox_distance);
+	AttachVCenterAndLeftBorder(*GetDlgItem(IDC_PRELOAD_LABEL), *GetDlgItem(IDC_PRELOAD),
+		*GetDlgItem(IDC_AUDIOINTERLEAVE_LABEL), 0);
+
+/*********************/
+/* MKV Output Page 1 */
+/*********************/
+
+	AttachWindow(*GetDlgItem(IDC_MKV_MATROSKAVERSION), ATTB_TOP,
+		*GetDlgItem(IDC_MKV_PAGE1), ATTB_BOTTOM, hdrbuttons2firstbox_distance);
+	AttachWindow(*GetDlgItem(IDC_MKV_MATROSKAVERSION), ATTB_BOTTOM,
+		*GetDlgItem(IDC_SFO_O_MKVOPTIONS));
+
+	AttachWindow(*GetDlgItem(IDC_FORCEMKV1), ATTB_TOP,
+		*GetDlgItem(IDC_MKV_MATROSKAVERSION), ATTB_TOP, boxhdr2label_distance);
+	AttachWindow(*GetDlgItem(IDC_FORCEMKV1), ATTB_LEFT,
+		*GetDlgItem(IDC_MKV_PAGE1));
+
+	AttachWindow(*GetDlgItem(IDC_FORCEMKV2), ATTB_TOP,
+		*GetDlgItem(IDC_FORCEMKV1), ATTB_BOTTOM, checkbox_distance);
+	AttachWindow(*GetDlgItem(IDC_FORCEMKV2), ATTB_LEFT,
+		*GetDlgItem(IDC_FORCEMKV1));
+
+	AttachWindow(*GetDlgItem(IDC_CLUSTERSIZE), ATTB_TOP,
+		*GetDlgItem(IDC_MKV_CLUSTER), ATTB_TOP, boxhdr2edit_distance);
+
+	AttachLabel(*GetDlgItem(IDC_CLUSTERSIZE), 
+		*GetDlgItem(IDC_CLUSTERSIZE_LABEL));
+
+	/* Cluster sizes */
+	AttachWindow(*GetDlgItem(IDC_CLUSTERTIME), ATTB_TOP, 
+		*GetDlgItem(IDC_CLUSTERSIZE), ATTB_BOTTOM, 1);
+	
+	AttachLabel(*GetDlgItem(IDC_CLUSTERTIME), *
+		GetDlgItem(IDC_CLUSTERTIME_LABEL));
+	
+	AttachUpDown(*GetDlgItem(IDC_CLUSTERSIZE), 
+		*GetDlgItem(IDC_CLUSTERSIZE_SPIN));
+	
+	AttachUpDown(*GetDlgItem(IDC_CLUSTERTIME), 
+		*GetDlgItem(IDC_CLUSTERTIME_SPIN));
+
+	AttachWindow(*GetDlgItem(IDC_1STCL_30sec), ATTB_TOP,
+		*GetDlgItem(IDC_CLUSTERTIME), ATTB_BOTTOM, 2);
+	AttachWindow(*GetDlgItem(IDC_1STCL_30sec), ATTB_LEFT,
+		*GetDlgItem(IDC_CLUSTERTIME_LABEL), ATTB_LEFT, indent);
+
+	HWND hwnd_cl_settings[] = { *GetDlgItem(IDC_1STCL_30sec), 
+		*GetDlgItem(IDC_MKV_PREVSIZE), *GetDlgItem(IDC_MKV_POSITION), 
+		*GetDlgItem(IDC_INDEXINSEEKHEAD), NULL };
+	AttachRow((HWND*)hwnd_cl_settings, checkbox_distance);
+
+
+	AttachWindow(*GetDlgItem(IDC_MKV_CLUSTER), ATTB_TOP, 
+		*GetDlgItem(IDC_LACEVIDEO), ATTB_BOTTOM, boxend2nextbox_distance);
+	
+	AttachWindow(*GetDlgItem(IDC_MKV_CLUSTER), ATTB_BOTTOM,
+		*GetDlgItem(IDC_SFO_O_MKVPAGE1), ATTB_BOTTOM, 0);
 
 	/* Lacing */
-	AttachLabel(*GetDlgItem(IDC_LACESTYLE), *GetDlgItem(IDC_MKV_LACING));
-	AttachWindow(*GetDlgItem(IDC_LACEEXCEPTIONFORMAT), ATTB_TOP, *GetDlgItem(IDC_LACESTYLE), ATTB_BOTTOM, 1);
-	AttachUpDown(*GetDlgItem(IDC_LACEEXCEPTIONFORMAT), *GetDlgItem(IDC_LACEEXCEPTIONFORMATSPIN));
-	AttachWindow(*GetDlgItem(IDC_USELACINGEXCEPTION), ATTB_VCENTER, *GetDlgItem(IDC_LACEEXCEPTIONFORMAT));
-	AttachWindow(*GetDlgItem(IDC_USELACINGEXCEPTION), ATTB_LEFT, *GetDlgItem(IDC_LACESTYLE));
-	AttachWindow(*GetDlgItem(IDC_MKV_LACESIZE), ATTB_TOPBOTTOM, *GetDlgItem(IDC_LACEEXCEPTIONFORMAT));
+	AttachWindow(*GetDlgItem(IDC_MKV_LACING), ATTB_BOTTOM,
+		*GetDlgItem(IDC_SFO_O_MKVPAGE1), ATTB_BOTTOM, 0);
 	
-	AttachWindow(*GetDlgItem(IDC_MKV_LACESIZE_SPIN), ATTB_TOPBOTTOM, *GetDlgItem(IDC_MKV_LACESIZE));
-	AttachWindow(*GetDlgItem(IDC_MKV_LACESIZE_SPIN), ATTB_RIGHT, *GetDlgItem(IDC_LACESTYLE));
-	AttachWindow(*GetDlgItem(IDC_MKV_LACESIZE), ATTB_RIGHT, *GetDlgItem(IDC_MKV_LACESIZE_SPIN), ATTB_LEFT, 0);
+	AttachWindow(*GetDlgItem(IDC_MKV_LACING), ATTB_TOP,
+		*GetDlgItem(IDC_FORCEMKV2), ATTB_BOTTOM, boxend2nextbox_distance);
 
-	AttachWindow(*GetDlgItem(IDC_LACEVIDEO_COUNT), ATTB_LEFTRIGHT, *GetDlgItem(IDC_MKV_LACESIZE));
-	AttachWindow(*GetDlgItem(IDC_LACEVIDEO_COUNT), ATTB_TOP, *GetDlgItem(IDC_MKV_LACESIZE), ATTB_BOTTOM, 1);
+	AttachWindow(*GetDlgItem(IDC_LACESTYLE), ATTB_TOP,
+		*GetDlgItem(IDC_MKV_LACING), ATTB_TOP, boxhdr2edit_distance);
 
-	AttachWindow(*GetDlgItem(IDC_LACEVIDEO_SPIN), ATTB_LEFTRIGHT, *GetDlgItem(IDC_MKV_LACESIZE_SPIN));
-	AttachWindow(*GetDlgItem(IDC_LACEVIDEO_SPIN), ATTB_TOPBOTTOM, *GetDlgItem(IDC_LACEVIDEO_COUNT));
-	AttachWindow(*GetDlgItem(IDC_LACEVIDEO), ATTB_VCENTER, *GetDlgItem(IDC_LACEVIDEO_COUNT));
+	AttachLabel(*GetDlgItem(IDC_LACESTYLE), 
+		*GetDlgItem(IDC_MKV_LACESTYLE_LABEL));
 
-	/* align check boxes for Cue settings */
+	AttachWindow(*GetDlgItem(IDC_LACEEXCEPTIONFORMAT), ATTB_TOP, 
+		*GetDlgItem(IDC_LACESTYLE), ATTB_BOTTOM, 1);
+
+	AttachUpDown(*GetDlgItem(IDC_LACEEXCEPTIONFORMAT), 
+		*GetDlgItem(IDC_LACEEXCEPTIONFORMATSPIN));
+
+	AttachWindow(*GetDlgItem(IDC_USELACINGEXCEPTION), ATTB_VCENTER, 
+		*GetDlgItem(IDC_LACEEXCEPTIONFORMAT));
+	
+	AttachWindow(*GetDlgItem(IDC_USELACINGEXCEPTION), ATTB_LEFT, 
+		*GetDlgItem(IDC_LACESTYLE));
+
+	AttachWindow(*GetDlgItem(IDC_MKV_LACESIZE), ATTB_TOPBOTTOM, 
+		*GetDlgItem(IDC_LACEEXCEPTIONFORMAT));
+	
+	AttachWindow(*GetDlgItem(IDC_MKV_LACESIZE_SPIN), ATTB_TOPBOTTOM, 
+		*GetDlgItem(IDC_MKV_LACESIZE));
+
+	AttachWindow(*GetDlgItem(IDC_MKV_LACESIZE_SPIN), ATTB_RIGHT, 
+		*GetDlgItem(IDC_LACESTYLE));
+
+	AttachWindow(*GetDlgItem(IDC_MKV_LACESIZE), ATTB_RIGHT, 
+		*GetDlgItem(IDC_MKV_LACESIZE_SPIN), ATTB_LEFT, 0);
+
+	AttachWindow(*GetDlgItem(IDC_LACEVIDEO_COUNT), ATTB_LEFTRIGHT, 
+		*GetDlgItem(IDC_MKV_LACESIZE));
+
+	AttachWindow(*GetDlgItem(IDC_LACEVIDEO_COUNT), ATTB_TOP, 
+		*GetDlgItem(IDC_MKV_LACESIZE), ATTB_BOTTOM, 1);
+
+	AttachWindow(*GetDlgItem(IDC_LACEVIDEO_SPIN), ATTB_LEFTRIGHT, 
+		*GetDlgItem(IDC_MKV_LACESIZE_SPIN));
+
+	AttachWindow(*GetDlgItem(IDC_LACEVIDEO_SPIN), ATTB_TOPBOTTOM, 
+		*GetDlgItem(IDC_LACEVIDEO_COUNT));
+
+	AttachWindow(*GetDlgItem(IDC_LACEVIDEO), ATTB_VCENTER, 
+		*GetDlgItem(IDC_LACEVIDEO_COUNT));
+
+
+
+/*********************/
+/* MKV Output Page 2 */
+/*********************/
+
+	AttachWindow(*GetDlgItem(IDC_SFO_O_MKVPAGE2), ATTB_TOPBOTTOM | ATTB_LEFTRIGHT,
+		*GetDlgItem(IDC_SFO_O_MKVPAGE1));
+
+
+	/* MKV Timecode scales */
+	AttachWindow(*GetDlgItem(IDC_TIMECODESCALE), ATTB_TOP,
+		*GetDlgItem(IDC_MKV_PAGE1), ATTB_BOTTOM, hdrbuttons2firstbox_distance);
+	AttachWindow(*GetDlgItem(IDC_TIMECODESCALE), ATTB_BOTTOM,
+		*GetDlgItem(IDC_SFO_O_MKVPAGE2));
+
+	AttachWindow(*GetDlgItem(IDC_TCS_MKV), ATTB_TOP,
+		*GetDlgItem(IDC_TIMECODESCALE), ATTB_TOP, boxhdr2edit_distance);
+
+	AttachWindow(GetDlgItem(IDC_TCS_MKA)->m_hWnd, ATTB_TOP,
+		GetDlgItem(IDC_TCS_MKV)->m_hWnd, ATTB_BOTTOM, 0);
+
+	AttachLabel(GetDlgItem(IDC_TCS_MKV)->m_hWnd, 
+		GetDlgItem(IDC_TCS_MKV_LABEL)->m_hWnd);
+
+	AttachLabel(GetDlgItem(IDC_TCS_MKA)->m_hWnd, 
+		GetDlgItem(IDC_TCS_MKA_LABEL)->m_hWnd);
+
+	/* Cues */
+	AttachWindow(*GetDlgItem(IDC_MKV_CUES), ATTB_TOP,
+		*GetDlgItem(IDC_TCS_MKA_LABEL), ATTB_BOTTOM, boxend2nextbox_distance);
+
+	AttachWindow(*GetDlgItem(IDC_MKV_CUES), ATTB_BOTTOM,
+		*GetDlgItem(IDC_SFO_O_MKVPAGE2));
+
+	AttachWindow(*GetDlgItem(IDC_WRITECUES), ATTB_TOP,
+		*GetDlgItem(IDC_MKV_CUES), ATTB_TOP, boxhdr2label_distance);
+
 	AttachWindow(GetDlgItem(IDC_WRITECUES_VIDEO)->m_hWnd, ATTB_TOP,
 		GetDlgItem(IDC_WRITECUES)->m_hWnd, ATTB_BOTTOM, 3);
 
 	AttachWindow(GetDlgItem(IDC_WRITECUES_AUDIO)->m_hWnd, ATTB_TOP,
 		GetDlgItem(IDC_WRITECUES_VIDEO)->m_hWnd, ATTB_BOTTOM, 2);
+
 	AttachWindow(GetDlgItem(IDC_WRITECUES_SUBS)->m_hWnd, ATTB_TOPBOTTOM,
 		GetDlgItem(IDC_WRITECUES_VIDEO)->m_hWnd);
+
 	AttachWindow(GetDlgItem(IDC_WRITECUES_ONLYAUDIOONLY)->m_hWnd, ATTB_TOP,
 		GetDlgItem(IDC_WRITECUES_AUDIO)->m_hWnd, ATTB_BOTTOM, 2);
+
 	AttachWindow(GetDlgItem(IDC_WRITECUES_BLOCKNUMBER)->m_hWnd, ATTB_TOP,
 		GetDlgItem(IDC_WRITECUES_ONLYAUDIOONLY)->m_hWnd, ATTB_BOTTOM, 2);
 
-	/* Cues */
+	/* Cue interval settings */
+	AttachWindow(*GetDlgItem(IDC_CUE_INTERVAL_SETTINGS_LABEL), ATTB_TOP,
+		*GetDlgItem(IDC_WRITECUES_BLOCKNUMBER), ATTB_BOTTOM, boxend2nextbox_distance);
+	
+	AttachWindow(*GetDlgItem(IDC_CUE_INTERVAL_SETTINGS_LABEL), ATTB_BOTTOM,
+		*GetDlgItem(IDC_SFO_O_MKVPAGE2));
+
+	AttachWindow(*GetDlgItem(IDC_CUE_MINIMUM_INTERVAL), ATTB_TOP,
+		*GetDlgItem(IDC_CUE_INTERVAL_SETTINGS_LABEL), ATTB_TOP, boxhdr2edit_distance);
+	
+	AttachLabel(*GetDlgItem(IDC_CUE_MINIMUM_INTERVAL),
+		*GetDlgItem(IDC_CUE_MINIMUM_INTERVAL_LABEL));
+
+	AttachWindow(*GetDlgItem(IDC_CUES_AUTOSIZE), ATTB_TOP,
+		*GetDlgItem(IDC_CUE_MINIMUM_INTERVAL), ATTB_BOTTOM, 4);
+
+	AttachWindow(*GetDlgItem(IDC_SIZE_PER_STREAM_AND_HOUR), ATTB_TOP,
+		*GetDlgItem(IDC_CUES_AUTOSIZE), ATTB_BOTTOM, 4);
+
 	AttachWindow(GetDlgItem(IDC_CUE_TARGET_SIZE_RATIO)->m_hWnd, ATTB_TOP,
 		GetDlgItem(IDC_SIZE_PER_STREAM_AND_HOUR)->m_hWnd, ATTB_BOTTOM, 0);
 
-	AttachLabel(*GetDlgItem(IDC_SIZE_PER_STREAM_AND_HOUR), *GetDlgItem(IDC_SIZE_PER_STREAM_AND_HOUR_LABEL));
-	AttachLabel(*GetDlgItem(IDC_CUE_TARGET_SIZE_RATIO), *GetDlgItem(IDC_CUE_TARGET_SIZE_RATIO_LABEL));
+	AttachLabel(*GetDlgItem(IDC_SIZE_PER_STREAM_AND_HOUR), 
+		*GetDlgItem(IDC_SIZE_PER_STREAM_AND_HOUR_LABEL));
 
-	/* MKV Output Page 1 */
-	AttachWindow(GetDlgItem(IDC_MKV_CLUSTER)->m_hWnd, ATTB_BOTTOM,
-		GetDlgItem(IDC_SFO_O_MKVPAGE1)->m_hWnd, ATTB_BOTTOM, 0);
-	AttachWindow(GetDlgItem(IDC_MKV_LACING)->m_hWnd, ATTB_BOTTOM,
-		GetDlgItem(IDC_SFO_O_MKVPAGE1)->m_hWnd, ATTB_BOTTOM, 0);
+	AttachLabel(*GetDlgItem(IDC_CUE_TARGET_SIZE_RATIO), 
+		*GetDlgItem(IDC_CUE_TARGET_SIZE_RATIO_LABEL));
 
-	/* MKV Output Page 3 */
+
+
+/*********************/
+/* MKV Output Page 3 */
+/*********************/
+
+	AttachWindow(*GetDlgItem(IDC_SFO_O_MKVPAGE3), ATTB_TOPBOTTOM | ATTB_LEFTRIGHT,
+		*GetDlgItem(IDC_SFO_O_MKVPAGE1));
+
+	AttachWindow(*GetDlgItem(IDC_OUTPUT_MKV3_OTHERS), ATTB_TOP,
+		*GetDlgItem(IDC_MKV_PAGE1), ATTB_BOTTOM, hdrbuttons2firstbox_distance);
 	AttachWindow(GetDlgItem(IDC_OUTPUT_MKV3_OTHERS)->m_hWnd, ATTB_BOTTOM,
 		GetDlgItem(IDC_SFO_O_MKVPAGE3)->m_hWnd, ATTB_BOTTOM, 0);
 
-	/* MKV Timecode scales */
-	AttachWindow(GetDlgItem(IDC_TCS_MKA)->m_hWnd, ATTB_TOP,
-		GetDlgItem(IDC_TCS_MKV)->m_hWnd, ATTB_BOTTOM, 0);
-	AttachLabel(GetDlgItem(IDC_TCS_MKV)->m_hWnd, GetDlgItem(IDC_TCS_MKV_LABEL)->m_hWnd);
-	AttachLabel(GetDlgItem(IDC_TCS_MKA)->m_hWnd, GetDlgItem(IDC_TCS_MKA_LABEL)->m_hWnd);
+	AttachWindow(*GetDlgItem(IDC_2ndCopieOfTracks), ATTB_TOP,
+		*GetDlgItem(IDC_OUTPUT_MKV3_OTHERS), ATTB_TOP, boxhdr2label_distance);
+	AttachWindow(*GetDlgItem(IDC_2ndCopieOfTracks), ATTB_LEFT,
+		*GetDlgItem(IDC_MKV_PAGE1));
+	HWND hwnd_others[] = { *GetDlgItem(IDC_2ndCopieOfTracks), *GetDlgItem(IDC_MKV_DISPWH),
+		*GetDlgItem(IDC_NONCLUSTERTOFIRSTSEEKHEAD), *GetDlgItem(IDC_MKV_HARD_LINKING),
+		*GetDlgItem(IDC_MKV3_USE_A_AAC), *GetDlgItem(IDC_HEADER_STRIPPING),
+		*GetDlgItem(IDC_RANDOMIZE_ELEMENT_ORDER), NULL
+	};
+	AttachRow(hwnd_others, checkbox_distance, ATTB_LEFT);
+
+	/* float width and header size */
+	AttachWindow(*GetDlgItem(IDC_FLOATWIDTH), ATTB_TOP,
+		*GetDlgItem(IDC_RANDOMIZE_ELEMENT_ORDER), ATTB_BOTTOM, checkbox_distance);
+	AttachUpDown(*GetDlgItem(IDC_FLOATWIDTH),
+		*GetDlgItem(IDC_FLOATWIDTH_SPIN));
+	AttachVCenterAndLeftBorder(*GetDlgItem(IDC_FLOATWIDTH_LABEL),
+		*GetDlgItem(IDC_FLOATWIDTH), *GetDlgItem(IDC_RANDOMIZE_ELEMENT_ORDER));
+	AttachWindow(*GetDlgItem(IDC_MKV_HEADERSIZE), ATTB_TOP,
+		*GetDlgItem(IDC_FLOATWIDTH), ATTB_BOTTOM, 1);
+	AttachVCenterAndLeftBorder(*GetDlgItem(IDC_MKV_HEADERSIZE_LABEL),
+		*GetDlgItem(IDC_MKV_HEADERSIZE), *GetDlgItem(IDC_FLOATWIDTH_LABEL));
 
 
-	/* Cluster sizes */
-	AttachWindow(*GetDlgItem(IDC_CLUSTERTIME), ATTB_TOP, *GetDlgItem(IDC_CLUSTERSIZE), ATTB_BOTTOM, 1);
-	AttachLabel(*GetDlgItem(IDC_CLUSTERSIZE), *GetDlgItem(IDC_CLUSTERSIZE_LABEL));
-	AttachLabel(*GetDlgItem(IDC_CLUSTERTIME), *GetDlgItem(IDC_CLUSTERTIME_LABEL));
-	AttachUpDown(*GetDlgItem(IDC_CLUSTERSIZE), *GetDlgItem(IDC_CLUSTERSIZE_SPIN));
-	AttachUpDown(*GetDlgItem(IDC_CLUSTERTIME), *GetDlgItem(IDC_CLUSTERTIME_SPIN));
 
-	HWND hwnd_cl_settings[] = { *GetDlgItem(IDC_1STCL_30sec), *GetDlgItem(IDC_MKV_PREVSIZE),
-		*GetDlgItem(IDC_MKV_POSITION), *GetDlgItem(IDC_INDEXINSEEKHEAD), NULL };
-	AttachRow((HWND*)hwnd_cl_settings, 5);
+/**********************/
+/* AVI/MP3/M2F2 input */
+/**********************/
 
-	/* AVI input */
-	AttachWindow(*GetDlgItem(IDC_IM2F2_LABEL), ATTB_BOTTOM, *GetDlgItem(IDC_IAVI_Label));
-	AttachWindow(*GetDlgItem(IDC_IMP3_LABEL), ATTB_BOTTOM,  *GetDlgItem(IDC_IAVI_Label));
+	AttachWindow(*GetDlgItem(IDC_IM2F2_LABEL), ATTB_TOP,
+		*GetDlgItem(IDC_IAVI_REPAIRDX50), ATTB_BOTTOM, boxend2nextbox_distance);
+	AttachWindow(*GetDlgItem(IDC_IM2F2_LABEL), 
+		ATTB_BOTTOM, *GetDlgItem(IDC_IAVI_Label));
+
+	AttachWindow(*GetDlgItem(IDC_IM2F2_CRCCHECK), ATTB_TOP,
+		*GetDlgItem(IDC_IM2F2_LABEL), ATTB_TOP, boxhdr2edit_distance);
+
+
+	AttachWindow(*GetDlgItem(IDC_IMP3_LABEL), ATTB_TOP,
+		*GetDlgItem(IDC_IM2F2_CRCCHECK), ATTB_BOTTOM, boxend2nextbox_distance);
+	AttachWindow(*GetDlgItem(IDC_IMP3_LABEL), ATTB_BOTTOM,  
+		*GetDlgItem(IDC_IAVI_Label));
+
+	AttachWindow(*GetDlgItem(IDC_IMP3_ASK), ATTB_TOP,
+		*GetDlgItem(IDC_IMP3_LABEL), ATTB_TOP, boxhdr2label_distance);
+	AttachWindow(*GetDlgItem(IDC_IMP3_ASK), ATTB_LEFT,
+		*GetDlgItem(IDC_IM2F2_CRCCHECK));
+
+
+	
+/**********************/
+/* mp3 input settings */
+/**********************/
+
+	HWND imp3_hwnd[] = { *GetDlgItem(IDC_IMP3_ASK), *GetDlgItem(IDC_IMP3_CHECKALWAYS),
+		*GetDlgItem(IDC_IMP3_CHECKNEVER), *GetDlgItem(IDC_IMP3_DISPRESULT), NULL }; 
+
+	AttachRow(imp3_hwnd, checkbox_distance, ATTB_LEFT);
+
+
+
+/****************/
+/* GUI settings */
+/****************/
+
+	AttachWindow(*GetDlgItem(IDC_GUI1_HIGHLIGH_USED_FILES), ATTB_TOP,
+		*GetDlgItem(IDC_GUI_GENERAL_LABEL), ATTB_TOP, boxhdr2label_distance);
+
+	HWND gui1_hwnd[] = { *GetDlgItem(IDC_GUI1_HIGHLIGH_USED_FILES),
+		*GetDlgItem(IDC_GUI1_HIGHLIGH_STREAM_SOURCE_FILES),
+		*GetDlgItem(IDC_GUI1_ENABLEOVERWRITEWARNING), 
+		*GetDlgItem(IDC_GUI1_DONEDLG), NULL };
+	AttachRow(gui1_hwnd, checkbox_distance, ATTB_LEFTRIGHT);
+	
 
 	ReinitPosition();
 
@@ -1180,22 +1629,15 @@ void CSetStoreFileOptionsDlg::OnMaxsizeExtended()
 	CString				cStr;
 	CString				cstrError;
 
-/*	cstrError=LoadString(IDS_ERROR);
-	if (sfoData.cdMain->SendDlgItemMessage(IDC_AVAILABLEVIDEOSTREAMS,LB_GETCOUNT,0,0)==0)
-	{
-		cStr=LoadString(IDS_NOVIDEOSOURCE);
-	};
-*/
 	dlg=new CSplitPointsDlg;
 
 	dlg->Load(sfoData.split_points);
-//	iIndex=((iIndex=sfoData.cdMain->SendDlgItemMessage(IDC_AVAILABLEVIDEOSTREAMS,LB_GETCURSEL))==LB_ERR)?0:iIndex;
-//	dlg->SetVideoSource((VIDEOSOURCE*)sfoData.cdMain->SendDlgItemMessage(IDC_AVAILABLEVIDEOSTREAMS,LB_GETITEMDATA,iIndex,0));
-	if (dlg->DoModal()==IDOK)
-	{
+//	dlg->SetFont(GetFont(), false);
+	if (dlg->DoModal()==IDOK) {
 		dlg->GetData(sfoData.split_points);
 		CheckDlgButton(IDC_USESPLITPOINTLIST,BST_CHECKED);
 	}
+
 	delete dlg;	
 }
 
@@ -1372,8 +1814,8 @@ void CSetStoreFileOptionsDlg::OnClose()
 		// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen und/oder Standard aufrufen
 
 	for (int i=0;i<3;i++) {
-		pages[i]->DeleteAll();
-		delete pages[i];
+		//pages[i]->DeleteAll();
+		//delete pages[i];
 	}
 
 	settings->Delete();
@@ -1829,4 +2271,28 @@ void CSetStoreFileOptionsDlg::OnInputOverlapped()
 	if (m_Input_Overlapped.GetCheck())
 		m_Input_AllowUnbufferedRead.SetCheck(1);
 	OnSfoAllowunbufferedread();
+}
+
+void CSetStoreFileOptionsDlg::OnBnClickedSfoOGeneral()
+{
+	// TODO: Fügen Sie hier Ihren Kontrollbehandlungscode für die Benachrichtigung ein.
+}
+
+
+/* pressing GUI general button -> page 9 */
+void CSetStoreFileOptionsDlg::OnBnClickedGuiGeneral()
+{
+	// TODO: Fügen Sie hier Ihren Kontrollbehandlungscode für die Benachrichtigung ein.
+
+	ShowPage(9);
+}
+
+void CSetStoreFileOptionsDlg::OnBnClickedOutputThreaded()
+{
+	// TODO: Fügen Sie hier Ihren Kontrollbehandlungscode für die Benachrichtigung ein.
+
+	if (m_Output_Thread.GetCheck())
+		m_Overlapped.SetCheck(0);
+
+	m_Overlapped.EnableWindow(!m_Output_Thread.GetCheck());
 }

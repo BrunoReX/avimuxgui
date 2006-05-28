@@ -84,4 +84,6 @@ GETCURRENTDIRECTORY UGetCurrentDirectory();
 GETVOLUMEPATHNAME	UGetVolumePathName();
 GETVOLUMEINFORMATION UGetVolumeInformation();
 
+FILE* fopenutf8(char* filename, char* access, int unicode);
+
 #endif

@@ -256,6 +256,14 @@ BOOL CChapterDlg::OnInitDialog()
 	
 	ReinitFont(NULL);
 
+/* set default chapter language title to display */
+	char* _default = NULL;
+	if (GetAttribs()->Exists("tree_default_title_languages")) {
+		GetAttribs()->GetStr("tree_default_title_languages", &_default);
+		m_Chapters.SetTitleLanguagePriorityString(_default);
+		free(_default);
+	}
+
 	SetWindowTextUTF8(hChapterTitle, "");
 	::EnableWindow(hChapterTitle, false);
 	m_ChapterDisplay_Lng.EnableWindow(0);
@@ -577,12 +585,44 @@ void CChapterDlg::OnSaveas()
 
 	if (m_Chapters.GetCount()) {
 
+		char* def_ext; GetAttribs()->GetStr("default_save_extension", &def_ext);
+
+		if (stricmp(def_ext, "xml") && stricmp(def_ext, "mkc")) {
+			MessageBox("Weird default extension defined!", "Internal Error",
+				MB_OK | MB_ICONERROR);
+		}
+
+		char file_types[2048]; file_types[0]=0;
+		char* possible_file_types[] = {
+			"XML chapter file (*.xml)|*.xml",
+			"Matroska Chapter file (*.mkc)|*.mkc",
+			"All file types (*.xml, *.mkc)|*.xml;*.mkc"
+		};
+
+		if (!stricmp(def_ext, "xml")) {
+			strcat(file_types, possible_file_types[0]);
+			strcat(file_types, "|");
+			strcat(file_types, possible_file_types[1]);
+			strcat(file_types, "|");
+			strcat(file_types, possible_file_types[2]);
+		} else {
+			strcat(file_types, possible_file_types[1]);
+			strcat(file_types, "|");
+			strcat(file_types, possible_file_types[0]);
+			strcat(file_types, "|");
+			strcat(file_types, possible_file_types[2]);
+		}
+		strcat(file_types, "||");
+
+
 		OPENFILENAME o; 
-		PrepareSimpleDialog(&o, m_hWnd, 
-			"All file types (*.amg, *.xml, *.txt, *.mkc)|*.xml;*.amg;*.txt;*.mkc|script files (*.amg)|*.amg|XML chapter file (*.txt;*.xml)|*.txt;*.xml|Matroska Chapter file (*.mkc)|*.mkc||");
+		PrepareSimpleDialog(&o, m_hWnd, file_types);
 		o.Flags |= OFN_OVERWRITEPROMPT;
-		o.lpstrDefExt = ".xml";
+
+		o.lpstrDefExt = def_ext;
 		int open = GetOpenSaveFileNameUTF8(&o, 0);
+		free(def_ext);
+
 		if (open) {
 
 			t = o.lpstrFile;

@@ -5,6 +5,7 @@
 #include "windows.h"
 #include "crtdbg.h"
 #include "limits.h"
+#include "Filestream.h"
 
 #ifdef DEBUG_NEW
 #ifdef _DEBUG
@@ -151,6 +152,7 @@ void CACHE::Init()
 	bThreadsafe = false;
 	bLog = false;
 	fLog = stdout;
+	iPrereadCacheLines = 1;
 
 	free_cache_lines.clear();
 }
@@ -227,6 +229,33 @@ bool CACHE::CacheLineGetThreadSpecific(CACHE_LINE* cache_line)
 	return true;
 }
 
+bool CACHE::CacheLineGetThreadSpecific_NCS(CACHE_LINE* cache_line)
+{
+	DWORD dwCurrentThread = GetCurrentThreadId();
+
+	if (cache_line->dwLastThread == dwCurrentThread)
+		return true;
+
+
+	CACHE_LINE_THREAD_SPECIFIC_MAP::iterator iter = cache_line->thread_specific_map.find(dwCurrentThread);
+
+//	_ASSERT(cache_line->thread_specific_map.size() <= 1);
+
+	if (iter != cache_line->thread_specific_map.end()) {
+		cache_line->thread_specific = iter->second;
+	} else {
+		CACHE_LINE_THREAD_SPECIFIC* new_thread_specific = new CACHE_LINE_THREAD_SPECIFIC;
+		new_thread_specific->iCurrentReadPos = -1;
+		new_thread_specific->iCurrentWritePos = -1;
+		cache_line->thread_specific_map[dwCurrentThread] = new_thread_specific;
+		cache_line->thread_specific = new_thread_specific;
+	}
+
+	cache_line->dwLastThread = dwCurrentThread;
+
+	return true;
+}
+
 bool CACHE::CacheLineDeleteThreadSpecificMap(CACHE_LINE* cache_line)
 {
 	if (bThreadsafe) {
@@ -245,8 +274,11 @@ bool CACHE::CacheLineDeleteThreadSpecificMap(CACHE_LINE* cache_line)
 int CACHE::GetCacheLineCurrentReadPos(CACHE_LINE* cache_line)
 {
 	if (bThreadsafe) {
-		CacheLineGetThreadSpecific(cache_line);
-		return cache_line->thread_specific->iCurrentReadPos;
+		EnterCritical();
+		CacheLineGetThreadSpecific_NCS(cache_line);
+		int res = cache_line->thread_specific->iCurrentReadPos;
+		LeaveCritical();
+		return res;
 	} else
 		return cache_line->sts.iCurrentReadPos;
 }
@@ -255,7 +287,7 @@ int CACHE::SetCacheLineCurrentReadPos(CACHE_LINE* cache_line, int position)
 {
 	if (bThreadsafe) {
 		EnterCritical();
-		CacheLineGetThreadSpecific(cache_line);
+		CacheLineGetThreadSpecific_NCS(cache_line);
 		cache_line->thread_specific->iCurrentReadPos = position;
 		LeaveCritical();
 	} else
@@ -268,7 +300,7 @@ int CACHE::IncCacheLineCurrentReadPos(CACHE_LINE* cache_line, int inc_val)
 {
 	if (bThreadsafe) {
 		EnterCritical();
-		CacheLineGetThreadSpecific(cache_line);
+		CacheLineGetThreadSpecific_NCS(cache_line);
 		cache_line->thread_specific->iCurrentReadPos += inc_val;
 		LeaveCritical();
 	} else
@@ -281,8 +313,11 @@ int CACHE::IncCacheLineCurrentReadPos(CACHE_LINE* cache_line, int inc_val)
 int CACHE::GetCacheLineCurrentWritePos(CACHE_LINE* cache_line)
 {
 	if (bThreadsafe) {
-		CacheLineGetThreadSpecific(cache_line);
-		return cache_line->thread_specific->iCurrentWritePos;
+		EnterCritical();
+		CacheLineGetThreadSpecific_NCS(cache_line);
+		int res = cache_line->thread_specific->iCurrentWritePos;
+		LeaveCritical();
+		return res;
 	} else
 		return cache_line->sts.iCurrentWritePos;
 }
@@ -291,7 +326,7 @@ int CACHE::SetCacheLineCurrentWritePos(CACHE_LINE* cache_line, int position)
 {
 	if (bThreadsafe) {
 		EnterCritical();
-		CacheLineGetThreadSpecific(cache_line);
+		CacheLineGetThreadSpecific_NCS(cache_line);
 		cache_line->thread_specific->iCurrentWritePos = position;
 		LeaveCritical();
 	} else
@@ -304,7 +339,7 @@ int CACHE::IncCacheLineCurrentWritePos(CACHE_LINE* cache_line, int inc_val)
 {
 	if (bThreadsafe) {
 		EnterCritical();
-		CacheLineGetThreadSpecific(cache_line);
+		CacheLineGetThreadSpecific_NCS(cache_line);
 		cache_line->thread_specific->iCurrentWritePos += inc_val;
 		LeaveCritical();
 	} else
@@ -338,7 +373,7 @@ bool CACHE::IsCacheLineLocked(CACHE_LINE* cache_line)
 	return !!cache_line->locked;
 }
 
-bool CACHE::InitCache(int iBuffers, int iBytesPerBuffer)
+bool CACHE::InitCache(int iBuffers, int iBytesPerBuffer, bool bPermanentGrow)
 {
 	if (iBuffers < 1 && iNumberOfCacheLines < 1)
 		return false;
@@ -380,7 +415,10 @@ bool CACHE::InitCache(int iBuffers, int iBytesPerBuffer)
 	if (existing_cache_lines <= 0) {
 		cache_lines = (CACHE_LINE**)calloc(sizeof(CACHE_LINE*), MAX_CACHE_LINES/*iBuffers*/);
 		iInitialNumberOfCacheLines = iBuffers;
-	};/* else
+	} else
+		if (bPermanentGrow)
+			iInitialNumberOfCacheLines = iBuffers;
+	/* else
 		if (iBuffers > iNumberOfCacheLines) 
 			cache_lines = (CACHE_LINE**)realloc(cache_lines, sizeof(CACHE_LINE*)*iBuffers);
 */
@@ -418,6 +456,8 @@ bool CACHE::InitCache(int iBuffers, int iBytesPerBuffer)
 			cache_lines[i]->iSize = 0;
 			cache_lines[i]->bValid = 0;
 			cache_lines[i]->iSourceOffset = -INT_MAX;
+			free(cache_lines[i]);
+			cache_lines[i] = NULL;
 		}
 	}
 
@@ -444,7 +484,7 @@ CACHE::~CACHE()
 
 	for (int i=0; i<iNumberOfCacheLines; i++) {
 		if (cache_lines[i]->bBeingRead)
-			WaitUntilReadyForRead(i);
+			WaitUntilReadyForRead(i, false);
 
 		if (cache_lines[i]->pAllocated)
 			free(cache_lines[i]->pAllocated);
@@ -492,6 +532,34 @@ bool CACHE::GetThreadSpecific()
 	return true;
 }
 
+/* can be called from inside a function that is already in a critical section */
+bool CACHE::GetThreadSpecific_NCS()
+{
+	DWORD dwCurrentThread = GetCurrentThreadId();
+	if (dwCurrentThread == dwLastThread) {
+		return true;
+	}
+
+	CACHE_THREAD_SPECIFIC_MAP::iterator iter = thread_specific_map.find(dwCurrentThread);
+	if (iter != thread_specific_map.end()) {
+		thread_specific = iter->second;
+	} else {
+		CACHE_THREAD_SPECIFIC* new_thread_specific = new CACHE_THREAD_SPECIFIC;
+		new_thread_specific->iBytesLeftInCurrentReadCacheLine = -1;
+		new_thread_specific->iBytesLeftInCurrentWriteCacheLine = -1;
+		new_thread_specific->iLastAccessedCacheLineIndexRead = -1;
+		new_thread_specific->iLastAccessedCacheLineIndexWrite = -1;
+		new_thread_specific->iReadPosition = -1;
+		new_thread_specific->iWritePosition = -1;
+		thread_specific_map[dwCurrentThread] = new_thread_specific;
+		thread_specific = new_thread_specific;
+	}
+
+	dwLastThread = dwCurrentThread;
+
+	return true;
+}
+
 bool CACHE::DeleteThreadSpecific()
 {
 	CACHE_THREAD_SPECIFIC_MAP::iterator iter = thread_specific_map.begin();
@@ -511,7 +579,7 @@ int CACHE::GetLastAccessedCacheLineIndex(bool read)
 		return (read?sts.iLastAccessedCacheLineIndexRead:sts.iLastAccessedCacheLineIndexWrite);
 	else {
 		EnterCritical();
-		GetThreadSpecific();
+		GetThreadSpecific_NCS();
 		int result = (read?thread_specific->iLastAccessedCacheLineIndexRead:thread_specific->iLastAccessedCacheLineIndexWrite);
 		LeaveCritical();
 		return result;
@@ -524,7 +592,7 @@ __int64 CACHE::GetAccessPosition(bool read)
 		return (read?sts.iReadPosition:sts.iWritePosition);
 	else {
 		EnterCritical();
-		GetThreadSpecific();
+		GetThreadSpecific_NCS();
 		__int64 result = (read?thread_specific->iReadPosition:thread_specific->iWritePosition);
 		LeaveCritical();
 		return result;
@@ -537,7 +605,7 @@ int CACHE::GetBytesLeftInCurrentCacheLine(bool read)
 		return (read?sts.iBytesLeftInCurrentReadCacheLine:sts.iBytesLeftInCurrentWriteCacheLine);
 	else {
 		EnterCritical();
-		GetThreadSpecific();
+		GetThreadSpecific_NCS();
 		int result = (read?thread_specific->iBytesLeftInCurrentReadCacheLine:thread_specific->iBytesLeftInCurrentWriteCacheLine);
 		LeaveCritical();
 		return result;
@@ -554,7 +622,7 @@ bool CACHE::SetBytesLeftInCurrentCacheLine(bool read, int bytes, bool relative)
 			(*i) = bytes;
 	} else {
 		EnterCritical();
-		GetThreadSpecific();
+		GetThreadSpecific_NCS();
 		int* i = (read?&thread_specific->iBytesLeftInCurrentReadCacheLine:&thread_specific->iBytesLeftInCurrentWriteCacheLine);
 		if (relative)
 			(*i) += bytes;
@@ -577,7 +645,7 @@ bool CACHE::SetAccessPosition(bool read, __int64 position, bool relative)
 			(*i) = position;
 	} else {
 		EnterCritical();
-		GetThreadSpecific();
+		GetThreadSpecific_NCS();
 		__int64* i = (read?&thread_specific->iReadPosition:&thread_specific->iWritePosition);
 		if (relative)
 			(*i) += position;
@@ -600,7 +668,7 @@ bool CACHE::SetLastAccessedCacheLineIndex(bool read, int bytes, bool relative)
 			(*i) = bytes;
 	} else {
 		EnterCritical();
-		GetThreadSpecific();
+		GetThreadSpecific_NCS();
 		int* i=(read?&thread_specific->iLastAccessedCacheLineIndexRead:&thread_specific->iLastAccessedCacheLineIndexWrite);
 		if (relative)
 			(*i) += bytes;
@@ -680,8 +748,12 @@ int CACHE::Open(STREAM* stream, int mode)
 	return CACHE_OPEN_NO_ERROR;
 }
 
+int enter_count = 0;
+int leave_count = 0;
+
 bool CACHE::EnterCritical()
 {
+	enter_count++;
 	if (bThreadsafe)
 		EnterCriticalSection(&critical_section);
 
@@ -690,6 +762,7 @@ bool CACHE::EnterCritical()
 
 bool CACHE::LeaveCritical()
 {
+	leave_count++;
 	if (bThreadsafe) {
 		_ASSERT(critical_section.LockCount >= 0);
 		LeaveCriticalSection(&critical_section);
@@ -705,7 +778,8 @@ int CACHE::Close()
 
 	if (CanWrite()) {
 		for (int i=0; i<iNumberOfCacheLines; i++) {
-			WriteCacheLineToTargetStream(i);
+			if (!cache_lines[i]->bBeingWritten && cache_lines[i]->bDirty)
+				WriteCacheLineToTargetStream(i);
 			WaitUntilReadyForWrite(i);
 		}
 
@@ -861,8 +935,7 @@ int CACHE::LoadSegmentIntoCacheLine(__int64 iPosition, int iCacheLineIndex)
 			cl->bDirty = false;
 			cl->bBeingRead = true;
 			cl->bBeingWritten = false;
-			int wait = WaitUntilReadyForRead(iCacheLineIndex);
-
+			int wait = WaitUntilReadyForRead(iCacheLineIndex, false);
 			if (wait == CACHE_LOAD_FAILURE)
 				return wait;
 		} else {
@@ -887,6 +960,7 @@ int CACHE::LoadSegmentIntoCacheLine(__int64 iPosition, int iCacheLineIndex)
 	} else {
 		DWORD dwWritten = 0;
 
+		/* maybe return WRITEBACK_FAILURE here? */
 		if (cl->bBeingWritten) {
 			if (WaitUntilReadyForWrite(iCacheLineIndex) <= 0)
 				return false;
@@ -945,7 +1019,9 @@ int CACHE::FindCacheLineIndexToOverwrite()
 	   a cache line index to overwrite */
 	if (min_index > -1 && cache_lines[min_index]->bDirty) {
 		PrepareCacheLineForOverwrite(min_index);
-		return FindCacheLineIndexToOverwrite();
+		int result = FindCacheLineIndexToOverwrite();
+		LeaveCritical();
+		return result;
 	}
 
 	/* if cache has been grown */
@@ -954,8 +1030,11 @@ int CACHE::FindCacheLineIndexToOverwrite()
 			if (IsEnabled(CACHE_CREATE_LOG))
 				fprintf(fLog, "shrinking cache...\n");
 			
+			CacheLineDeleteThreadSpecificMap(cache_lines[iNumberOfCacheLines - 1]);
 			InitCache(iNumberOfCacheLines - 1, -1);
-			return FindCacheLineIndexToOverwrite();
+			int result = FindCacheLineIndexToOverwrite();
+			LeaveCritical();
+			return result;
 		}
 	}
 
@@ -981,13 +1060,15 @@ int CACHE::FindCacheLineIndexToOverwrite()
 			WaitUntilReadyForWrite(cli[idx]);
 			free(h);
 			free(cli);
-			return FindCacheLineIndexToOverwrite();
+			int result = FindCacheLineIndexToOverwrite();
+			LeaveCritical();
+			return result;
 		} else {
 			free(h);
 			free(cli);
 
 			/* when having arrived here, all cache lines are locked or being read,
-			   thus the cache must either grow, wait for a read to be competed,
+			   thus the cache must either grow, wait for a read operation to complete,
 			   or report a fatal error */
 
 			if (IsEnabled(CACHE_CREATE_LOG)) {
@@ -1006,10 +1087,13 @@ int CACHE::FindCacheLineIndexToOverwrite()
 			int cli = -1;
 			for (int j=0; j<iNumberOfCacheLines; j++) {
 				CACHE_LINE* cl = cache_lines[j];
-				if (cache_lines[j]->bBeingRead && !IsCacheLineLocked(cache_lines[j])) {
+				if (cl->bBeingRead && !IsCacheLineLocked(cl)) {
 					cli = j;
-					if (GetSource()->IsOverlappedIOComplete(&cache_lines[j]->overlapped)) {
-						WaitUntilReadyForRead(j);
+					if (GetSource()->IsOverlappedIOComplete(&cl->overlapped)) {
+						LockCacheLine(j);
+						WaitUntilReadyForRead(j, false);
+						UnlockCacheLine(j);
+						LeaveCritical();
 						return j;
 					}
 				}
@@ -1023,16 +1107,19 @@ int CACHE::FindCacheLineIndexToOverwrite()
 				   also does, thus remove the first one */
 				free_cache_lines.pop_back();
 				cache_lines[iNumberOfCacheLines-1]->bWasGrown = true;
+				LeaveCritical();
 				return iNumberOfCacheLines - 1;
 			} else {
 				if (cli > -1) {
-					WaitUntilReadyForRead(cli);
+					WaitUntilReadyForRead(cli, false);
+					LeaveCritical();
 					return cli;
 				}
 
 //				Sleep(500);
 //				return FindCacheLineIndexToOverwrite();
-				_ASSERT(0);
+//				_ASSERT(0);
+				LeaveCritical();
 				return -1;
 			}
 		}
@@ -1069,7 +1156,7 @@ int CACHE::EnsureFreeCacheLine()
 
 	free_cache_lines.push_back(cache_line_index);
 
-	/* if a last-accessed cache line was freeed, it cannot be reused, so
+	/* if a last-accessed cache line was freed, it cannot be reused, so
 	   the iLastAccessedCacheLinexxxx elements must be deleted */
 	if (IsEnabled(CACHE_THREADSAFE)) {
 		CACHE_THREAD_SPECIFIC_MAP::iterator iter;
@@ -1097,7 +1184,7 @@ int CACHE::UseFreeCacheLine()
 	EnsureFreeCacheLine();
 
 	if (free_cache_lines.empty())
-		return -1;
+		return CACHE_NO_FREE_CACHE_LINE;
 
 	int index = free_cache_lines[0];
 	free_cache_lines.pop_front();
@@ -1106,7 +1193,11 @@ int CACHE::UseFreeCacheLine()
 
 int CACHE::LoadSegment(__int64 iPosition)
 {
-	int result = LoadSegmentIntoCacheLine(iPosition, UseFreeCacheLine());
+	int free_cache_line_index = UseFreeCacheLine();
+	if (free_cache_line_index == CACHE_NO_FREE_CACHE_LINE)
+		return CACHE_NO_FREE_CACHE_LINE;
+
+	int result = LoadSegmentIntoCacheLine(iPosition, free_cache_line_index);
 
 	if (result == CACHE_WRITEBACK_FAILURE || result == CACHE_LOAD_FAILURE)
 		return result;
@@ -1137,11 +1228,16 @@ int CACHE::Read(void* pDest, DWORD dwBytes)
 		int last_index = GetLastAccessedCacheLineIndex(true);
 		CACHE_LINE* cl = cache_lines[last_index];
 		
-		if (!WaitUntilReadyForRead(last_index)) {
+/* Apr 11, 2006: read-ahead problem reported. When a preceding read-ahead failed,
+                 it might be necessary to lock this one as well since a real 
+				 read ahead could occur here under those circumstances */
+		LockCacheLine(cl);
+		if (!WaitUntilReadyForRead(last_index, true)) {
+			UnlockCacheLine(cl);
 			LeaveCritical();
 			return -1;
 		}
-
+		UnlockCacheLine(cl);
 		/* this should actually not occur */
 		if (!cl->iUsedSize) {
 			LeaveCritical();
@@ -1221,7 +1317,7 @@ int CACHE::Read(void* pDest, DWORD dwBytes)
 		   select the cache line it is supposed to wait for as target for the prefetch operation. 
 		*/
 		LockCacheLine(index);
-		int wait = WaitUntilReadyForRead(index);
+		int wait = WaitUntilReadyForRead(index, true);
 		UnlockCacheLine(index);
 
 		if (wait == CACHE_WRITEBACK_FAILURE || wait == CACHE_LOAD_FAILURE) {
@@ -1291,8 +1387,8 @@ int CACHE::Write(void* pSrc, DWORD dwBytes)
 				written = Write(pbSrc + total_written, 
 					min(GetBytesLeftInCurrentCacheLine(false), (int)(dwBytes - total_written)));
 
-				if (written == CACHE_WRITEBACK_FAILURE)
-					return CACHE_WRITEBACK_FAILURE;
+				if (written == CACHE_WRITEBACK_FAILURE || written == CACHE_LOAD_FAILURE)
+					return written;
 
 				total_written += written;
 
@@ -1311,11 +1407,11 @@ int CACHE::Write(void* pSrc, DWORD dwBytes)
 			if (index < 0) {
 				int load = LoadSegment(GetAccessPosition(false));
 
-				if (load == CACHE_WRITEBACK_FAILURE || load == CACHE_LOAD_FAILURE)
+/*				if (load == CACHE_WRITEBACK_FAILURE || load == CACHE_LOAD_FAILURE)
 					return load;
-
+*/
 				if (load <= 0)
-					return 0;
+					return load;
 
 				index = FindCacheLine(GetAccessPosition(false),
 					GetLastAccessedCacheLineIndex(false));
@@ -1435,7 +1531,7 @@ bool CACHE::IsEndOfStream()
       Check WaitUntilReadyForRead for correct behaviour when LoadSegment
 	  returns CACHE_WRITEBACK_FAILURE
 */
-int CACHE::WaitUntilReadyForRead(int iCacheLineIndex)
+int CACHE::WaitUntilReadyForRead(int iCacheLineIndex, bool bSeriousAccess)
 {
 	if (iCacheLineIndex < 0 || iCacheLineIndex >= iNumberOfCacheLines)
 		return false;
@@ -1473,10 +1569,33 @@ int CACHE::WaitUntilReadyForRead(int iCacheLineIndex)
 	EnterCritical();
 
 	if ((GetSource()->GetMode() & STREAM_OVERLAPPED) && !IsEnabled(CACHE_THREADSAFE)) {
-		if (bReadAhead && cl->iSourceOffset + cl->iSize < GetSize() && iNumberOfCacheLines > 3) {
-			int index = FindCacheLine(cl->iSourceOffset + cl->iSize, -1);
-			if (index < 0) 
-				LoadSegment(cl->iSourceOffset + cl->iSize);
+
+		int preread_count = iPrereadCacheLines;
+			
+		if (preread_count > iNumberOfCacheLines / 4)
+			preread_count = iNumberOfCacheLines / 4;
+		
+		if (!bSeriousAccess)
+			preread_count = 0;
+		
+		//
+/*		if (cache_lines[0]->iSize * preread_count > 1<<22) {
+			preread_count = (1<<22) / cache_lines[0]->iSize; 
+		}
+*/
+		for (int j = 1; j <= preread_count; j++) {
+
+			if (bReadAhead && cl->iSourceOffset + j*cl->iSize < GetSize() && iNumberOfCacheLines > 3) {
+				int index = FindCacheLine(cl->iSourceOffset + j*cl->iSize, -1);
+				if (index < 0) {
+				//	bool bGrow = IsEnabled(CACHE_CAN_GROW);
+				//	Disable(CACHE_CAN_GROW);
+					int res = LoadSegment(cl->iSourceOffset + j*cl->iSize);
+				//	SetFlag(CACHE_CAN_GROW, bGrow);
+					if (res == CACHE_NO_FREE_CACHE_LINE)
+						j = preread_count;
+				}
+			}
 		}
 	}
 
@@ -1488,7 +1607,7 @@ int CACHE::WaitUntilReadyForRead(int iCacheLineIndex)
 int CACHE::WaitUntilReadyForWrite(int iCacheLineIndex)
 {
 	// finish pending read operation, however, success is not necessary
-	WaitUntilReadyForRead(iCacheLineIndex);
+	WaitUntilReadyForRead(iCacheLineIndex, false);
 
 	CACHE_LINE* cl = cache_lines[iCacheLineIndex];
 
@@ -1549,17 +1668,25 @@ bool CACHE::_Enable(int flag, bool set, bool enable)
 	if (set)
 		*f = enable;
 
+	EnterCritical();
 	if (copy_status) {
-		GetThreadSpecific();
+		GetThreadSpecific_NCS();
 		memcpy(thread_specific, &sts, sizeof(sts));
 		for (int j=0;j<iNumberOfCacheLines;j++) {
 			CACHE_LINE* cl = cache_lines[j];
-			CacheLineGetThreadSpecific(cl);
+			CacheLineGetThreadSpecific_NCS(cl);
 			memcpy(cl->thread_specific, &cl->sts, sizeof(cl->sts));
 		}
 	}
-	
+	LeaveCritical();
 
 	return b;
+}
+
+bool CACHE::SetPrereadRange(int range)
+{
+	iPrereadCacheLines = range;
+	
+	return true;
 }
 

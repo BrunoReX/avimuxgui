@@ -41,7 +41,7 @@ int GetOpenSaveFileNameUTF8(void* lpofn, int open)
 	OPENFILENAMEW*	ofdw = (OPENFILENAMEW*)lpofn;
 
 	char* cFilter = reserve(ofda->lpstrFilter);
-	char* cCoustomFilter = reserve(ofda->lpstrCustomFilter);
+	char* cCustomFilter = reserve(ofda->lpstrCustomFilter);
 	char* cDefExt = reserve(ofda->lpstrDefExt);
 	char* cFile = (char*)calloc(2,16384);
 	char* cInitialDir = reserve(ofda->lpstrInitialDir);
@@ -51,7 +51,7 @@ int GetOpenSaveFileNameUTF8(void* lpofn, int open)
 	OPENFILENAME* o = (OPENFILENAME*)calloc(1,sizeof(OPENFILENAME));
 	memcpy(o, ofda, sizeof(OPENFILENAME));
 	o->lpstrFilter = cFilter;
-	o->lpstrCustomFilter = cCoustomFilter;
+	o->lpstrCustomFilter = cCustomFilter;
 	o->lpstrDefExt = cDefExt;
 	o->lpstrFile = cFile;
 	o->lpstrInitialDir = cInitialDir;
@@ -59,7 +59,7 @@ int GetOpenSaveFileNameUTF8(void* lpofn, int open)
 	o->lpTemplateName = cTemplateName;
 
 	fromUTF8((void*)ofda->lpstrFilter, cFilter);
-	fromUTF8((void*)ofda->lpstrCustomFilter, cCoustomFilter);
+	fromUTF8((void*)ofda->lpstrCustomFilter, cCustomFilter);
 	fromUTF8((void*)ofda->lpstrDefExt, cDefExt);
 	fromUTF8((void*)ofda->lpstrFile, cFile);
 	fromUTF8((void*)ofda->lpstrInitialDir, cInitialDir);
@@ -93,5 +93,14 @@ int GetOpenSaveFileNameUTF8(void* lpofn, int open)
 
 	toUTF8((void*)o->lpstrFile, ofda->lpstrFile);
 
+	free(cFilter);
+	free(cCustomFilter);
+	free(cDefExt);
+	free(cFile);
+	free(cInitialDir);
+	free(cFileTitle);
+	free(cTemplateName);
+
+	free(o);
 	return res;
 }

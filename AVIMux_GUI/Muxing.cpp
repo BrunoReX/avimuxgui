@@ -12,7 +12,10 @@
 #include "..\UnicodeCalls.h"
 #include "..\integers.h"
 #include "..\generateuids.h"
+#include "..\UnicodeCalls.h"
 #include "UTF8Windows.h"
+#include "OSVersion.h"
+#include "..\Filestream.h"
 
 #define INT64_MAX 0x7FFFFFFFFFFFFFFF
 
@@ -801,6 +804,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	bool			bPreloadCompensated=true;
 	bool			bFinishPart=false;
 	bool			bFirst;
+	bool			bInjectSpace=false;
 	bool			bFilesize_reached;
 	bool			bManual_splitpoint_reached;
 	bool			bMustCorrectAudio=false;
@@ -825,6 +829,8 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	int				estimated_number_of_reclists = 0;
 	__int64			estimated_total_size = 0;
 	__int64			free_disk_space = 0;
+
+	std::vector<__int64> injected_space;
 
 	int iError = 0;
 
@@ -869,6 +875,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 
 	bool bUnbufferedOutput = !!s->GetInt("output/general/unbuffered");
 	bool bOverlapped = !!lpDAI->settings->GetInt("output/general/overlapped");
+	bool bThreaded = !!lpDAI->settings->GetInt("output/general/threaded");
 	bool bLegacyIndex = !!s->GetInt("output/avi/legacyindex");
 	bool bOpenDML  = !!s->GetInt("output/avi/opendml/on");
 	bool bReclists = !!s->GetInt("output/avi/reclists");
@@ -1115,7 +1122,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	if (lpDAI->split_points && lpDAI->split_points->GetCount())
 		lpDAI->dwEstimatedNumberOfFiles = max(lpDAI->split_points->GetCount()+1, lpDAI->dwEstimatedNumberOfFiles);
 
-	if (lpDAI->settings->GetInt("output/general/overwritedlg")) {
+	if (lpDAI->settings->GetInt("gui/general/overwritedlg")) {
 		check = FirstFilenameCheck(lpDAI, RawFilename, FFC_FORMAT_AVI, &overwriteable_size);
 		if (check == -1)
 			goto finish;
@@ -1185,6 +1192,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	DestFile=new FILESTREAM;
 	if (DestFile->Open(cFilename, STREAM_READ | 
 			(bUnbufferedOutput?STREAM_UNBUFFERED_WRITE:STREAM_WRITE) | 
+			(bThreaded?STREAM_THREADED:0) |
 			(bOverlapped?STREAM_OVERLAPPED:0))==STREAM_ERR) {
 
 		cStr[0]=LoadString(IDS_COULDNOTOPENOUTPUTFILE);
@@ -1334,7 +1342,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 					
 					dwFlags=AVIIF_KEYFRAME;
 					AVIOut->AddChunk(i+1,&lpBuffer,iSize,dwFlags);
-					if (!lpBuffer) lpBuffer=malloc(1<<20);
+					if (!lpBuffer) lpBuffer=malloc(1<<22);
 					iDelay-=(int)round(dwMicroSecRead/1000);
 
 					AddAudioSize(qwStats,iSize);
@@ -1366,6 +1374,18 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	lpDAI->lpProtocol->EnsureVisible(lpDAI->lpProtocol->GetItemCount()-1,false);
 
 
+	srand(GetTickCount());
+	/* injecting space */
+	if (lpDAI->settings->GetInt("output/avi/inject/enabled")) {
+		bInjectSpace = true;
+		lpDAI->dlg->AddProtocolLine("injecting spaces enabled", 4);
+		__int64 prob = lpDAI->settings->GetInt("output/avi/inject/probability");
+		char c[64];
+		sprintf(c, "probability: %1.2f%%", 100. * (double)prob/10000.);
+		lpDAI->dlg->AddProtocolLine(c, 4);
+		sprintf(c, "injecting %d bytes", lpDAI->settings->GetInt("output/avi/inject/size"));
+		lpDAI->dlg->AddProtocolLine(c, 4);
+	}
 //	ResolveSplitpoints(lpDAI, RSPF_CHAPTERS);
 	
 	i_vs_nspf = v->GetNanoSecPerFrame();
@@ -1374,6 +1394,8 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	dwReclistOverhead=(bOpenDML)?12:28;
 // mux
 	//while ((dwFrameCountTotal<lpDAI->dwMaxFrames)&&(!bStop))
+
+
 	while ((!v->IsEndOfStream())&&(!bStop))
 	{
 //		dwChunkOverhead=(bOpenDML)?(AVIOut->IsLegacyEnabled())?32:16:24;
@@ -1423,8 +1445,26 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 			dwFlags=(bKeyframe)?AVIIF_KEYFRAME:0;
 			bKeyframe_passed = bKeyframe;
 			
-			AVIOut->AddChunk(0,&lpBuffer,iSize,dwFlags);
-			if (!lpBuffer) lpBuffer=malloc(1<<20);
+			int orig_size = iSize;
+			bool bInjected = false;
+			if (bInjectSpace) {
+				__int64 prob = lpDAI->settings->GetInt("output/avi/inject/probability");
+				int random = rand() % 10000;
+				if (random < prob) {
+					int s = (int)lpDAI->settings->GetInt("output/avi/inject/size");
+					iSize += s;
+					bInjected = true;
+					//__int64 
+				}
+			}
+
+			__int64 chunk_file_pos;
+			memset(((char*)lpBuffer)+orig_size, 0, (int)lpDAI->settings->GetInt("output/avi/inject/size"));
+			AVIOut->AddChunk(0,&lpBuffer,iSize,dwFlags, &chunk_file_pos);
+			if (bInjected)
+				injected_space.push_back(chunk_file_pos + orig_size + 8);
+			if (!lpBuffer) 
+				lpBuffer=malloc(1<<22);
 			dwFrameSizes_Sum -= dwFrameSizes[dwFrameSizes_Pos];
 			dwFrameSizes[dwFrameSizes_Pos++]=iSize;
 			dwFrameSizes_Pos%=dwFrameSizes_Len;
@@ -1635,6 +1675,21 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 
 			lpDAI->dlg->AddProtocolLine("stream lengths set",2);
 
+			if (bInjectSpace) {
+				strcat(cFilename, ".spaces.txt");
+				FILE* f = fopenutf8(cFilename, "wb", DoesOSSupportUnicode());
+				if (!f)
+					MessageBox(0, "Could not open file for space list",
+						"Fatal error", MB_OK | MB_ICONERROR);
+
+				std::vector<__int64>::iterator iter = injected_space.begin();
+				for (; iter != injected_space.end(); iter++) {
+					fprintf(f, "%I64d\x0D\x0A", *iter);
+				}
+				fclose(f);
+			}
+
+
 			// new output file
 			NextAVIOut = NULL;
 			if (lpDAI->dwMaxFrames!=dwFrameCountTotal && !bStop)
@@ -1661,6 +1716,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 					NextDestFile=new FILESTREAM;
 					if (NextDestFile->Open(cBuffer, STREAM_READ |
 						(bUnbufferedOutput?STREAM_UNBUFFERED_WRITE:STREAM_WRITE) | 
+						(bThreaded?STREAM_THREADED:0) |
 						(bOverlapped?STREAM_OVERLAPPED:0))==STREAM_ERR) {
 
 						AVIOut->FlushWriteCache();
@@ -1775,8 +1831,10 @@ finish2:
 			delete qwStreamSizes;
 			qwStreamSizes=NULL;
 
+
 			if (NextAVIOut)
 			{
+				injected_space.clear();
 				lpDAI->dlg->AddProtocolLine("-------------------------------------------------------------",4);
 				qwMillisec=(__int64)(dwFrameCountTotal*i_vs_nspf/1000000);
 				
@@ -1864,7 +1922,7 @@ finish:
 		MSG_LIST_append(msglist,cStr[0].GetBuffer(255));
 //		MSG_LIST_2_Msg(msglist,report);
 
-		if (lpDAI->bDoneDlg) 
+		if (s->GetInt("gui/general/finished_muxing_dialog")) 
 			lpDAI->dlg->MessageBox(report,lpDAI->dlg->cstrInformation,
 				MB_OK | MB_ICONINFORMATION);
 
@@ -1873,7 +1931,8 @@ finish:
 	}
 	else
 	{
-		if (lpDAI->bDoneDlg) lpDAI->dlg->MessageBox(cStr[0],lpDAI->dlg->cstrInformation,MB_OK | MB_ICONINFORMATION);
+		if (s->GetInt("gui/general/finished_muxing_dialog")) 
+			lpDAI->dlg->MessageBox(cStr[0],lpDAI->dlg->cstrInformation,MB_OK | MB_ICONINFORMATION);
 	}
 //	delete lpDPI;
 	lpDAI->dlg->SetDialogState_Config();
@@ -1919,7 +1978,7 @@ finish:
 	delete cFilename;
 	silence->Close();
 	delete silence;
-	if (bExit) c->PostMessage(WM_CLOSE,0,0);
+	if (bExit) c->PostMessage(WM_COMMAND, ID_LEAVE, 0);
 	bMuxing = false;
 	CloseHandle(hSem);	
 	FinishMuxing(lpDAI);
@@ -2347,8 +2406,10 @@ int MuxThread_MKV(DEST_AVI_INFO* lpDAI)
 	__int64		i_vs_nspf;
 	bool		bUnbufferedOutput = !!lpDAI->settings->GetInt("output/general/unbuffered");
 	bool		bOverlapped = !!lpDAI->settings->GetInt("output/general/overlapped");
+	bool		bThreaded = !!lpDAI->settings->GetInt("output/general/threaded");
 
 	__int64		iProgress;
+	int			total_codecprivate_size;
 	int			iSourceLaces;
 	int			dwHour,dwMin,dwSec,dwFrac;
 
@@ -2704,7 +2765,7 @@ int MuxThread_MKV(DEST_AVI_INFO* lpDAI)
 		lpDAI->dwEstimatedNumberOfFiles = max(lpDAI->split_points->GetCount() + 1, lpDAI->dwEstimatedNumberOfFiles);
 
 	check = CHECKEXISTENCE_OVERWRITE;
-	if (lpDAI->settings->GetInt("output/general/overwritedlg")) {
+	if (lpDAI->settings->GetInt("gui/general/overwritedlg")) {
 		check = FirstFilenameCheck(lpDAI, RawFilename, FFC_FORMAT_MKV, &overwriteable_size);
 		if (check == -1)
 			bStop = 1;
@@ -2768,7 +2829,8 @@ start:
 		DestFile=new FILESTREAM;
 		if (DestFile->Open(cBuffer, STREAM_READ | 
 			(bUnbufferedOutput?STREAM_UNBUFFERED_WRITE:STREAM_WRITE) | 
-			(bOverlapped?STREAM_OVERLAPPED:0))==STREAM_ERR) {
+			(bOverlapped?STREAM_OVERLAPPED:0) |
+			(bThreaded?STREAM_THREADED:0))==STREAM_ERR) {
 			lpDAI->dlg->MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE),lpDAI->dlg->cstrError,MB_OK | MB_ICONERROR);
 			lpDAI->dlg->ButtonState_STOP();
 			lpDAI->dlg->SetDialogState_Config();
@@ -2885,14 +2947,8 @@ start:
 				(float)cue_ratio * (double)((double)streams * hours));
 		}
 		lpDAI->dlg->AddProtocolLine(Message_index(MSG_CLUSTERINDEX, m->IsClusterIndexEnabled()), 4);
-		m->SetInitialHeaderSize(hdr_size);
-		{
-			char cSize[20];
-			QW2Str(hdr_size, cSize, 1);
-			sprintf(cBuffer, LoadString(STR_MUXLOG_HEADERSIZE), cSize);
-			lpDAI->dlg->AddProtocolLine(cBuffer, 4);
-		}
 
+		total_codecprivate_size = 0;
 		// set video attributes
 		if (lpDAI->dwNbrOfVideoStreams) {
 			int x, y;
@@ -2901,12 +2957,13 @@ start:
 			v->GetOutputResolution(&r2);
 			m->SetResolution(0,x,y,r2.iWidth,r2.iHeight);
 			m->SetCropping(0, &r2.rcCrop);
-			m->SetFlags(0,1,bLaceVideo,1);
+			m->SetFlags(0, 1, bLaceVideo, !!v->IsDefault());
 			m->SetTrackNumber(0,1);
 			m->SetTrackType(0,MSTRT_VIDEO);
 			if (!v->GetCodecID()) {
 				m->SetCodecID(0,"V_MS/VFW/FOURCC");
 				m->SetCodecPrivate(0,v->GetFormat(),((BITMAPINFOHEADER*)v->GetFormat())->biSize);
+				total_codecprivate_size += ((BITMAPINFOHEADER*)v->GetFormat())->biSize;
 			} else {
 				m->SetCodecID(0,v->GetCodecID());
 				if (v->GetFormat()) {
@@ -3087,6 +3144,8 @@ start:
 				wsprintf(cBuffer,LoadString(STR_MUXLOG_DELAY),lpDAI->asi[j]->iDelay);
 				lpDAI->dlg->AddProtocolLine(cBuffer,4);
 			}
+
+			total_codecprivate_size += m->GetCodecPrivateSize(i);
 			
 		} 
 		if (!(int)s->GetInt("output/mkv/lacing/style")) {
@@ -3158,7 +3217,17 @@ start:
 			} else sprintf(cBuffer, LoadString(STR_MUXLOG_COMPRESSION_TYPE), "unknown");
 
 			lpDAI->dlg->AddProtocolLine(cBuffer, 4);
+
+			total_codecprivate_size += m->GetCodecPrivateSize(j);
 		}
+		m->SetInitialHeaderSize(hdr_size + total_codecprivate_size);
+		{
+			char cSize[20];
+			QW2Str(hdr_size, cSize, 1);
+			sprintf(cBuffer, LoadString(STR_MUXLOG_HEADERSIZE), cSize);
+			lpDAI->dlg->AddProtocolLine(cBuffer, 4);
+		}
+
 		m->EnableCueAutosize((int)lpDAI->settings->GetInt("output/mkv/cues/autosize"));
 
 		if (m->IsCueAutoSizeEnabled()) {
@@ -3677,7 +3746,8 @@ start:
 	delete lpDAI->split_points;
 	delete lpDPI;
 
-	if (lpDAI->bDoneDlg) lpDAI->dlg->MessageBox(LoadString(IDS_READY),lpDAI->dlg->cstrInformation,MB_OK | MB_ICONINFORMATION);
+	if (s->GetInt("gui/general/finished_muxing_dialog"))
+		lpDAI->dlg->MessageBox(LoadString(IDS_READY),lpDAI->dlg->cstrInformation,MB_OK | MB_ICONINFORMATION);
 
 	lpDAI->dlg->SetDialogState_Config();
 	lpDAI->dlg->ButtonState_STOP();
@@ -3694,9 +3764,11 @@ start:
 
 	DecBufferRefCount(&lpDAI->cTitle);
 	FinishMuxing(lpDAI);
-	
+
+	lpDAI->settings->Delete();
+	delete lpDAI->settings;
 	delete lpDAI;
 //	cacheAllowReadAhead(0);
-	if (bExit) c->PostMessage(WM_CLOSE,0,0);
+	if (bExit) c->PostMessage(WM_COMMAND, ID_LEAVE, 0);
 	return 1;
 }

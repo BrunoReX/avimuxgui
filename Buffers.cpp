@@ -969,6 +969,9 @@ CAttribs::operator XMLNODE*() {
 				char c[16]; c[0]=0;
 				sprintf(c, "%I64d", *(__int64*)e->pData);
 				xmlAddSibling(&pNode, e->cName, c, false);
+			} else
+			if (e->iType == ATTRTYPE_ASCII || e->iType == ATTRTYPE_UTF8) {
+				xmlAddSibling(&pNode, e->cName, (char*)e->pData, false);
 			}
 			e = e->pNext;
 		}
@@ -994,7 +997,7 @@ int CAttribs::Import(XMLNODE* xml)
 			int i = atoi(xml->cValue);
 			SetInt(xml->cNodeName, i);
 		} else {
-			Add(xml->cNodeName, FATTR_ADDATTR_CREATE, ATTRTYPE_UTF8, xml->cValue);
+			SetStr(xml->cNodeName, xml->cValue);
 		}
 	}
 

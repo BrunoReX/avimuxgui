@@ -98,6 +98,7 @@
 #define IDS_VILB_NOREPAIRS              172
 #define IDS_APPLYREPAIRS                173
 #define IDS_VILB_REPAIRFRAMERATE        174
+#define IDR_HTML_HEXVIEWLISTBOX         175
 #define IDS_VILB_SETFRAMERATE           176
 #define IDS_FILEALREADYINUSE            177
 #define IDS_VILB_FLAGSSET               178
@@ -134,7 +135,7 @@
 #define IDC_SETFALGS_RESET              1003
 #define IDC_AVAILABLEAUDIOSTREAMS       1004
 #define IDC_AVAILABLEVIDEOSTREAMS       1005
-#define IDC_RECLISTS                    1006
+#define IDC_AVI1_RECLISTS               1006
 #define IDC_AUDIOINTERLEAVE             1007
 #define IDC_PRELOAD                     1008
 #define IDC_MAXFILESIZE                 1009
@@ -156,6 +157,7 @@
 #define IDC_AVOIDSEEKOPS                1057
 #define IDC_USEMAXSIZE                  1062
 #define IDC_LOAD                        1064
+#define IDC_HEXVIEW_LISTBOX             1064
 #define IDC_DELAY                       1065
 #define IDC_FPS                         1066
 #define IDC_MAKEIDX1                    1067
@@ -199,8 +201,7 @@
 #define IDC_STDI_RIFF                   1125
 #define IDC_STDI_FRAMES                 1126
 #define IDC_STDI_NBROFFRAMES            1127
-#define IDC_ODML_SETTINGS               1128
-#define IDC_SFO_ODML_SETTINGS           1128
+#define IDC_AVI1_ODML_LABEL             1128
 #define IDC_SUBNAME                     1129
 #define IDC_STDI_AUTO                   1130
 #define IDS_MAIN_OPENFILES              1131
@@ -219,11 +220,11 @@
 #define IDC_OFO_M2F2FILES               1155
 #define IDC_OFO_JOINAVIS                1156
 #define IDC_SFO_OPTIONS                 1157
-#define IDC_SFO_O_AVISTRUCTURE          1158
+#define IDC_AVI1_LABEL                  1158
 #define IDC_SFO_O_SPLIT                 1159
-#define IDC_SFO_STDIDXPERSTREAM         1160
-#define IDC_SAUDIOINTERLEAVE            1161
-#define IDC_SPRELOAD                    1162
+#define IDC_AVI1_STDIDXPERSTREAM_LABEL  1160
+#define IDC_AUDIOINTERLEAVE_LABEL       1161
+#define IDC_PRELOAD_LABEL               1162
 #define IDC_SFO_FRAMES                  1163
 #define IDC_SFO_OSP_FRAMES              1164
 #define IDC_SFO_O_AVISTRUCTURE2         1165
@@ -235,6 +236,7 @@
 #define IDC_AUDIONAME                   1171
 #define IDS_MAIN_AUDIODELAY             1172
 #define IDC_MP3CBRFRAMEMODE             1174
+#define IDC_AVI1_MP3CBRFRAMEMODE        1174
 #define IDC_ENHLIST                     1176
 #define IDC_PROGRESS_LIST               1178
 #define IDC_ABOUTBOX_LABEL              1184
@@ -245,7 +247,7 @@
 #define IDC_TITLELABEL                  1189
 #define IDC_SFO_O_MKVOPTIONS            1190
 #define IDC_SFO_O_MKVPAGE1              1190
-#define IDC_MKV_LACE                    1191
+#define IDC_MKV_LACESTYLE_LABEL         1191
 #define IDC_ESPLITPOINT                 1192
 #define IDC_IAVI_Label                  1192
 #define IDC_ADD                         1193
@@ -254,6 +256,7 @@
 #define IDC_SFO_O_MKVPAGE2              1194
 #define IDC_SFO_I_GENERAL               1195
 #define IDC_GEN_CHAPTERS                1196
+#define IDC_GUI_GENERAL_LABEL           1196
 #define IDC_SFO_O_GENERAL               1197
 #define IDC_MAKESUBCHAPTER              1198
 #define IDC_SFO_O_MKVOPTIONS3           1198
@@ -304,6 +307,7 @@
 #define IDC_IMP3_DISPRESULT             1245
 #define IDC_IMP3_LABEL                  1246
 #define IDC_IAVI_IGNORECHUNKS_LABEL     1247
+#define IDC_IAVI_IGNORCHUNKS_LABEL      1247
 #define IDC_IAVI_IGNOREKBYTE            1248
 #define IDC_IAVI_TRYTOREPAIRLARGECHUNKS 1249
 #define IDC_IAVI_FORCEMP3VBR            1250
@@ -314,7 +318,7 @@
 #define IDC_IMKV_CH_IMPORT              1255
 #define IDC_IMKV_CH_FROMFILENAMES       1256
 #define IDC_I_CH_FROMFILENAMES          1256
-#define IDC_OVERLAPPED                  1257
+#define IDC_OUTPUT_OVERLAPPED           1257
 #define IDC_STREAM_LNG                  1258
 #define IDC_RADIO_INPUT_GENERAL         1258
 #define IDC_MKV_DISPWH                  1259
@@ -354,7 +358,7 @@
 #define IDC_RIFFAVISIZE_UNIT            1290
 #define IDC_CHAPTERTREE                 1291
 #define IDC_SFO_ALLOWUNBUFFEREDREAD     1293
-#define IDC_SFO_ALLOWUNBUFFEREDWRITE    1294
+#define IDC_OUTPUT_UNBUFFERED           1294
 #define IDC_STATUSLINE                  1296
 #define IDC_SAVETREE                    1297
 #define IDC_AVI_PAGE1                   1298
@@ -368,7 +372,6 @@
 #define IDC_DTSFRAMECOUNT_LABEL         1310
 #define IDC_SAVE                        1311
 #define IDC_FULLEXPAND                  1312
-//#define IDC_WAIT                        1312
 #define IDC_WAIT_FOR_COMPLETE_TREE      1312
 #define IDC_RANDOMIZE_ELEMENT_ORDER     1313
 #define IDC_CHAPTER_DISPLAY             1315
@@ -403,6 +406,25 @@
 #define IDC_FONT_LARGER                 1354
 #define IDC_FONT_SMALLER                1355
 #define ID_LEAVE                        1356
+#define IDC_MKV_MATROSKAVERSION         1357
+#define IDC_AVI1_INTERLEAVE_LABEL       1358
+#define IDC_INPUT_LABEL                 1359
+#define IDC_OUTPUT_LABEL                1360
+#define IDC_GUI_LABEL                   1361
+#define IDC_RADIO_GUI_GENERAL           1362
+#define IDC_RADIO1                      1363
+#define IDC_DFN_NONE                    1363
+#define IDC_GUI1_HIGHLIGH_USED_FILES    1364
+#define IDC_GUI1_HIGHLIGH_STREAM_SOURCE_FILES 1365
+#define IDC_GUI1_ENABLEOVERWRITEWARNING 1366
+#define IDC_GUI1_DONEDLG                1367
+#define IDC_SAVE_TREE                   1369
+#define IDC_DEFFILENAME_LABEL           1370
+#define IDC_DFN_SEGMENT_TITLE           1371
+#define IDC_DFN_FIRST_SOURCE            1372
+#define IDC_HEXVIEW_LISTBOX2            1373
+#define IDC_CHECK1                      1374
+#define IDC_OUTPUT_THREADED             1374
 #define ID_INFORMATIONEN                40001
 #define IDM_VIDEOINFORMATION            40001
 #define ID_TEST                         40002
@@ -522,7 +544,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        170
 #define _APS_NEXT_COMMAND_VALUE         40112
-#define _APS_NEXT_CONTROL_VALUE         1357
-#define _APS_NEXT_SYMED_VALUE           101
+#define _APS_NEXT_CONTROL_VALUE         1375
+#define _APS_NEXT_SYMED_VALUE           176
 #endif
 #endif

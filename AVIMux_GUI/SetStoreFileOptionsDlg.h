@@ -18,6 +18,9 @@
 #include "ResizeableDialog.h"
 #include "..\Chapters.h"
 #include "..\Buffers.h"
+#include "afxwin.h"
+#include <deque>
+#include <vector>
 
 const int AIU_KB		= 0x0001;
 const int AIU_FRAME		= 0x0002;
@@ -56,16 +59,23 @@ static const char* cLaceDefinitionFormats[] = {
 const int CONTROL_CHECKBOX = 0x01;
 const int CONTROL_INTEGER  = 0x02;
 const int CONTROL_COMBOBOX = 0x03;
+const int CONTROL_RADIOBUTTON = 0x04;
 
 typedef struct
 {
 	void*		control;
 	int			type;
 	char		attrib[1024];
-	char**		string_list;
+	union {
+		char**		string_list;
+		int			value;
+	};
 } CONTROL_DESCRIPTOR;
 
 typedef std::vector<CONTROL_DESCRIPTOR> CONTROL_DESCRIPTORS;
+
+typedef std::vector<CWnd*> PAGE;
+typedef std::vector<std::vector<CWnd*> > PAGES;
 
 typedef struct
 {
@@ -76,7 +86,7 @@ typedef struct
 	DWORD		dwUseMaxFiles;
 	DWORD		dwMaxFiles;
 //	CDialog*	cdMain;
-	bool		bDispDoneDlg;
+//	bool		bDispDoneDlg;
 
 	bool		bExitAfterwards;
 	bool		bB0rk;
@@ -100,7 +110,9 @@ private:
 	OPENFILEOPTIONS     ofoData;
 	CAttribs*			settings;
 	CAttribs*			copy_of_settings;
-	CDynIntArray*		pages[10];
+//	CDynIntArray*		pages[10];
+
+	PAGES				_pages;
 
 	bool				AllowFreeStyle();
 // Konstruktion
@@ -227,6 +239,7 @@ public:
 	CButton m_Radio_Input_AVIMP3;
 	CButton m_Radio_Input_MKV;
 	CButton m_Radio_Input_General;
+	CButton m_Radio_GUI_General;
 	CButton	m_1st_Cluster_30sec;
 	CEdit	m_Audiointerleave;
 	CButton	m_MP3CBRMode;
@@ -353,6 +366,26 @@ protected:
 	//}}AFX_DISPATCH
 	DECLARE_DISPATCH_MAP()
 	DECLARE_INTERFACE_MAP()
+public:
+	afx_msg void OnBnClickedSfoOGeneral();
+//	afx_msg void OnKillFocus(CWnd* pNewWnd);
+	CStatic m_MKV_MatroskaVersion;
+	CStatic m_AVI1_Interleave;
+	CStatic m_GUI_General;
+	afx_msg void OnBnClickedGuiGeneral();
+	CStatic m_GUI_General_Label;
+	CButton m_GUI_highlight_used_files;
+	CButton m_GUI_highlight_stream_source_files;
+	CButton m_GUI_enable_overwrite_confirmation;
+	CButton m_GUI_DoneDlg;
+	CButton m_OK;
+	CButton m_Cancel;
+	CButton m_Output_DFN_none;
+	CButton m_Output_DFN_Segment_title;
+	CButton m_Output_DFN_First_Filename;
+	CStatic m_Output_DFN_Label;
+	CButton m_Output_Thread;
+	afx_msg void OnBnClickedOutputThreaded();
 };
 
 //{{AFX_INSERT_LOCATION}}

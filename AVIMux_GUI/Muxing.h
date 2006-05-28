@@ -44,7 +44,7 @@ typedef struct
 	DWORD				dwNbrOfAC3Streams;
 	HANDLE				hDebugFile;
 	OPENFILEOPTIONS		ofoOptions;
-	bool				bDoneDlg;
+//	bool				bDoneDlg;
 	bool				bExitAfterwards;
 	int					iOutputFormat;
 	int					iOverlapped;

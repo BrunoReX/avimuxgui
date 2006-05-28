@@ -8,6 +8,7 @@
 #include "UserDrawEdit.h"
 #include "..\utf-8.h"
 #include "..\UnicodeCalls.h"
+#include "osversion.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -26,6 +27,7 @@ CUserDrawEdit::CUserDrawEdit()
 	color = NULL;
 	clrDisabled = GetSysColor(COLOR_GRAYTEXT);
 
+	InitUnicode(DoesOSSupportUnicode());
 	
 }
 

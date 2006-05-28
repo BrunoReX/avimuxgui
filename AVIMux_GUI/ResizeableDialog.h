@@ -44,8 +44,13 @@ public:
 	void AttachWindow(HWND hWnd, int border, HWND hWndAttachTo, int distance = NULL);
 	void AttachWindow(HWND hWnd, HWND hWndAttachTo, int flags, float width_ratio = 1., float height_ratio = 1.);
 	void AttachLabel(HWND hWnd, HWND hWndLabel);
-	void AttachRow(HWND* hWnd, int distance);
+	void AttachRow(HWND* hWnd, int distance, int additional_alignment = 0);
 	void AttachUpDown(HWND hWnd, HWND hUpDown);
+	void AttachVCenterAndLeftBorder(HWND hWnd, HWND hVCenterTo, HWND hLeftBorderTo, int indent = 0);
+	void AttachWindowBeneath(HWND hWnd, HWND hWndTo, int distance,
+		int addition_alignment = 0, int indent = 0);
+	void AttachRowBeneath(HWND* hWnd_row, HWND hWndTo, int first_distance,
+		int distance, int additional_alignment, int indent);
 	
 	void ReorderWindows(int &redo);
 	void GetBorder(int &w, int &h);

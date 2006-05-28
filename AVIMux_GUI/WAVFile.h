@@ -6,8 +6,18 @@
 
 //#include "mmreg.h"
 
-#define WAV_OK		0x01
-#define WAV_ERR		0x00
+#define WAVE_OPEN_OK	+0x01
+#define WAVE_OPEN_ERROR	-0x00
+
+#define WAVE_OPEN_READ	0x2317
+#define WAVE_OPEN_WRITE 0x3A7D
+
+#define WAVE_READ_ERROR -1
+
+#define WAVE_GENERIC_ERROR -1
+#define WAVE_GENERIC_OK +1
+
+#define WAVE_HEADER_NOT_FOUND -2
 
 class WAVEFILE: public RIFFFILE, public STREAM
 {

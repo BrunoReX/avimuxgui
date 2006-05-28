@@ -358,7 +358,7 @@ void CResizeableDialog::OnDeleteItem(int nIDCtl, LPDELETEITEMSTRUCT lpDeleteItem
 
 void CResizeableDialog::AttachLabel(HWND hWnd, HWND hWndLabel)
 {
-	AttachWindow(hWnd, hWndLabel, ATTB_VCENTER);
+	AttachWindow(hWndLabel, ATTB_VCENTER, hWnd);
 }
 
 void CResizeableDialog::OnDestroy() 
@@ -376,20 +376,48 @@ void CResizeableDialog::OnDestroy()
 	
 }
 
-void CResizeableDialog::AttachRow(HWND* hWnd, int distance) {
+void CResizeableDialog::AttachRow(HWND* hWnd, int distance, int additional_alignment) {
 	if (!hWnd)
 		return;
 
 	while (hWnd[0] && hWnd[1]) {
 		AttachWindow(hWnd[1], ATTB_TOP, hWnd[0], ATTB_BOTTOM, distance);
+		if (additional_alignment)
+			AttachWindow(hWnd[1], additional_alignment, hWnd[0]);
+
 		hWnd++;
 	}
+}
+
+void CResizeableDialog::AttachVCenterAndLeftBorder(HWND hWnd, HWND hVCenterTo, 
+												   HWND hLeftBorderTo, int indent) 
+{
+	AttachWindow(hWnd, ATTB_VCENTER, hVCenterTo);
+	AttachWindow(hWnd, ATTB_LEFT, hLeftBorderTo, ATTB_LEFT, indent);
 }
 
 void CResizeableDialog::AttachUpDown(HWND hWnd, HWND hUpDown)
 {
 	AttachWindow(hUpDown, ATTB_TOPBOTTOM, hWnd);
 	AttachWindow(hUpDown, ATTB_LEFT, hWnd, ATTB_RIGHT, 1);
+}
+
+void CResizeableDialog::AttachWindowBeneath(HWND hWnd, HWND hWndTo, int distance,
+											int additional_alignment, int indent)
+{
+	AttachWindow(hWnd, ATTB_TOP, hWndTo, ATTB_BOTTOM, distance);
+	AttachWindow(hWnd, additional_alignment, hWndTo, additional_alignment, indent);
+}
+
+void CResizeableDialog::AttachRowBeneath(HWND* hWnd_row, HWND hWndTo, int first_distance,
+										 int distance, int additional_alignment,
+										 int indent)
+{
+	if (!hWnd_row || !hWnd_row[0])
+		return;
+
+	AttachWindowBeneath(hWnd_row[0], hWndTo, first_distance, additional_alignment, indent);
+	AttachRow(hWnd_row, distance, additional_alignment);
 }
 
 BOOL CResizeableDialog::OnCommand(WPARAM wParam, LPARAM lParam) 

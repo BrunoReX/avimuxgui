@@ -19,6 +19,7 @@
 #ifndef _AFX_NO_AFXCMN_SUPPORT
 #include <afxcmn.h>			// MFC-Unterstützung für gängige Windows-Steuerelemente
 #endif // _AFX_NO_AFXCMN_SUPPORT
+#include <afxdhtml.h>
 
 
 //{{AFX_INSERT_LOCATION}}

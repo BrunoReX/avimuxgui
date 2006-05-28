@@ -43,6 +43,7 @@ const int CACHE_OPEN_WRITE        = 0x80;
 
 const int CACHE_WRITEBACK_FAILURE = -0x05;
 const int CACHE_LOAD_FAILURE      = -0x08;
+const int CACHE_NO_FREE_CACHE_LINE= -0x0D;
 
 const int CACHE_READ_AHEAD        = 0x17;
 const int CACHE_ASYNCH_WRITE      = 0x31;
@@ -119,6 +120,7 @@ class CACHE : public STREAM_FILTER
 {
 private:
 	int				iNumberOfCacheLines;
+	int				iPrereadCacheLines;
 	int				iInitialNumberOfCacheLines;
 	int				iCacheLineSize;
 	int				iAccessMode;
@@ -154,7 +156,7 @@ private:
 	int				UseFreeCacheLine();
 	bool			WriteCacheLineToTargetStream(int cache_line_index);
 	bool			PrepareCacheLineForOverwrite(int cache_line_index);
-	int				WaitUntilReadyForRead(int cache_line_index);
+	int				WaitUntilReadyForRead(int cache_line_index, bool bSeriousAccess);
 	int				WaitUntilReadyForWrite(int cache_line_index);
 	int				LoadSegment(__int64 position);
 	
@@ -166,6 +168,8 @@ private:
 	bool			IsCacheLineLocked(CACHE_LINE* cache_line);
 
 	bool			CacheLineGetThreadSpecific(CACHE_LINE* cache_line);
+	bool			CacheLineGetThreadSpecific_NCS(CACHE_LINE* cache_line);
+
 	bool			CacheLineDeleteThreadSpecificMap(CACHE_LINE* cache_line);
 	int				GetCacheLineCurrentReadPos(CACHE_LINE* cache_line);
 	int				SetCacheLineCurrentReadPos(CACHE_LINE* cache_line, int position);
@@ -175,6 +179,7 @@ private:
 	int				IncCacheLineCurrentWritePos(CACHE_LINE* cache_line, int inc_val);
 
 	bool			GetThreadSpecific();
+	bool			GetThreadSpecific_NCS();
 	bool			DeleteThreadSpecific();
 	int				GetLastAccessedCacheLineIndex(bool read);
 	__int64			GetAccessPosition(bool read);
@@ -193,7 +198,8 @@ protected:
 public:
 	CACHE();
 	CACHE(int iBuffers, int iBytesPerBuffer);
-	bool			InitCache(int iBuffers, int iBytesPerBuffer);
+	bool			InitCache(int iBuffers, int iBytesPerBuffer, bool bPermanentGrow = false);
+	bool			SetPrereadRange(int range);
 	virtual ~CACHE();
 
 	int				Open(STREAM* stream, int mode);

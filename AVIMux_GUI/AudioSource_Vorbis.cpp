@@ -101,6 +101,7 @@ int VORBISFROMOGG::Open(PACKETIZER* lpSource)
 
 void VORBISFROMOGG::ReInit()
 {
+	SetCurrentTimecode(0, BIAS_UNSCALED);
 	GetSource()->ReInit();
 }
 

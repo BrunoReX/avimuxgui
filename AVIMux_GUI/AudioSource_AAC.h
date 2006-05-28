@@ -3,6 +3,7 @@
 
 #include "audiosource_generic.h"
 #include "audiosource_binary.h"
+#include "..\bitstream.h"
 #include "avifile.h"
 
 typedef struct

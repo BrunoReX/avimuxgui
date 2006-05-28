@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "AVIMux_GUI.h"
 #include "EnhancedListBox.h"
+#include ".\enhancedlistbox.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -47,6 +48,10 @@ BEGIN_MESSAGE_MAP(CEnhancedListBox, CListBox)
 	ON_WM_MBUTTONDOWN()
 	ON_WM_MBUTTONUP()
 	//}}AFX_MSG_MAP
+	ON_WM_CHAR()
+	ON_WM_GETDLGCODE()
+	ON_WM_KEYUP()
+	ON_WM_KEYDOWN()
 END_MESSAGE_MAP()
 
 BEGIN_DISPATCH_MAP(CEnhancedListBox, CListBox)
@@ -73,44 +78,49 @@ END_INTERFACE_MAP()
 void CEnhancedListBox::OnLButtonDown(UINT nFlags, CPoint point) 
 {
 	// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen und/oder Standard aufrufen
-	if (nFlags&MK_SHIFT)
-	{
+	if (nFlags & MK_SHIFT) {
 		bMButtonDown=true;
-	}
-	else
-	{
+	} else {
 		CListBox::OnLButtonDown(nFlags, point);
 	}
 }
 
 void CEnhancedListBox::ItemDown(void)
 {
-	CEnhancedListBox*	lpAAS=this;
 	DWORD	dwSelCount,dwICount,dwItemData;
 	DWORD*	lpdwSel;
 	int		i,iIndex;
-	char*	lpcText;
+	char*	lpcText = NULL;
+	bool	bHasStrings = !! (GetStyle() & LBS_HASSTRINGS);
+		
 
-	dwSelCount=lpAAS->GetSelCount();
-	dwICount=lpAAS->GetCount();
-	if (dwSelCount)
-	{
+	dwSelCount=GetSelCount();
+	dwICount=GetCount();
+	if (dwSelCount)	{
 		lpdwSel=(DWORD*)malloc(4*dwSelCount);
-		lpAAS->GetSelItems(dwSelCount,(int*)lpdwSel);
-		for (i=dwSelCount-1;i>=0;i--)
-		{
-			if (lpdwSel[i]!=dwICount-1)
-			{
-				lpcText=(char*)malloc(lpAAS->GetTextLen(lpdwSel[i]));
-				lpAAS->GetText(lpdwSel[i],lpcText);
-				dwItemData=lpAAS->GetItemData(lpdwSel[i]);
-				lpAAS->DeleteString(lpdwSel[i]);
-				iIndex=lpAAS->InsertString(lpdwSel[i]+1,lpcText);
-				lpAAS->SetItemData(iIndex,dwItemData);
-				lpAAS->SetSel(iIndex,true);
+		GetSelItems(dwSelCount,(int*)lpdwSel);
+		for (i=dwSelCount-1;i>=0;i--) {
+			if (lpdwSel[i]!=dwICount-1 && CanMoveTo(lpdwSel[i], 1))	{
+				if (bHasStrings) {
+					lpcText=(char*)calloc(1, 1+GetTextLen(lpdwSel[i]));
+					GetText(lpdwSel[i],lpcText);
+				}
+				dwItemData=GetItemData(lpdwSel[i]);
+				DeleteString(lpdwSel[i]);
+				iIndex=InsertString(lpdwSel[i]+1,lpcText);
+				SetItemData(iIndex,dwItemData);
+				SetSel(iIndex,true);
+				if (lpcText)
+					free(lpcText);
 			}
 		}
+		free(lpdwSel);
 	}
+}
+
+bool CEnhancedListBox::CanMoveTo(int i, int direction)
+{
+	return true;
 }
 
 void CEnhancedListBox::ItemUp(void)
@@ -118,30 +128,32 @@ void CEnhancedListBox::ItemUp(void)
 	DWORD	dwSelCount,dwICount;
 	DWORD*	lpdwSel;
 	DWORD	i,iIndex;
-	char*	lpcText;
+	char*	lpcText = NULL;
 	DWORD	dwItemData;
-	CEnhancedListBox*	lpAAS=this;
+	bool	bHasStrings = !! (GetStyle() & LBS_HASSTRINGS);
 
-	dwSelCount=lpAAS->GetSelCount();
-	dwICount=lpAAS->GetCount();
-	if (dwSelCount)
-	{
+	dwSelCount=GetSelCount();
+	dwICount=GetCount();
+	if (dwSelCount) {
 		lpdwSel=(DWORD*)malloc(4*dwSelCount);
-		lpAAS->GetSelItems(dwSelCount,(int*)lpdwSel);
-		for (i=0;i<dwSelCount;i++)
-		{
-			if (lpdwSel[i])
-			{
-				lpcText=(char*)malloc(lpAAS->GetTextLen(lpdwSel[i]));
-				lpAAS->GetText(lpdwSel[i],lpcText);
-				dwItemData=lpAAS->GetItemData(lpdwSel[i]);
-				lpAAS->DeleteString(lpdwSel[i]);
-				iIndex=lpAAS->InsertString(lpdwSel[i]-1,lpcText);
-				lpAAS->SetItemData(iIndex,dwItemData);
-				lpAAS->SetSel(iIndex,true);
-				free(lpcText);
+		GetSelItems(dwSelCount,(int*)lpdwSel);
+		for (i=0;i<dwSelCount;i++) {
+			if (lpdwSel[i] && CanMoveTo(lpdwSel[i], -1)) {
+				if (bHasStrings) {
+					lpcText=(char*)calloc(1, 1 + GetTextLen(lpdwSel[i]));
+					GetText(lpdwSel[i], lpcText);
+				}
+				dwItemData=GetItemData(lpdwSel[i]);
+				DeleteString(lpdwSel[i]);
+				
+				iIndex=InsertString(lpdwSel[i]-1,lpcText);
+				SetItemData(iIndex,dwItemData);
+				SetSel(iIndex,true);
+				if (lpcText)
+					free(lpcText);
 			}
 		}
+		free(lpdwSel);
 	}
 }
 
@@ -169,27 +181,20 @@ void CEnhancedListBox::OnMouseMove(UINT nFlags, CPoint point)
 	if (bMButtonDown)
 	{
 		int	i=ItemFromPoint(point,iOutside);
-		if (bMovingAllowed)
-		{
-			if (i>iItemMButtonDown)
-			{
+		if (bMovingAllowed)	{
+			if (i>iItemMButtonDown)	{
 				ItemDown();
 				RedoNumbering();
 			}
-			if (i<iItemMButtonDown)
-			{
+			if (i<iItemMButtonDown)	{
 				ItemUp();
 				RedoNumbering();
 			}
 			iItemMButtonDown=i;
-		}
-		else
-		{
+		} else {
 			CListBox::OnMouseMove(nFlags, ptMButtonDown);
 		}
-	}
-	else
-	{
+	} else {
 		CListBox::OnMouseMove(nFlags, point);
 	}
 }
@@ -209,4 +214,47 @@ void CEnhancedListBox::OnMButtonUp(UINT nFlags, CPoint point)
 	// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen und/oder Standard aufrufen
 	bMButtonDown=false;
 		
+}
+
+void CEnhancedListBox::OnChar(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein, und/oder benutzen Sie den Standard.
+	__super::OnChar(nChar, nRepCnt, nFlags);
+}
+
+UINT CEnhancedListBox::OnGetDlgCode()
+{
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein, und/oder benutzen Sie den Standard.
+
+	return __super::OnGetDlgCode() | DLGC_WANTALLKEYS;
+}
+
+void CEnhancedListBox::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein, und/oder benutzen Sie den Standard.
+/*	if (nChar == VK_PRIOR) {
+		ItemUp();
+		RedoNumbering();
+	} else
+	if (nChar == VK_NEXT) {
+		ItemDown();
+		RedoNumbering();
+	} 
+*/
+	__super::OnKeyUp(nChar, nRepCnt, nFlags);
+}
+
+void CEnhancedListBox::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein, und/oder benutzen Sie den Standard.
+	if (nChar == VK_PRIOR) {
+		ItemUp();
+		RedoNumbering();
+	} else
+	if (nChar == VK_NEXT) {
+		ItemDown();
+		RedoNumbering();
+	}  else
+
+	__super::OnKeyDown(nChar, nRepCnt, nFlags);
 }

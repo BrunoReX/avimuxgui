@@ -1360,6 +1360,7 @@ int MATROSKA::Close()
 
 			/* randomly select as many cue points as probably necessary to
 			   create Cues which use the reserved space without being too large */
+			int retries = 0;
 			do {
 				if (e_Cues) {
 					e_Cues->Delete();
@@ -1377,7 +1378,7 @@ int MATROSKA::Close()
 
 				/* if cue points don't fit, drop enough of them to fill the space
 				   before the 1st cluster, otherwise use all of them */
-				if (total_size > available_size /*&& minmax_ratio < point_ratio*/) {
+				if (total_size > available_size && retries < 9/*&& minmax_ratio < point_ratio*/) {
 			
 					std::vector<CUE_POINT>::iterator cue_point = ws.cues.begin();
 
@@ -1398,7 +1399,7 @@ int MATROSKA::Close()
 					for (;cue_point != ws.cues.end(); cue_point++)
 						ws.iCuePointsWritten += e_Cues->AddCuePoint(*cue_point);
 				}
-			} while (e_Cues->GetSize() >= available_size);
+			} while (e_Cues->GetSize() >= available_size && retries++ < 10);
 		} else {
 			std::vector<CUE_POINT>::iterator cue_point = ws.cues.begin();
 			for (;cue_point != ws.cues.end(); cue_point++)
@@ -1520,8 +1521,15 @@ void* MATROSKA::GetCodecPrivate(int iTrack)
 
 int MATROSKA::GetCodecPrivateSize(int iTrack)
 {
-	CBuffer* cB = pActiveSegInfo->tracks->track_info[MapT(iTrack)]->cCodecPrivate;
-	if (cB) return cB->GetSize();
+	if (CanWrite()) {
+		if (tracks[iTrack]->cCodecPrivate)
+			return tracks[iTrack]->cCodecPrivate->GetSize();
+		else
+			return 0;
+	} else {
+		CBuffer* cB = pActiveSegInfo->tracks->track_info[MapT(iTrack)]->cCodecPrivate;
+		if (cB) return cB->GetSize();
+	}
 	return 0;
 }
 

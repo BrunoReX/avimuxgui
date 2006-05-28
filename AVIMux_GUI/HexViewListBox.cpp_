@@ -1,0 +1,181 @@
+// HexViewListBox.cpp : Implementierungsdatei
+//
+
+#include "stdafx.h"
+#include "AVIMux_GUI.h"
+#include "HexViewListBox.h"
+#include ".\hexviewlistbox.h"
+
+
+// CHexViewListBox-Dialogfeld
+
+IMPLEMENT_DYNCREATE(CHexViewListBox, CDHtmlDialog)
+
+CHexViewListBox::CHexViewListBox(CWnd* pParent /*=NULL*/)
+	: CDHtmlDialog(CHexViewListBox::IDD, CHexViewListBox::IDH, pParent)
+{
+	EnableAutomation();
+
+	first_pos = 0;
+	bytes_per_line = 16;
+
+}
+
+CHexViewListBox::~CHexViewListBox()
+{
+}
+
+void CHexViewListBox::OnFinalRelease()
+{
+	// Wenn der letzte Verweis auf ein Automatisierungsobjekt freigegeben wird,
+	// wird OnFinalRelease aufgerufen. Die Basisklasse löscht das Objekt
+	// automatisch. Fügen Sie zusätzlichen Bereinigungscode für Ihr Objekt
+	// hinzu, bevor Sie die Basisklasse aufrufen.
+
+	CDHtmlDialog::OnFinalRelease();
+}
+
+void CHexViewListBox::DoDataExchange(CDataExchange* pDX)
+{
+	CDHtmlDialog::DoDataExchange(pDX);
+}
+
+BOOL CHexViewListBox::OnInitDialog()
+{
+	CDHtmlDialog::OnInitDialog();
+	return TRUE;  // Geben Sie TRUE zurück, außer ein Steuerelement soll den Fokus erhalten
+}
+
+BEGIN_MESSAGE_MAP(CHexViewListBox, CDHtmlDialog)
+	ON_WM_DRAWITEM()
+END_MESSAGE_MAP()
+
+BEGIN_DHTML_EVENT_MAP(CHexViewListBox)
+	DHTML_EVENT_ONCLICK(_T("ButtonOK"), OnButtonOK)
+	DHTML_EVENT_ONCLICK(_T("ButtonCancel"), OnButtonCancel)
+END_DHTML_EVENT_MAP()
+
+
+BEGIN_DISPATCH_MAP(CHexViewListBox, CDHtmlDialog)
+END_DISPATCH_MAP()
+
+// Hinweis: Wir stellen Unterstützung für IID_IHexViewListBox zur Verfügung, um typsicheres Binden 
+//  von VBA zu unterstützen. Diese IID muss mit der GUID übereinstimmen, die bei der 
+//  Disp-Schnittstelle in der .IDL-Datei angegeben ist.
+
+// {30A57D5F-D04C-456B-9071-D8AC3A3185A2}
+static const IID IID_IHexViewListBox =
+{ 0x30A57D5F, 0xD04C, 0x456B, { 0x90, 0x71, 0xD8, 0xAC, 0x3A, 0x31, 0x85, 0xA2 } };
+
+BEGIN_INTERFACE_MAP(CHexViewListBox, CDHtmlDialog)
+	INTERFACE_PART(CHexViewListBox, IID_IHexViewListBox, Dispatch)
+END_INTERFACE_MAP()
+
+
+// CHexViewListBox-Meldungshandler
+
+HRESULT CHexViewListBox::OnButtonOK(IHTMLElement* /*pElement*/)
+{
+	OnOK();
+	return S_OK;  // Geben Sie TRUE zurück, außer ein Steuerelement soll den Fokus erhalten
+}
+
+HRESULT CHexViewListBox::OnButtonCancel(IHTMLElement* /*pElement*/)
+{
+	OnCancel();
+	return S_OK;  // Geben Sie TRUE zurück, außer ein Steuerelement soll den Fokus erhalten
+}
+
+void CHexViewListBox::SetDataSource(STREAM* stream)
+{
+	data = stream;
+}
+
+void CHexViewListBox::SetNewStartPos(__int64 new_pos)
+{
+	first_pos = new_pos;
+
+
+}
+
+void CHexViewListBox::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
+{
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein, und/oder benutzen Sie den Standard.
+
+	CDHtmlDialog::OnDrawItem(nIDCtl, lpDrawItemStruct);
+
+	__int64 start_file_pos = (first_pos / 16 * 16);
+
+
+
+	// TODO: Code einfügen, um das angegebene Element zu zeichnen
+	CDC	dc;
+	LPDRAWITEMSTRUCT d = lpDrawItemStruct;
+/*	FILE_INFO* lpFI = GetFileInfo(d->itemID);
+
+	if (!lpFI)
+		return;
+*/
+
+	char addr[32]; addr[0]=0;
+	_snprintf(addr, sizeof(addr), "%012X", start_file_pos);
+
+    dc.Attach(d->hDC);
+	COLORREF crOldBkColor = dc.GetBkColor();
+	COLORREF bkColor;
+
+	char* u = NULL;
+	CFont* font = GetFont();
+
+	LOGFONT logfont;
+	font->GetLogFont(&logfont);
+
+	{
+		if ((d->itemState & ODS_SELECTED)) {
+			if (GetFocus() == this) {
+				dc.SetTextColor(GetSysColor(COLOR_HIGHLIGHTTEXT));
+				bkColor = (GetSysColor(COLOR_HIGHLIGHT));
+			} else {
+				dc.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
+				bkColor = (GetSysColor(COLOR_BTNFACE));
+			}
+		} else {
+			dc.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
+			bkColor = (GetSysColor(COLOR_WINDOW));
+		}
+	}
+
+	dc.SetTextAlign(TA_LEFT);
+	dc.SetBkMode(TRANSPARENT);
+
+	CFont* used_font = new CFont();
+	used_font->CreateFontIndirect(&logfont);
+
+	dc.SelectObject(used_font);
+	used_font->DeleteObject();
+	delete used_font;
+
+	LOGBRUSH b;
+	b.lbColor = bkColor;
+	b.lbStyle = BS_SOLID;
+	HBRUSH brush = CreateBrushIndirect(&b);
+
+	LOGPEN p;
+	p.lopnColor = 0;
+	p.lopnStyle = PS_NULL;
+	HPEN pen = CreatePenIndirect(&p);
+
+	dc.SelectObject(brush);
+	dc.SelectObject(pen);
+	d->rcItem.right++;
+	d->rcItem.bottom++;
+	dc.Rectangle(&d->rcItem);
+
+	TextOut(dc,d->rcItem.left,d->rcItem.top,addr,strlen(addr));
+
+	DeleteObject(brush);
+	DeleteObject(pen);
+	
+	dc.Detach();
+	free(u);
+}

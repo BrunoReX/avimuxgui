@@ -20,12 +20,15 @@ public:
 	CSourceFileListBox();
 
 	FILE_INFO*	GetFileInfo(int i = -1);
+	FILE_INFO*  GetFileInfoFromID(int i);
 	int			FileID2Index(int id);
 	void		SortItems();
 	void		RedoNumbering();
+	bool virtual CanMoveTo(int i, int direction);
 	void virtual ItemUp();
 	void virtual ItemDown();
-
+	void		SetFlag(int listbox_index, int flag_index, DWORD flag_value,
+						bool value, bool reset_others);
 //	int			CompareItem(LPCOMPAREITEMSTRUCT lpCompareItemStruct);
 // Attribute
 public:
@@ -62,6 +65,8 @@ protected:
 	//}}AFX_DISPATCH
 	DECLARE_DISPATCH_MAP()
 	DECLARE_INTERFACE_MAP()
+public:
+	afx_msg void OnKillFocus(CWnd* pNewWnd);
 };
 
 /////////////////////////////////////////////////////////////////////////////

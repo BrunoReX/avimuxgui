@@ -10,6 +10,10 @@
 #include "FormatText.h"
 #include "UnicodeTreeCtrl.h"
 #include "..\cache.h"
+#include "..\UnicodeCalls.h"
+#include "Languages.h"
+#include "OSVersion.h"
+#include "FileDialogs.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -53,6 +57,7 @@ void CEBMLTreeDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_ABSOLUTE, m_Absolute);
 	DDX_Control(pDX, IDC_RELATIVE, m_Relative);
 	//}}AFX_DATA_MAP
+	DDX_Control(pDX, IDC_HEXVIEW_LISTBOX, m_HexEdit);
 }
 
 
@@ -69,6 +74,7 @@ BEGIN_MESSAGE_MAP(CEBMLTreeDlg, CResizeableDialog)
 //	ON_BN_CLICKED(IDOK, OnBnClickedOk)
 ON_BN_CLICKED(IDOK, OnBnClickedOk)
 ON_WM_SYSCOMMAND()
+ON_BN_CLICKED(IDC_SAVE_TREE, OnBnClickedSaveTree)
 END_MESSAGE_MAP()
 
 BEGIN_DISPATCH_MAP(CEBMLTreeDlg, CResizeableDialog)
@@ -254,8 +260,15 @@ void AddChildren(CEBMLTree* tree, HTREEITEM hParent, EBMLElement* eParent,
 				if (!bExpanded) {
 					if (!*pbDoClose) {
 						HTREEITEM hSelected = tree->GetSelectedItem();
-						tree->Expand(hParent,TVE_EXPAND);
-						tree->EnsureVisible(hSelected);
+						if (hSelected == hParent)
+							tree->Expand(hParent,TVE_EXPAND);
+					//	tree->EnsureVisible(hSelected);
+
+						RECT r;
+						tree->GetItemRect(hParent, &r, false);
+						tree->InvalidateRect(&r, false);
+						tree->UpdateWindow();
+
 					}
 				
 					bExpanded = true;
@@ -265,10 +278,6 @@ void AddChildren(CEBMLTree* tree, HTREEITEM hParent, EBMLElement* eParent,
 			}
 		}
 	}
-
-//	if (!*pbDoClose) 
-//		tree->Expand(hParent,TVE_EXPAND);
-
 
 	RECT r;
 	tree->GetItemRect(hParent, &r, false);
@@ -379,19 +388,43 @@ BOOL CEBMLTreeDlg::OnInitDialog()
 	GetBorder(w, h);
 
 	AttachWindow(m_OK, ATTB_RIGHT, m_hWnd, -16);
+
+	AttachWindow(*GetDlgItem(IDC_FULLEXPAND), ATTB_TOP,
+		m_OK, ATTB_BOTTOM, 1);
+	AttachWindow(*GetDlgItem(IDC_FULLEXPAND), ATTB_LEFTRIGHT,
+		m_OK);
+
+	AttachWindow(*GetDlgItem(IDC_SAVE_TREE), ATTB_TOP,
+		*GetDlgItem(IDC_FULLEXPAND), ATTB_BOTTOM, 1);
+	AttachWindow(*GetDlgItem(IDC_SAVE_TREE), ATTB_LEFTRIGHT,
+		*GetDlgItem(IDC_FULLEXPAND));
+
 	AttachWindow(*GetDlgItem(IDC_FONT_LARGER), ATTB_RIGHT, m_OK);
-	AttachWindow(*GetDlgItem(IDC_FONT_LARGER), ATTB_TOP, m_OK, ATTB_BOTTOM, 1);
-	AttachWindow(*GetDlgItem(IDC_FONT_SMALLER), ATTB_RIGHT, *GetDlgItem(IDC_FONT_LARGER), ATTB_LEFT, -1);
-	AttachWindow(*GetDlgItem(IDC_FONT_SMALLER), ATTB_TOPBOTTOM, *GetDlgItem(IDC_FONT_LARGER));
+	AttachWindow(*GetDlgItem(IDC_FONT_LARGER), ATTB_TOP, 
+		*GetDlgItem(IDC_SAVE_TREE), ATTB_BOTTOM, 1);
+
+	AttachWindow(*GetDlgItem(IDC_FONT_SMALLER), ATTB_RIGHT, 
+		*GetDlgItem(IDC_FONT_LARGER), ATTB_LEFT, -1);
+	AttachWindow(*GetDlgItem(IDC_FONT_SMALLER), ATTB_TOPBOTTOM, 
+		*GetDlgItem(IDC_FONT_LARGER));
+
+	AttachWindow(*GetDlgItem(IDC_HEXVIEW_LISTBOX), ATTB_BOTTOM,
+		m_hWnd, -16);
 
 	AttachWindow(m_EBMLTree, ATTB_TOP, m_hWnd, h + 16);
-	AttachWindow(m_EBMLTree, ATTB_BOTTOM, m_hWnd, -16);
-	AttachWindow(m_Relative, ATTB_RIGHT, m_OK);
-	AttachWindow(m_Absolute, ATTB_RIGHT, m_OK);
-	AttachWindow(m_Relative, ATTB_LEFT, m_OK);
-	AttachWindow(m_Absolute, ATTB_LEFT, m_OK);
+	AttachWindow(m_EBMLTree, ATTB_BOTTOM, 
+		*GetDlgItem(IDC_HEXVIEW_LISTBOX), ATTB_TOP, 0);
+
+	AttachWindow(m_Relative, ATTB_LEFTRIGHT, m_OK);
+	AttachWindow(m_Absolute, ATTB_LEFTRIGHT, m_OK);
+	AttachWindow(m_Absolute, ATTB_TOP, 
+		*GetDlgItem(IDC_FONT_LARGER), ATTB_BOTTOM, 1);
+	AttachWindow(m_Relative, ATTB_TOP, 
+		m_Absolute, ATTB_BOTTOM, 1);
+	
 	AttachWindow(m_EBMLTree, ATTB_RIGHT, m_OK, ATTB_LEFT, -16);
 	AttachWindow(m_EBMLTree, ATTB_LEFT, m_hWnd, 16);
+	AttachWindow(*GetDlgItem(IDC_HEXVIEW_LISTBOX), ATTB_LEFTRIGHT, m_EBMLTree);
 
 	CFont* font = new CFont;
 	font->CreateFont(-font_size, 0, 0, 0, FW_NORMAL, false, false,
@@ -403,6 +436,12 @@ BOOL CEBMLTreeDlg::OnInitDialog()
 	font_size = (int)GetAttribs()->GetIntWithDefault("tree_font_size", 12);
 
 	RecreateTreeFont();
+
+	m_HexEdit.SetRange(16*256);
+	m_HexEdit.SetDataSource(source);
+	m_HexEdit.SetNewStartPos(0);	
+
+	GetDlgItem(IDC_FULLEXPAND)->SetWindowText(LoadString(STR_EBMLDLG_FULL));
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX-Eigenschaftenseiten sollten FALSE zurückgeben
@@ -426,8 +465,6 @@ void CEBMLTreeDlg::OnSelchangedTree1(NMHDR* pNMHDR, LRESULT* pResult)
 	
 	EBMLITEM_DESCRIPTOR* d = (EBMLITEM_DESCRIPTOR*)m_EBMLTree.GetItemData(item->hItem);
 	if (d && item && !bDoClose) {
-
-	//	if (d->pElement->GetType() == ETM_SEGMENT) {
 		ADD_CHILDREN_DATA* a = new ADD_CHILDREN_DATA;
 		ZeroMemory(a,sizeof(*a));
 		a->tree = &m_EBMLTree;
@@ -435,15 +472,12 @@ void CEBMLTreeDlg::OnSelchangedTree1(NMHDR* pNMHDR, LRESULT* pResult)
 		a->eParent = d->pElement;
 		a->pbDoClose = &bDoClose;
 		a->iFlag = 0;
+		
+		m_HexEdit.SetNewStartPos(d->pElement->GetStreamPos() - d->pElement->GetHeaderSize());
+		
 		AfxBeginThread((AFX_THREADPROC)AddChildren_Thread, a);
-
-//			m_EBMLTree.InvalidateRect(NULL);
-//			m_EBMLTree.UpdateWindow();
-//			m_EBMLTree.Expand(item->hItem, TVE_EXPAND);
-	/*	} else {
-			AddChildren(&m_EBMLTree, item->hItem, d->pElement, &bDoClose, NULL, NULL);
-		}*/
 	}
+
 	*pResult = 0;
 }
 
@@ -451,23 +485,15 @@ void CEBMLTreeDlg::OnOK()
 {
 	// TODO: Zusätzliche Prüfung hier einfügen
 	bDoClose = true;
-//	hSem_close = OpenSemaphore(SEMAPHORE_ALL_ACCESS, false, sem_close);
-//	WaitForSingleObject(hSem_close, INFINITE);
-/*	while (iDepth) {
-		Sleep(100);
-	}
-	*/
+
 	if (iDepth) {  // don't hang here, otherwise it will completely hang
 		Sleep(100);
 		PostMessage(WM_COMMAND, IDOK, 0);
 	} else {
-	//	CloseHandle(hSem_close);
 		CleanChildren(0);
 		e_matroska->Delete();
 		delete e_matroska;
-
 		delete m_EBMLTree.GetFont();
-
 		CResizeableDialog::OnOK();
 	}
 }
@@ -485,12 +511,66 @@ void CEBMLTreeDlg::OnRelative()
 
 }
 
+typedef struct
+{
+	CEBMLTree*   tree;
+	HTREEITEM    hParent;
+	HWND         hButton;
+	bool*		 pbDoClose;
+	int			 iFlag;
+	int*		 depth;
+} FULLEXPAND_THREAD_DATA;
+
+void FullExpand(CEBMLTree* tree, HTREEITEM hParent, bool* pbDoClose, bool bClusters)
+{
+	EBMLITEM_DESCRIPTOR* d = (EBMLITEM_DESCRIPTOR*)tree->GetItemData(hParent);
+	if (d && d->pElement) {
+		if (d->pElement->IsMaster() && (bClusters || d->pElement->GetType() != IDVALUE(MID_CLUSTER))) {
+			/* will have child elements */
+			AddChildren(tree, hParent, d->pElement, pbDoClose);
+			HTREEITEM hItem = tree->GetChildItem(hParent);
+
+			while (hItem && !*pbDoClose) {
+				FullExpand(tree, hItem, pbDoClose, bClusters);
+				hItem = tree->GetNextSiblingItem(hItem);
+			}
+		}
+	}
+}
+
+DWORD WINAPI FullExpand_Thread(void* pData)
+{
+	FULLEXPAND_THREAD_DATA* ftd = (FULLEXPAND_THREAD_DATA*)pData;
+
+	HTREEITEM hItem = ftd->tree->GetRootItem();
+	while (hItem && !*ftd->pbDoClose) {
+		FullExpand(ftd->tree, hItem, ftd->pbDoClose, true);
+		hItem = ftd->tree->GetNextSiblingItem(hItem);
+	}
+
+	::EnableWindow(ftd->hButton, true);
+	(*ftd->depth)--;
+	free(ftd);
+
+	return 1;
+}
+
 void CEBMLTreeDlg::OnFullexpand() 
 {
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
 //	HTREEITEM* hItem = m_EBMLTree.GetRootItem();
 	
+	FULLEXPAND_THREAD_DATA* ftd = new FULLEXPAND_THREAD_DATA;
+	ftd->tree = &m_EBMLTree;
+	ftd->hParent = NULL;
+	ftd->pbDoClose = &bDoClose;
+	ftd->hButton = *GetDlgItem(IDC_FULLEXPAND);
+	ftd->depth = &iDepth;
+	iDepth++;
+	::EnableWindow(ftd->hButton, false);
 
+	DWORD dwID;
+	CreateThread(NULL, 1<<20, FullExpand_Thread, ftd, NULL, &dwID);
 }
 
 void CEBMLTreeDlg::OnBnClickedFontLarger()
@@ -539,4 +619,132 @@ void CEBMLTreeDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 
 	CResizeableDialog::OnSysCommand(nID, lParam);
+}
+
+bool OpenOutputFileUTF8(char* name, FILE** pFile)
+{
+	FILE* f = fopenutf8(name, "wb", DoesOSSupportUnicode());
+	if (!f) {
+		*pFile = NULL;
+		char c[65536]; c[0]=0;
+		_snprintf(c, sizeof(c), LoadString(STR_ERR_COULDNOTOPENWRITE),
+			name);
+		char* title = LoadString(STR_GEN_ERROR, LOADSTRING_UTF8);
+
+		char* wname = NULL;
+		char* wtitle = NULL;
+		fromUTF8(c, &wname);
+		fromUTF8(c, &wtitle);
+
+		(*UMessageBox())(NULL, wname, wtitle, MB_OK | MB_ICONERROR);
+
+		free(wname);
+		free(wtitle);
+		return false;
+	} else {
+		*pFile = f;
+		return true;
+	}
+}
+
+typedef struct
+{
+	int* depth;
+	HWND hButton;
+	bool* pbDoClose;
+	FILE* target_file;
+	CEBMLTree* tree;
+} SAVETREETHREAD_DATA;
+
+void SaveTreeNode(CEBMLTree* tree, FILE* f, HTREEITEM hItem, int depth, 
+				  int* total_item_counter, HWND hButton, bool* close)
+{
+	char c[1024];
+	memset(c, 32, 2*depth);
+	c[2*depth]=0;
+	fprintf(f, c);
+
+	char item_text[1024];
+	TVITEM tvitem;
+	tvitem.pszText = item_text;
+	tvitem.cchTextMax = 512;
+	tvitem.mask = TVIF_TEXT;
+	tvitem.hItem = hItem;
+
+	TV_DISPINFO tvdi;
+	tvdi.item = tvitem;
+	tvdi.hdr.hwndFrom = tree->m_hWnd;
+	tvdi.hdr.idFrom = IDC_TREE1;
+	tvdi.hdr.code = TVN_GETDISPINFO;
+
+	LRESULT result;
+	result = ::SendMessage(tree->m_hWnd, WM_NOTIFY, (WPARAM)tvdi.hdr.idFrom, (LPARAM)&tvdi);
+
+	char* uitem_text = NULL;
+	toUTF8(item_text, &uitem_text);
+
+	fprintf(f, uitem_text);
+	free(uitem_text);
+	fprintf(f, "\x0D\x0A");
+
+	(*total_item_counter)++;
+
+	char item_counter_string[32];
+	sprintf(item_counter_string, "%dk", *total_item_counter / 1000);
+	if ((*total_item_counter % 1000) == 0)
+		SendMessage(hButton, WM_SETTEXT, 0, (LPARAM)item_counter_string);
+
+	HTREEITEM hChild = tree->GetChildItem(hItem);
+	while (hChild && !*close) {
+		SaveTreeNode(tree, f, hChild, depth + 1, total_item_counter, hButton, close);
+		hChild = tree->GetNextSiblingItem(hChild);
+	}
+
+}
+
+DWORD WINAPI SaveTree_Thread(void* pData)
+{
+	SAVETREETHREAD_DATA* std = (SAVETREETHREAD_DATA*)pData;
+	::EnableWindow(std->hButton, false);
+	fwrite(cUTF8Hdr, 3, 1, std->target_file);
+	int total_item_count = std->tree->GetCount();
+	int current_item = 0;
+	HTREEITEM hItem = std->tree->GetRootItem();
+	while (hItem && !*std->pbDoClose)  {
+		SaveTreeNode(std->tree, std->target_file, hItem, 0, &current_item,
+			std->hButton, std->pbDoClose);
+		hItem = std->tree->GetNextSiblingItem(hItem);
+	}
+
+	fclose(std->target_file);
+	::EnableWindow(std->hButton, true);
+
+	::SendMessage(std->hButton, WM_SETTEXT, 0, (LPARAM)"Save");
+	(*std->depth)--;
+	delete std;
+	return 1;
+}
+
+void CEBMLTreeDlg::OnBnClickedSaveTree()
+{
+	// TODO: Fügen Sie hier Ihren Kontrollbehandlungscode für die Benachrichtigung ein.
+	OPENFILENAME ofn;
+
+	PrepareSimpleDialog(&ofn, *this, "*.txt");
+	ofn.lpstrFilter = "Text files (*.txt)|*.txt||";
+	if (!GetOpenSaveFileNameUTF8(&ofn, false)) 
+		return;
+
+	FILE* f = NULL;
+	if (OpenOutputFileUTF8(ofn.lpstrFile, &f)) {
+		SAVETREETHREAD_DATA* std = new SAVETREETHREAD_DATA;
+		std->depth = &iDepth;
+		std->hButton = *GetDlgItem(IDC_SAVE_TREE);
+		std->target_file = f;
+		std->pbDoClose = &bDoClose;
+ 		std->tree = &m_EBMLTree;
+		DWORD dwID;
+		iDepth++;
+		CreateThread(NULL, 1<<20, SaveTree_Thread, std, NULL, &dwID);
+	}
 }

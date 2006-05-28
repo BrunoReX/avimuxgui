@@ -154,6 +154,7 @@ class CChapters: public MULTIMEDIASOURCE
 		int			EnableChapter(int iIndex, bool bEnable);
 		int			GetChapter(int iIndex, __int64* lpiBegin, __int64* lpiEnd, char* cText);
 		int			GetChapter(CDynIntArray* aIndex, __int64* lpiBegin, __int64* lpiEnd, char* cText);
+		int			GetChapter(std::vector<int> index, __int64* pBegin, __int64* pEnd, char* cText);
 		int			GetChapter(int iIndex, SINGLE_CHAPTER_DATA* lpSCD);
 		int			GetChapter(CDynIntArray* aIndex, SINGLE_CHAPTER_DATA* lpSCD);
 		CChapters*	GetChapter(CDynIntArray* aIndex, int* iIndex);

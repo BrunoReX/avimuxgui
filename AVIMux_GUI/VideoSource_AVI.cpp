@@ -39,6 +39,7 @@ int VIDEOSOURCEFROMAVI::Open(AVIFILEEX* avifile)
 	info.avifile[0] = avifile;
 
 	SetCurrentTimecode(-avifile->GetNanoSecPerFrame(),TIMECODE_UNSCALED);
+	SetDefault(!(avifile->GetStreamHeader(0)->dwFlags & AVISF_DISABLED));
 
 	return VS_OK;
 }

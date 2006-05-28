@@ -8,7 +8,7 @@
 #include "audiosource.h"
 #include "AVIMux_GUIDlg.h"
 #include "Muxing.h"
-#include "..\basestreams.h"
+#include "..\filestream.h"
 #include "..\utf-8.h"
 #include "UnicodeTreeCtrl.h"
 #include "FileDialogs.h"
@@ -55,6 +55,7 @@ BEGIN_MESSAGE_MAP(CAudioSourceTree, CUnicodeTreeCtrl)
 	ON_WM_CREATE()
 	//}}AFX_MSG_MAP
 	ON_NOTIFY_REFLECT(TVN_GETDISPINFO, OnTvnGetdispinfo)
+	ON_WM_KEYDOWN()
 END_MESSAGE_MAP()
 
 BEGIN_DISPATCH_MAP(CAudioSourceTree, CUnicodeTreeCtrl)
@@ -1087,7 +1088,37 @@ void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 	}
 
 	*pResult = 0;
+}
 
+void CAudioSourceTree::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein, und/oder benutzen Sie den Standard.
 
+	TREE_ITEM_INFO* tii = GetItemInfo(GetSelectedItem());
+	if (!tii)
+			return CUnicodeTreeCtrl::OnKeyDown(nChar, nRepCnt, nFlags);
 
+	/* if item is stream name or language, ignore <space> button */
+	if (tii->iID == TIIID_STRNAME || tii->iID == TIIID_LNGCODE) {
+		if (nChar != ' ')
+			return CUnicodeTreeCtrl::OnKeyDown(nChar, nRepCnt, nFlags);
+		else 
+			return;
+	}
+
+	if (tii->iID & TIIID_MSI) {
+		if (nChar == VK_NEXT) {
+			tii->iCurrPos+=3;
+			Sort();
+			return;
+		} else
+		if (nChar == VK_PRIOR) {
+			tii->iCurrPos-=3;
+			Sort();
+			return;
+		} else
+			return CUnicodeTreeCtrl::OnKeyDown(nChar, nRepCnt, nFlags);
+	}
+
+	return CUnicodeTreeCtrl::OnKeyDown(nChar, nRepCnt, nFlags);
 }

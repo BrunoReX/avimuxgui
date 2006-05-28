@@ -185,6 +185,17 @@ const int STR_SFO_O_AVISTRUCTURE		= 902;
 #define STR_SFO_OAS_RB_FRAMES			914
 #define STR_SFO_OAS_S_PRELOAD			915
 const int STR_SFO_OAS_AC3CPF			= 916;
+
+#define STR_SFO_OUTPUT_UNBUFFERED      921
+#define STR_SFO_OUTPUT_LOGFILE         922
+#define STR_SFO_OUTPUT_OVERLAPPED      923
+#define STR_SFO_OUTPUT_THREADED        924
+
+const int STR_SFO_FILENAME_LABEL        = 925;
+const int STR_SFO_FILENAME_NONE         = 926;
+const int STR_SFO_FILENAME_TITLE        = 927;
+const int STR_SFO_FILENAME_FIRSTFILE    = 928;
+
 #define STR_SFO_O_SPLIT					930
 #define STR_SFO_OSP_CB_USEMAXSIZE		931
 #define STR_SFO_OSP_B_ADVANCED			932
@@ -193,6 +204,7 @@ const int STR_SFO_OAS_AC3CPF			= 916;
 #define STR_SFO_OSP_CB_USEMAXNBROFFILES	935
 #define STR_SFO_OAS_CB_MP3CBRFRAMEMODE  936
 const int STR_SFO_O_AVI_ADDJUNK		=   937;
+const int STR_AVI1_INTERLEAVE_LABEL =   938;
 
 const int STR_SFO_O_AVOIDSEEKOPS	=   503;
 const int STR_SFO_O_MKVSTRUCTURE	=   940;
@@ -226,12 +238,17 @@ const int STR_SFO_O_MKV_CUE_WRITEBLOCKNBR = 971;
 const int STR_SFO_O_MKV_HEADERSTRIPPING = 972;
 const int STR_SFO_O_MKV_FORCEV2		=   973;
 const int STR_SFO_O_MKV_CREATE_AAAC =   974;
+const int STR_MKV1_MATROSKAVERSION_GROUP = 975;
 
 
 const int STR_SFO_O_GENERAL			=   950;
 const int STR_SFO_O_CHAPTERS		=	951;
 
 const int STR_SFO_OG_STDOFMT_LABEL  =   952;
+const int STR_SGUI_HIGHLIGHT        =  1001;
+const int STR_SGUI_LOWLIGHT         =  1002;
+const int STR_SGUI_OVERWRITECONFIRMATION = 1003;
+const int STR_SGUI_DONEDLG          =  1004;
 
 // set AVI header flags dialog
 
@@ -375,6 +392,7 @@ const int STR_ERR_CHANNELCOUNTBAD       = 1717;
 const int STR_ERR_BADLAYERVERSIONS      = 1718;
 const int STR_ERR_BADMPEGVERSIONS       = 1719;
 const int STR_ERR_BADAACPROFILES        = 1720;
+const int STR_ERR_COULDNOTOPENWRITE     = 1721;
 
 //const int STR_ERR_IMPCHAP_
 
@@ -392,8 +410,8 @@ const int STR_CHPDLG_DISP_LANGUAGE      = 1904;
 const int STR_CHPDLG_DISP_TITLE         = 1905;
 
 // RIFF Tree
-const int STR_RIFFDLG_WAIT		        = 1920;
-
+const int STR_RIFFDLG_FULL		        = 1920;
+const int STR_EBMLDLG_FULL				= 1920;
 // popup menu
 
 const int STR_CHPDLG_POPUP_EDITIONORDERD	= 2000;

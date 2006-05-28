@@ -24,5 +24,6 @@ typedef struct
 	char* cData;
 } INT2VSUINT_DESCR;
 
+extern int VSizeInt_Len[256];
 
 #endif

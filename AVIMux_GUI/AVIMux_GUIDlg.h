@@ -122,6 +122,10 @@ public:
 	void			doAddFile(char* lpcName, int iFormat = FILETYPE_UNKNOWN, 
 		int delete_file = 0, HANDLE hSemaphore = NULL);
 
+	void			SetUsedFilesDisplayFlag(MULTIMEDIA_STREAM_INFO* msi);
+	void			ResetAllUsedFilesDisplayFlag();
+	void			ResetStreamSourceFileDisplayFlag();
+
 	void			AddAudioStream(AUDIO_STREAM_INFO* asi);
 	void			AddSubtitleStream(SUBTITLE_STREAM_INFO* ssi);
 	void			AddVideoStream(VIDEO_STREAM_INFO* vsi);

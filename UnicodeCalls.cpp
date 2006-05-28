@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "UnicodeCalls.h"
 #include "utf-8.h"
+#include "stdlib.h"
 
 CREATEFILE			_CreateFile[2]	= { NULL, NULL };
 DRAGQUERYFILE		_DragQueryFile[2] = { NULL, NULL };
@@ -192,4 +193,20 @@ int toUTF8(void* s, char** d)
 		Str2UTF8((char*)s, (char**)d);
 
 	return 1;
+}
+
+FILE* fopenutf8(char* filename, char* access, int unicode)
+{
+	FILE* file;
+	if (unicode) {
+		char* c = NULL;
+		UTF82WStr(filename,&c);
+		char mode[8]; mode[0]=0;
+		UTF82WStr(access, mode, 8);
+		file=_wfopen((const unsigned short*)c,(const unsigned short*)mode);
+		free(c);
+	} else {
+		file = fopen(filename, access);
+	}
+	return file;
 }

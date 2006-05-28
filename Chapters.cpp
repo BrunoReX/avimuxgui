@@ -17,7 +17,11 @@ static char THIS_FILE[] = __FILE__;
 
 /*
 
-  Todo: GetTags should define an error condition
+  Todo: 
+	* GetTags should define an error condition
+	* replace stupid dynarrays with vectors
+
+
   */
 
 char* physicalequiv2string(int index)
@@ -378,7 +382,8 @@ int CChapters::SetChapterLng(int iIndex, char* cText, int iIndex2)
 	return 0;
 }
 
-int CChapters::GetChapter(CDynIntArray* aIndex, __int64* lpiBegin, __int64* lpiEnd, char* cText)
+int CChapters::GetChapter(CDynIntArray* aIndex, __int64* lpiBegin,
+						  __int64* lpiEnd, char* cText)
 {
 	CChapters* cLevel = this;
 
@@ -400,6 +405,14 @@ int CChapters::GetChapter(CDynIntArray* aIndex, __int64* lpiBegin, __int64* lpiE
 
 	if (cText) 
 		strcpy(cText,cLevel->chapters->chapters[iIndex]->display[0].cString->Get());
+
+	return 0;
+}
+
+int CChapters::GetChapter(std::vector<int> index, __int64* pBegin,
+						  __int64* pEnd, char* cText)
+{
+	
 
 	return 0;
 }

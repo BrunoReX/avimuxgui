@@ -9,6 +9,7 @@
 #include "ResizeableDialog.h"
 #include ".\riffchunktreedlg.h"
 #include "../cache.h"
+#include "HexViewListBox.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -16,10 +17,15 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+typedef struct
+{
+	__int64 pos;
+} RIFFTREEITEM_DATA;
+
 /////////////////////////////////////////////////////////////////////////////
 // Dialogfeld CRIFFChunkTreeDlg 
 
-HTREEITEM InsertItem(HWND hTree, HTREEITEM hParent, char* cText);
+HTREEITEM InsertItem(HWND hTree, HTREEITEM hParent, char* cText, LPARAM data = 0);
 HTREEITEM InsertItem(HWND hTree, TVINSERTSTRUCT& tvi);
 
 bool bChunkTree_stop = false;
@@ -42,6 +48,7 @@ void CRIFFChunkTreeDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_TREE1, m_Tree);
 	//}}AFX_DATA_MAP
 	DDX_Control(pDX, IDC_WAIT_FOR_COMPLETE_TREE, m_WaitButton);
+	DDX_Control(pDX, IDC_HEXVIEW_LISTBOX2, m_HexView);
 }
 
 
@@ -55,6 +62,7 @@ BEGIN_MESSAGE_MAP(CRIFFChunkTreeDlg, CResizeableDialog)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE1, OnTvnSelchangedTree1)
 	ON_BN_CLICKED(IDC_WAIT, OnBnClickedWait)
 	ON_BN_CLICKED(IDC_WAIT_FOR_COMPLETE_TREE, OnBnClickedWaitForCompleteTree)
+	ON_LBN_SELCHANGE(IDC_HEXVIEW_LISTBOX2, OnLbnSelchangeHexviewListbox2)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -317,7 +325,7 @@ void /*CRIFFChunkTreeDlg::*/ParseDMLH(HWND hTree, STREAM* source,
 const int CHTYPE_STRING = 0x01;
 
 void InsertChunk(HWND hTree, STREAM* source,
-										HTREEITEM hParent,CHUNKHEADER ch, int iType)
+	HTREEITEM hParent,CHUNKHEADER ch, int iType)
 {
 	TVINSERTSTRUCT	tvi;
 	char			cBuffer[200];
@@ -333,6 +341,10 @@ void InsertChunk(HWND hTree, STREAM* source,
 	QW2Str(ch.dwLength,cQW,21);
 	QW2Str(source->GetPos()-8,cOfs,14);
 	qwPos=source->GetPos();
+
+	RIFFTREEITEM_DATA* data = new RIFFTREEITEM_DATA;
+	data->pos = qwPos - 8;
+
 	if (iType == CHTYPE_STRING) {
 		ZeroMemory(cItem, sizeof(cItem));
 		source->Read(cItem, ch.dwLength);
@@ -342,11 +354,12 @@ void InsertChunk(HWND hTree, STREAM* source,
 	}
 	tvi.hParent=hParent;
 	tvi.hInsertAfter=TVI_LAST;
-	tvi.item.mask=TVIF_TEXT;
+	tvi.item.mask=TVIF_TEXT | TVIF_PARAM;
 	tvi.item.pszText=cBuffer;
 	tvi.item.cchTextMax=1+lstrlen(cBuffer);
-
+	tvi.item.lParam = (LPARAM)data;
 	hItem=InsertItem(hTree, tvi);
+	
 
 
 	if (ch.dwFourCC==MakeFourCC("avih")) {
@@ -369,16 +382,17 @@ void InsertChunk(HWND hTree, STREAM* source,
 
 }
 
-HTREEITEM InsertItem(HWND hTree, HTREEITEM hParent, char* cText)
+HTREEITEM InsertItem(HWND hTree, HTREEITEM hParent, char* cText, LPARAM data)
 {
 	EnterCriticalSection(&cs);
 
 	TVINSERTSTRUCT tvi;
 	tvi.hParent=hParent;
 	tvi.hInsertAfter=TVI_LAST;
-	tvi.item.mask=TVIF_TEXT;
+	tvi.item.mask=TVIF_TEXT | TVIF_PARAM;
 	tvi.item.pszText=cText;
 	tvi.item.cchTextMax=strlen(cText);
+	tvi.item.lParam = data;
 
 	HTREEITEM hItem = TreeView_InsertItem(hTree, &tvi);
 
@@ -400,10 +414,11 @@ typedef struct {
 	LISTHEADER listhdr;
 	STREAM* source;
 	__int64 list_offset;
+	HANDLE hSemaphore;
 } INSERTLIST_THREAD_DATA;
 
 void StartInsertListThread(CRIFFChunkTreeDlg* dlg, HTREEITEM hParent,
-						   LISTHEADER* lhdr, __int64 offset);
+						   LISTHEADER* lhdr, __int64 offset, HANDLE hSemaphore);
 
 
 
@@ -416,7 +431,6 @@ DWORD WINAPI InsertListThread(void* pData)
 	CRIFFChunkTreeDlg* dlg = itd->dlg;
 	STREAM* source = itd->source;
 
-	EnterCriticalSection(&cs);
 	source->Seek(itd->list_offset + 12);
 	iChunkTree_ThreadCount++;
 
@@ -444,13 +458,22 @@ DWORD WINAPI InsertListThread(void* pData)
 	sprintf(&(cBuffer[10]),"%s %s",cQW, cOfs);
 
 	tvi.hParent=hParent;
-	tvi.hInsertAfter=TVI_LAST;
-	tvi.item.mask=TVIF_TEXT;
-	tvi.item.pszText=cBuffer;
-	tvi.item.cchTextMax=lstrlen(cBuffer);
+	tvi.hInsertAfter = TVI_LAST;
+	tvi.item.mask = TVIF_TEXT | TVIF_PARAM;
+	tvi.item.pszText = cBuffer;
+	tvi.item.cchTextMax = lstrlen(cBuffer);
+
+	RIFFTREEITEM_DATA* data = new RIFFTREEITEM_DATA;
+	data->pos = itd->list_offset;
+	tvi.item.lParam = (LPARAM)data;
 
 	hItem=InsertItem(hTree, tvi);
 	dwCount = 0;
+
+	EnterCriticalSection(&cs);
+
+	if (itd->hSemaphore)
+		ReleaseSemaphore(itd->hSemaphore, 1, NULL);
 
 	if (plh.dwLength>=8) 
 	while (dwRelPos<plh.dwLength-8 && !bChunkTree_stop && plh.dwLength < 0x80000000) {
@@ -468,6 +491,7 @@ DWORD WINAPI InsertListThread(void* pData)
 			_itd->list_offset = qwPos - 12;
 			_itd->listhdr = lh;
 			_itd->hParent = hItem;
+			_itd->hSemaphore = NULL;
 			InsertListThread(_itd);
 
 //			source->Seek(qwPos+lh.dwLength-4);
@@ -506,7 +530,7 @@ DWORD WINAPI InsertListThread(void* pData)
 }
 
 void StartInsertListThread(CRIFFChunkTreeDlg* dlg, HTREEITEM hParent,
-						   LISTHEADER* lhdr, __int64 offset)
+						   LISTHEADER* lhdr, __int64 offset, HANDLE hSemaphore)
 {
 	__int64 qwPos = offset;
 
@@ -517,6 +541,7 @@ void StartInsertListThread(CRIFFChunkTreeDlg* dlg, HTREEITEM hParent,
 	itd->listhdr = *lhdr;
 	itd->source = dlg->GetSource();
 	itd->hTree = dlg->m_Tree.m_hWnd;
+	itd->hSemaphore = hSemaphore;
 
 	DWORD dwID;
 	CreateThread(NULL, 1<<20, InsertListThread, itd, NULL, &dwID);
@@ -524,29 +549,61 @@ void StartInsertListThread(CRIFFChunkTreeDlg* dlg, HTREEITEM hParent,
 	itd->source->Seek(offset + lhdr->dwLength + 8);
 }
 
+typedef struct
+{
+	CRIFFChunkTreeDlg* dlg;
+	STREAM* source;
+} MAIN_THREAD_DATA_STRUCT;
+
+DWORD WINAPI MainThread(void* pData)
+{
+	MAIN_THREAD_DATA_STRUCT* mtds = (MAIN_THREAD_DATA_STRUCT*)pData;
+	CRIFFChunkTreeDlg* dlg = mtds->dlg;
+	STREAM* source = mtds->source;
+
+	__int64 qwPos=source->GetPos();
+	dwMBNbr=0;
+	LISTHEADER lh;
+
+	source->Seek(0);
+	while (!source->IsEndOfStream()) {
+		source->Read(&lh,12);
+		HANDLE h = CreateSemaphore(NULL, 0, 1, NULL);
+		StartInsertListThread(dlg, NULL, &lh, source->GetPos() - 12, h);
+		WaitForSingleObject(h, INFINITE);
+        CloseHandle(h);
+	}
+
+	source->Seek(qwPos);
+
+	delete mtds;
+	return 1;
+}
+
+
+
 BOOL CRIFFChunkTreeDlg::OnInitDialog() 
 {
 //	InitializeCriticalSection(&critical_section);
 	InitializeCriticalSection(&cs);
 	bChunkTree_stop = false;
-	__int64		qwPos;
-	LISTHEADER		lh;
+//	__int64		qwPos;
+//	LISTHEADER		lh;
 	
 	CResizeableDialog::OnInitDialog();
 	
 	SendDlgItemMessage(IDOK,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_GEN_OK));
 	SendDlgItemMessage(IDCANCEL,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_GEN_CANCEL));
-	SendDlgItemMessage(IDC_WAIT_FOR_COMPLETE_TREE, WM_SETTEXT, NULL, (LPARAM)LoadString(STR_RIFFDLG_WAIT));
+	SendDlgItemMessage(IDC_WAIT_FOR_COMPLETE_TREE, WM_SETTEXT, NULL,
+		(LPARAM)LoadString(STR_RIFFDLG_FULL));
 
-	qwPos=source->GetPos();
-	dwMBNbr=0;
-	source->Seek(0);
-	while (!source->IsEndOfStream()) {
-		source->Read(&lh,12);
-		StartInsertListThread(this, NULL, &lh, GetSource()->GetPos() - 12);
-	}
 
-	source->Seek(qwPos);
+	DWORD dwID;
+	MAIN_THREAD_DATA_STRUCT* mtds = new MAIN_THREAD_DATA_STRUCT;
+	mtds->dlg = this;
+	mtds->source = source;
+	CreateThread(NULL, 1<<20, MainThread, mtds, NULL, &dwID);
+
 
 	AttachWindow(*GetDlgItem(IDOK), ATTB_RIGHT, *this, -12);
 	AttachWindow(*GetDlgItem(IDC_SAVE), ATTB_RIGHT, *GetDlgItem(IDOK));
@@ -556,12 +613,23 @@ BOOL CRIFFChunkTreeDlg::OnInitDialog()
 	int border_x, border_y;
 	GetBorder(border_x, border_y);
 
+	AttachWindow(m_HexView, ATTB_BOTTOM, *this, -border_y);
+
+
 	AttachWindow(m_Tree, ATTB_LEFT, *this, 12);
-	AttachWindow(m_Tree, ATTB_BOTTOM, *this, -12);
+	AttachWindow(m_Tree, ATTB_BOTTOM, m_HexView, ATTB_TOP, -1);
 	AttachWindow(m_Tree, ATTB_TOP, *this, border_y + 12);
 	AttachWindow(m_Tree, ATTB_RIGHT, *GetDlgItem(IDOK), ATTB_LEFT, -12);
 
+	AttachWindow(m_HexView, ATTB_RIGHT, m_Tree);
+	AttachWindow(m_HexView, ATTB_LEFT, m_Tree);
+
 	AttachWindow(*GetDlgItem(IDOK), ATTB_TOP, m_Tree);
+
+	m_HexView.SetRange(16*256);
+	m_HexView.SetDataSource(source);
+	m_HexView.SetNewStartPos(0);
+	m_HexView.SetMode(HWLB_MODE_RIFF);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX-Eigenschaftenseiten sollten FALSE zurückgeben
@@ -605,8 +673,34 @@ void CRIFFChunkTreeDlg::OnSave()
 	}
 }
 
+void CleanTree(CTreeCtrl* tree, HTREEITEM hParent)
+{
+	HTREEITEM hChild;
+
+	if (hParent)
+		hChild = tree->GetChildItem(hParent);
+	else
+		hChild = tree->GetRootItem();
+
+	while (hChild) {
+		CleanTree(tree, hChild);
+		hChild = tree->GetNextSiblingItem(hChild);
+	}
+
+	if (hParent) {
+		TVITEM item;
+		item.mask = TVIF_PARAM | TVIF_HANDLE;
+		item.hItem = hParent;
+		tree->GetItem(&item);
+		void* p = (void*)item.lParam;
+		if (p)
+			delete p;
+	}
+}
+
 void CRIFFChunkTreeDlg::OnDestroy()
 {
+	CleanTree(&m_Tree, NULL);
 
 	source->Disable(CACHE_THREADSAFE);
 //	DeleteCriticalSection(&critical_section);
@@ -645,6 +739,19 @@ void CRIFFChunkTreeDlg::OnTvnSelchangedTree1(NMHDR *pNMHDR, LRESULT *pResult)
 {
 	LPNMTREEVIEW pNMTreeView = reinterpret_cast<LPNMTREEVIEW>(pNMHDR);
 	// TODO: Fügen Sie hier Ihren Kontrollbehandlungscode für die Benachrichtigung ein.
+
+	TVITEM item;
+	item.mask = TVIF_PARAM | TVIF_HANDLE;
+	item.hItem = pNMTreeView->itemNew.hItem;
+	m_Tree.GetItem(&item);
+
+	void* p = (void*)item.lParam;
+
+	if (p) {
+		RIFFTREEITEM_DATA* d = (RIFFTREEITEM_DATA*)p;
+		m_HexView.SetNewStartPos(d->pos);
+	}
+
 	*pResult = 0;
 }
 
@@ -684,9 +791,15 @@ void CRIFFChunkTreeDlg::OnBnClickedWaitForCompleteTree()
 		wst->idc = IDC_WAIT_FOR_COMPLETE_TREE;
 		DWORD dwID;
 		CreateThread(NULL, 0, WaitButtonTest_thread, wst, NULL, &dwID);
+
 /* the following code b0rks:
 			Sleep(250);
 			PostMessage(WM_COMMAND, IDC_WAIT_FOR_COMPLETE_TREE, 0);
 */
 	}
+}
+
+void CRIFFChunkTreeDlg::OnLbnSelchangeHexviewListbox2()
+{
+	// TODO: Fügen Sie hier Ihren Kontrollbehandlungscode für die Benachrichtigung ein.
 }

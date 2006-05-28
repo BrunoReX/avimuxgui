@@ -101,3 +101,74 @@ int Filename2LongFilename(char* in, char* out, int out_buf_len)
 
 	return 0;
 }
+
+void FilenameKeepName(char* in_out)
+{
+	char* cbegin = in_out;
+	char* clast_dot = NULL;
+	char* clast_backslash = NULL;
+
+	while (*in_out) {
+		if (*in_out == '.')
+			clast_dot = in_out;
+		if (*in_out == '\\')
+			clast_backslash = in_out;
+		in_out++;
+	}
+
+	if (clast_dot)
+		*clast_dot = 0;
+
+	if (clast_backslash)
+		strcpy(cbegin, clast_backslash+1);
+}
+
+int UTF8CharLen(char in)
+{
+	unsigned char uin = (unsigned char)in;
+
+	if (uin < 128)
+		return 1;
+
+	if (uin < 192)
+		return -1;
+
+	if (uin < 0xE0)
+		return 2;
+
+	if (uin < 0xF0)
+		return 3;
+
+	if (uin < 0xF8)
+		return 4;
+
+	if (uin < 0xFC)
+		return 5;
+
+	if (uin < 0xFE)
+		return 6;
+
+	if (uin < 0xFF)
+		return 7;
+
+	return 8;
+}
+
+
+void FilenameRemoveIllegalCharactersUTF8(char* in_out, char replacement)
+{
+	while (*in_out) {
+		int cl = UTF8CharLen(*in_out);
+		if (cl < 1)
+			return;
+
+		if (cl == 1) {
+			if (*in_out == '\\' || *in_out == '"' || *in_out == '?' ||
+				*in_out == '/' || *in_out == '<' || *in_out == '>' || 
+				*in_out == ':' || *in_out == '*' || *in_out == '|')
+				*in_out = replacement;
+		}
+
+		in_out += cl;
+	}
+}

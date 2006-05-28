@@ -15,26 +15,9 @@ static char THIS_FILE[] = __FILE__;
 
 
 int utf8_unicode_possible = 1;
-int utf8_WCTMB_BufferCheck = 0;
-int	utf8_WCTMB_BufferOverflows = 0;
 
-/* cannot switch it off once an overflow has occured */
+char    cUTF8Hdr[] = { (char)0xEF, (char)0xBB, (char)0xBF, 0 };
 
-/*
-void EnableWCTMBBufferCheck(bool bEnable)
-{
-	if (bEnable)
-		utf8_WCTMB_BufferCheck = bEnable;
-	else
-		if (!utf8_WCTMB_BufferOverflows)
-			utf8_WCTMB_BufferCheck = bEnable;
-}
-
-int utf8_DoWCTMBBufferCheck()
-{
-	return utf8_WCTMB_BufferCheck;
-}
-*/
 void utf8_EnableRealUnicode(bool bEnabled)
 {
 	utf8_unicode_possible = bEnabled;
@@ -44,72 +27,14 @@ int utf8_IsUnicodeEnabled()
 {
 	return utf8_unicode_possible;
 }
-/*
-int utf8_GetWCTMBBufferMismatchCount()
-{
-	return utf8_WCTMB_BufferOverflows;
-}
-*/
+
 int _WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, 
 						 int cchWideChar, LPSTR lpMultiByteStr, int cbMultiByte, 
 						 LPCSTR lpDefaultChar, LPBOOL lpUsedDefaultChar) {
 
-/*	if (!utf8_DoWCTMBBufferCheck() || !cbMultiByte) {*/
 	  int result = WideCharToMultiByte(CodePage, dwFlags, lpWideCharStr, cchWideChar, lpMultiByteStr, 
 		  cbMultiByte, lpDefaultChar, lpUsedDefaultChar);
-	  return result;/*
-	} else {
-	};
-	/*	if (cbMultiByte > 32768)
-			cbMultiByte = 32768;
-		int _size = cbMultiByte * 3;
-
-		unsigned char* p = (unsigned char*)malloc(_size);
-		memset(p, 0xFF, _size);
-		
-		int result = WideCharToMultiByte(CodePage, dwFlags, lpWideCharStr, cchWideChar, (char*)p, 
-			cbMultiByte, lpDefaultChar, lpUsedDefaultChar);
-
-		int position;
-
-		_asm {
-			pushfd
-			push edi
-
-			std
-			mov  edi, p
-			add  edi, _size
-			dec  edi
-			mov  ecx, _size
-			mov  al, 0xFF
-			repe scasb
-
-			mov position, ecx
-
-			pop edi
-			popfd
-		}
-
-		int real_length = position + 1;
-
-		if (lpMultiByteStr) {
-			strncpy(lpMultiByteStr, (char*)p, min(cbMultiByte, real_length));
-			lpMultiByteStr[min(cbMultiByte, real_length)-1]=0;
-		}
-
-		free(p);
-
-		if (real_length > cbMultiByte) {
-			if (!utf8_WCTMB_BufferOverflows) {
-				MessageBoxA(0, "A buffer overflow has occured in WideCharToMultiByte.", "Oops", MB_ICONWARNING | MB_OK);
-				utf8_WCTMB_BufferOverflows++;			
-			}
-		}
-
-		return result;
-	}
-
-*/	
+	  return result;
 }
 
 int _stdcall WStr2UTF8(char* source, char** dest)
@@ -132,6 +57,11 @@ int _stdcall WStr2UTF8(char* source, char** dest)
 	return _WideCharToMultiByte(CP_UTF8,0,(LPCWSTR)source,-1,*dest,len,NULL,NULL);
 }
 
+int _stdcall WStr2UTF8(wchar_t* source, char** dest)
+{
+	return WStr2UTF8((char*)source, dest);
+}
+
 int _stdcall WStr2UTF8(char* source, char* dest, int max_len)
 {
 	if (dest) {
@@ -151,6 +81,12 @@ int _stdcall WStr2UTF8(char* source, char* dest, int max_len)
 
 	return 0;
 }
+
+int _stdcall WStr2UTF8(wchar_t* source, char* dest, int max_len)
+{
+	return WStr2UTF8((char*)source, dest, max_len);
+}
+
 
 int  _stdcall WStr2Str(char* source, char* dest, int max_len)
 {
@@ -244,6 +180,9 @@ int _stdcall Str2WStr(char* source, char* dest, int max_len)
 	size_t source_len = 1 + strlen(source);
 
 	if (source!=dest) {
+		if (!dest)
+			return 2 * MultiByteToWideChar(CP_THREAD_ACP, 0, source, -1, NULL, 0);
+
 		return 2*MultiByteToWideChar(CP_THREAD_ACP,0,source,-1,(LPWSTR)dest,max_len/2);
 	} else {
 		char* cTemp = new char[2 * source_len];
@@ -334,8 +273,13 @@ int _stdcall Str2UTF8(char* source, char* dest, int max_len)
 	if (max_len < 0)
 		return 0;
 	
+	int temp_size;
 	size_t source_len = strlen(source) + 1;
-	int temp_size = MultiByteToWideChar(CP_THREAD_ACP,0,source,-1,NULL,0);
+	if (utf8_unicode_possible) {
+		temp_size = Str2WStr(source, (char*)NULL);
+	} else {
+		temp_size = 1+strlen(source);
+	}
 	int i;
 	
 	unsigned short* temp = new unsigned short[temp_size];
@@ -355,15 +299,16 @@ int _stdcall Str2UTF8(char* source, char* dest, int max_len)
 			return i;
 		}
 	} else {
+		delete[] temp;
 		if (dest) {
 			if ((int)source_len < max_len) 
 				strcpy(dest, source);
 			else {
 				strncpy(dest, source, max_len);
-				dest[(int)max_len] = 0;
+				dest[(int)max_len-1] = 0;
 			}
 		}
-		return (int)strlen(source);
+		return 1+(int)strlen(source);
 	}
 
 }

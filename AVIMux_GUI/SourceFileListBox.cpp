@@ -6,7 +6,7 @@
 #include "AVIMux_GUIDlg.h"
 #include "AVIFile.h"
 #include "SourceFileListBox.h"
-#include "..\BaseStreams.h"
+#include "..\Filestream.h"
 #include <algorithm>
 
 #include "mode2form2reader.h"
@@ -25,6 +25,7 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 #include "FILE_INFO.h"
+#include ".\sourcefilelistbox.h"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -52,6 +53,7 @@ BEGIN_MESSAGE_MAP(CSourceFileListBox, CEnhancedListBox)
 	ON_WM_DROPFILES()
 	ON_WM_PAINT()
 	//}}AFX_MSG_MAP
+	ON_WM_KILLFOCUS()
 END_MESSAGE_MAP()
 
 BEGIN_DISPATCH_MAP(CSourceFileListBox, CEnhancedListBox)
@@ -90,17 +92,29 @@ FILE_INFO* CSourceFileListBox::GetFileInfo(int i)
 	}
 
 	CBuffer* c = (CBuffer*)d;
+	if (!c)
+		return NULL;
+
 	return (FILE_INFO*)c->GetData();
+}
+
+FILE_INFO* CSourceFileListBox::GetFileInfoFromID(int i)
+{
+	return GetFileInfo(FileID2Index(i));
 }
 
 int CSourceFileListBox::FileID2Index(int id)
 {
-	for (int i=0; i<GetCount(); i++)
-		if (GetFileInfo(i)->file_id == id)
+	for (int i=0; i<GetCount(); i++) {
+		FILE_INFO* f = GetFileInfo(i);
+		if (f && f->file_id == id)
 			return i;
+	}
 
 	return -1;
 }
+
+
 
 void CSourceFileListBox::ItemDown()
 {
@@ -110,6 +124,15 @@ void CSourceFileListBox::ItemDown()
 void CSourceFileListBox::ItemUp()
 {
 	CEnhancedListBox::ItemUp();
+}
+
+bool CSourceFileListBox::CanMoveTo(int i, int direction)
+{
+	FILE_INFO* f1 = GetFileInfo(i);
+	FILE_INFO* f2 = GetFileInfo(i+direction);
+	if (!f1 || !f2 || f1->bInUse && f2->bInUse)
+		return false;
+	return true;
 }
 
 void CSourceFileListBox::SortItems()
@@ -123,10 +146,10 @@ void CSourceFileListBox::SortItems()
 				FILE_INFO* f1 = GetFileInfo(j);
 				FILE_INFO* f2 = GetFileInfo(k);
 
-				if (f1 -> current_pos > f2->current_pos) {
-					SetSel(k);
+				if (f1 && f2 && f1->current_pos > f2->current_pos) {
+					SetSel(k, true);
 					ItemUp();
-					SetSel(k-1);
+					SetSel(k-1, false);
 				}
 
 			}
@@ -136,9 +159,11 @@ void CSourceFileListBox::SortItems()
 
 void CSourceFileListBox::RedoNumbering()
 {
-	for (int i=0; i<GetCount(); i++)
-		GetFileInfo()->current_pos = 2*i;
-
+	for (int i=0; i<GetCount(); i++) {
+		FILE_INFO* f = GetFileInfo(i);
+		if (f)
+			f->current_pos = 2*i;
+	}
 }
 
 void CSourceFileListBox::OnRButtonUp(UINT nFlags, CPoint point) 
@@ -522,6 +547,41 @@ void CSourceFileListBox::OnPaint()
 	// Kein Aufruf von CEnhancedListBox::OnPaint() für Zeichnungsnachrichten
 }
 
+void CSourceFileListBox::SetFlag(int listbox_index, int flag_index, DWORD flag_value,
+								 bool value, bool reset_others)
+{
+	FILE_INFO* f = GetFileInfo(listbox_index);
+	if (!f)
+		return;
+
+	DWORD* pFlag = &f->dwFlags[flag_index];
+
+	bool bOldValue = !!(*pFlag & flag_value);
+	if (value)
+		*pFlag |= flag_value;
+	else
+		*pFlag &=~ flag_value;
+
+	RECT r;
+	GetItemRect(listbox_index, &r);
+	if (value != bOldValue)
+		InvalidateRect(&r, false);
+
+	if (reset_others) {
+		for (int j=GetCount()-1; j>=0; j--)
+			if (j!=listbox_index) {
+				bOldValue = !!(GetFileInfo(j)->dwFlags[flag_index] & flag_value);
+				if (bOldValue) {
+					GetFileInfo(j)->dwFlags[flag_index] &=~ flag_value;
+					GetItemRect(j, &r);
+					InvalidateRect(&r, false);
+				}
+			}
+	}
+
+	UpdateWindow();
+}
+
 void CSourceFileListBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct) 
 {
 	// TODO: Code einfügen, um das angegebene Element zu zeichnen
@@ -538,23 +598,40 @@ void CSourceFileListBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 
 	char* u = NULL;
 	CFont* font = GetFont();
+
+	LOGFONT logfont;
+	font->GetLogFont(&logfont);
+
+	char cTempUTF8[65536]; cTempUTF8[0]=0;
+	sprintf(cTempUTF8, "[%s] %s", lpFI->cFileformatString, lpFI->lpcName);
 	
-	int j = fromUTF8(lpFI->lpcName, &u);
+	int j = fromUTF8(cTempUTF8, &u);
 	if (IsUnicode())
 		j /= 2;
 
-	if (lpFI->bInUse) {
-		if ((d->itemState & ODS_SELECTED)/* && (d->itemState & ODA_SELECT)*/) {
-			dc.SetTextColor(GetSysColor(COLOR_HIGHLIGHTTEXT));
-			bkColor = (GetSysColor(COLOR_HIGHLIGHT));
+	if (lpFI->dwFlags[0] & FILEINFO_FLAG0_DEEMPH) {
+		if ((d->itemState & ODS_SELECTED)) {
+			
+			if (GetFocus() == this) {
+				dc.SetTextColor(GetSysColor(COLOR_HIGHLIGHTTEXT));
+				bkColor = (GetSysColor(COLOR_HIGHLIGHT));
+			} else {
+				dc.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
+				bkColor = (GetSysColor(COLOR_BTNFACE));
+			}
 		} else {
-			dc.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
+			dc.SetTextColor(GetSysColor(COLOR_GRAYTEXT));
 			bkColor = (GetSysColor(COLOR_WINDOW));
 		}
 	} else {
-		if ((d->itemState & ODS_SELECTED) /*&& (d->itemState & ODA_SELECT)*/) {
-			dc.SetTextColor(GetSysColor(COLOR_HIGHLIGHTTEXT));
-			bkColor = (GetSysColor(COLOR_HIGHLIGHT));
+		if ((d->itemState & ODS_SELECTED)) {
+			if (GetFocus() == this) {
+				dc.SetTextColor(GetSysColor(COLOR_HIGHLIGHTTEXT));
+				bkColor = (GetSysColor(COLOR_HIGHLIGHT));
+			} else {
+				dc.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
+				bkColor = (GetSysColor(COLOR_BTNFACE));
+			}
 		} else {
 			dc.SetTextColor(GetSysColor(COLOR_WINDOWTEXT));
 			bkColor = (GetSysColor(COLOR_WINDOW));
@@ -562,9 +639,25 @@ void CSourceFileListBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	}
 
 	dc.SetTextAlign(TA_LEFT);
-
 	dc.SetBkMode(TRANSPARENT);
-	dc.SelectObject(font);
+
+	if (lpFI->dwFlags[0] & FILEINFO_FLAG0_BOLD) {
+		logfont.lfWeight = FW_BOLD;
+	}
+
+	if (lpFI->dwFlags[0] & FILEINFO_FLAG0_EMPH) {
+		if (bkColor == GetSysColor(COLOR_HIGHLIGHT))
+			dc.SetTextColor(bkColor ^ 0xFFFFFF);
+		else
+			dc.SetTextColor(RGB(255,0,0));
+	}
+
+	CFont* used_font = new CFont();
+	used_font->CreateFontIndirect(&logfont);
+
+	dc.SelectObject(used_font);
+	used_font->DeleteObject();
+	delete used_font;
 
 	LOGBRUSH b;
 	b.lbColor = bkColor;
@@ -589,4 +682,12 @@ void CSourceFileListBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	
 	dc.Detach();
 	free(u);
+}
+
+void CSourceFileListBox::OnKillFocus(CWnd* pNewWnd)
+{
+	CEnhancedListBox::OnKillFocus(pNewWnd);
+
+	InvalidateRect(NULL, false);
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein.
 }

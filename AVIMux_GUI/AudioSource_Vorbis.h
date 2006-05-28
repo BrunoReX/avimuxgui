@@ -11,6 +11,7 @@
 #include "..\buffers.h"
 #include "audiosource_matroska.h"
 #include "..\cache.h"
+#include "..\bitstream.h"
 
 const int VORBIS_OPEN_OK	= 0x01;
 const int VORBIS_OPEN_ERROR = -0x01;

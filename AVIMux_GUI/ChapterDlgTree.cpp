@@ -29,12 +29,14 @@ CChapterDlgTree::CChapterDlgTree()
 	clipboard = new CChapters;
 
 	hContextMenuTarget = NULL;
+	cTitleLanguagePriority = (char*)calloc(1, 65536);
 }
 
 CChapterDlgTree::~CChapterDlgTree()
 {
 	clipboard->Delete();
 	delete clipboard;
+	free(cTitleLanguagePriority);
 }
 
 void CChapterDlgTree::OnFinalRelease()
@@ -88,6 +90,11 @@ void FillChapterSegmentUIDs(CChapters* c, int start_index, int end_index, char* 
 		if (c->HasSubChapters(i))
 			FillChapterSegmentUIDs(c->GetSubChapters(i), 0, CHAP_LAST, cUID);
 	}
+}
+
+void CChapterDlgTree::SetTitleLanguagePriorityString(char* title_language_priority)
+{
+	strcpy(cTitleLanguagePriority, title_language_priority);
 }
 
 void CChapterDlgTree::OnDropFiles(HDROP hDropInfo) 
@@ -386,7 +393,8 @@ void CChapterDlgTree::GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult)
 
 				pTVDispInfo->item.pszText[strlen(pTVDispInfo->item.pszText)-2] = '>';
 
-				char* pChapterText = pCE->c->GetChapterText(pCE->iIndex, "eng", CHAP_GCT_RETURN_FIRST);
+				char* pChapterText = pCE->c->GetChapterText(pCE->iIndex, 
+					cTitleLanguagePriority, CHAP_GCT_RETURN_FIRST);
 
 				if (pChapterText)
 					strcat(pTVDispInfo->item.pszText, pChapterText);

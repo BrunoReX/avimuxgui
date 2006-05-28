@@ -12,13 +12,18 @@
 #include "audiosource_dts.h"
 #include "audiosource_vorbis.h"
 
+const int FILEINFO_FLAG0_BOLD         = 0x00000001;
+const int FILEINFO_FLAG0_EMPH         = 0x00000002;
+const int FILEINFO_FLAG0_DEEMPH       = 0x00000004;
+
+
 typedef struct
 {
 	DWORD				dwType; // 1 = AVI, 2 = MP3, 4 = AC3, 8 = WAV, 16 = M2F2, 32 = DTS
 	char*				lpcName;
+	char				cFileformatString[32];
 	STREAM*				file;
 	STREAM*				source;
-//	STREAM*				cache;
 
 	union {
 		AVIFILEEX*			AVIFile;
@@ -30,6 +35,7 @@ typedef struct
 		VORBISSOURCE*		VRBFile;
 		
 	};
+
 	MODE2FORM2SOURCE*	lpM2F2;
 	OGGFILE*			OGGFile;
 	WAVEFILE*			lpwav;
@@ -39,6 +45,8 @@ typedef struct
 	bool				bAddedImmediately;
 	int					file_id;
 	int					current_pos;
+
+	DWORD				dwFlags[1];
 } FILE_INFO;
 
 const int FILETYPE_AVI     = 0x001;

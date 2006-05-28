@@ -1,9 +1,3 @@
-/*
-
-
-*/
-
-
 #include "stdafx.h"
 #include "AVIMux_GUIDlg.h"
 #include "global.h"
@@ -15,6 +9,7 @@
 #include "OSVersion.h"
 #include "../Filenames.h"
 #include "Version.h"
+#include "..\Filestream.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -42,10 +37,10 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
     
 	if (!IsOSWin2kplus()) {
 		char c[4096];
-		sprintf(c, "The following operating system has been found: %s. This application cannot run on Win 9x/ME/NT <=4. You need Windows 2000 or newer.", cwinver);
-		MessageBox(c, "Fatal Problem", MB_OK | MB_ICONERROR);
-		PostMessage(WM_QUIT);
-		return 0;
+		sprintf(c, "The following operating system has been found: %s. This application might work or not on Win 9x/ME/NT <=4. You should use Windows 2000/XP/2003.", cwinver);
+		MessageBox(c, "Problem", MB_OK | MB_ICONERROR);
+	//	PostMessage(WM_QUIT);
+	//	return 0;
 	}
 
 	utf8_EnableRealUnicode(DoesOSSupportUnicode());
@@ -229,7 +224,7 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	GetPrivateProfileString("config","mp3cbrframemode","1",Buffer,200,cfgfile);
 	i=GetPrivateProfileInt("config","avoidseekops",1,cfgfile);
 
-	sfOptions.bDispDoneDlg=true;
+//	sfOptions.bDispDoneDlg=true;
 	sfOptions.bExitAfterwards=false;
 
 	i=GetPrivateProfileInt("config","noaudio",0,cfgfile);
@@ -442,10 +437,10 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	settings->SetInt("output/general/logfile/on",0);
 	settings->SetInt("output/general/unbuffered", 1);
 	settings->SetInt("output/general/overlapped", 1);
+	settings->SetInt("output/general/threaded", 1);
 	settings->SetInt("output/general/cache/enabled", 1);
 	settings->SetInt("output/general/cache/size per cacheline", 21);
 	settings->SetInt("output/general/cache/cachelines", 4);
-	settings->SetInt("output/general/overwritedlg", 1);
 	settings->SetInt("output/general/file size/max", 2030);
 	settings->SetInt("output/general/file size/limited", 0);
 	settings->SetInt("output/general/numbering/enabled", 0);
@@ -454,6 +449,9 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	settings->SetInt("output/general/check disk space/lower limit", 10);
 
 	settings->SetInt("output/ogg/pagesize", 65025);
+	settings->SetInt("output/avi/inject/enabled", 0);
+	settings->SetInt("output/avi/inject/probability", 2); //in n/10000
+	settings->SetInt("output/avi/inject/size", 32);
 
 	settings->Add("gui/chapter_editor", 0, ATTRTYPE_ATTRIBS, NULL); 
 	settings->Add("gui/file_information", 0, ATTRTYPE_ATTRIBS, NULL);
@@ -462,7 +460,22 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	settings->SetInt("gui/main_window/window_size/width", 800);
 	settings->SetInt("gui/main_window/window_size/height", 600);
 	settings->Add("gui/settings_window", 0, ATTRTYPE_ATTRIBS, NULL);
+	settings->SetInt("gui/settings_window/window_size/width", 420);
+	settings->SetInt("gui/settings_window/window_size/height", 507);
 	settings->Add("gui/riff_tree", 0, ATTRTYPE_ATTRIBS, NULL);
+
+	settings->SetInt("gui/main_window/source_files/highlight", 1);
+	settings->SetInt("gui/main_window/source_files/lowlight", 1);
+	settings->Add("gui/chapter_editor/default_save_extension", FATTR_ADDATTR_CREATE,
+		ATTRTYPE_UTF8, "mkc");
+	settings->Add("gui/chapter_editor/tree_default_title_languages", FATTR_ADDATTR_CREATE,
+		ATTRTYPE_UTF8, "eng");
+
+	settings->SetInt("gui/general/finished_muxing_dialog", 1);
+	settings->SetInt("gui/general/overwritedlg", 1);
+	settings->SetInt("gui/general/finished_muxing_dialog", 1);
+
+	settings->SetInt("gui/output/default_file_name_source", FILENAME_NOTHING);
 
 	Attribs(settings->GetAttr("gui/main_window"));
 	ReinitPosition();

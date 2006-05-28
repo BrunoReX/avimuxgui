@@ -15,7 +15,8 @@
 #include "..\matroska.h"
 #include "EBMLTree.h"
 #include "ResizeableDialog.h"
-
+#include "afxwin.h"
+#include "HexViewListBox.h"
 void AddChildren(CTreeCtrl* tree, HTREEITEM hParent, EBMLElement* eParent); 
 
 class CEBMLTreeDlg : public CResizeableDialog
@@ -80,6 +81,8 @@ public:
 //	afx_msg void OnBnClickedOk();
 	afx_msg void OnBnClickedOk();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+	CHexViewListBox m_HexEdit;
+	afx_msg void OnBnClickedSaveTree();
 };
 
 //{{AFX_INSERT_LOCATION}}

@@ -192,7 +192,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 	{
 		for (i=1;i<=dwNbrOfFiles;i++)
 		{
-			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+			fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 			if (fi->dwType & FILETYPE_AVI) {
 				bAVI = 1;
 			} else 
@@ -240,13 +240,13 @@ void CAVIMux_GUIDlg::OnAddFileList()
 
 	if (bMP3) {
 		MP3SOURCE* m1, *m2;
-		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[1]);
+		fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[1]);
 		FILE_INFO* fi1 = fi;
 		m1 = fi->MP3File;
 
 		for (i=2;i<=dwNbrOfFiles;i++)
 		{
-			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+			fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 			m2 = fi->MP3File;
 
 			bool bSuccess = true;
@@ -264,12 +264,12 @@ void CAVIMux_GUIDlg::OnAddFileList()
 
 	if (bAAC) {
 		AACSOURCE* m1, *m2;
-		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[1]);
+		fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[1]);
 		FILE_INFO* fi1 = fi;
 		m1 = fi->AACFile;
 
 		for (i=2;i<=dwNbrOfFiles;i++) {
-			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+			fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 			m2 = fi->AACFile;
 
 			bool bSuccess = true;
@@ -287,13 +287,13 @@ void CAVIMux_GUIDlg::OnAddFileList()
 
 	if (bAC3 || bDTS) {
 		AUDIOSOURCE* m1, *m2;
-		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[1]);
+		fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[1]);
 		FILE_INFO* fi1 = fi;
 		m1 = fi->AC3File;
 
 		for (i=2;i<=dwNbrOfFiles;i++)
 		{
-			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+			fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 			m2 = fi->AC3File;
 
 			bool bSuccess = true;
@@ -312,12 +312,12 @@ void CAVIMux_GUIDlg::OnAddFileList()
 	{
 		AVIFILEEX* a1, *a2;
 
-		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[1]);
+		fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[1]);
 		a1 = fi->AVIFile;
 
 		for (i=2;i<=dwNbrOfFiles;i++)
 		{
-			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+			fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 			a2 = fi->AVIFile;
 
 			// check if number of streams is the same
@@ -357,11 +357,11 @@ void CAVIMux_GUIDlg::OnAddFileList()
 	if (bMKV) {
 		MATROSKA* m1, *m2;
 
-		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[1]);
+		fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[1]);
 		m1 = fi->MKVFile;
 
 		for (i=2;i<=dwNbrOfFiles;i++) {
-			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+			fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 			m2 = fi->MKVFile;
 
 			// check if number of streams is the same
@@ -446,7 +446,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 
 	for (i=1;i<=dwNbrOfFiles;i++)
 	{
-		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+		fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 
 		char* cNoExt = new char[512]; cNoExt[0]=0;
 
@@ -538,7 +538,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 
 		for (i=1;i<=dwNbrOfFiles;i++) {
 		//	asi[0]->lpdwFiles[i] = dwSelectedFiles[i];
-			fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+			fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 			if (bMP3) a = fi->MP3File;
 			if (bAAC) a = fi->AACFile;
 			if (bAC3) a = fi->AC3File;
@@ -649,7 +649,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 	if (fi->dwType & FILETYPE_AVI) {
 		for (j=0;j<fi->AVIFile->GetAudioStreamCount();j++)	{
 			for (i=1;i<=dwNbrOfFiles;i++) {
-				fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+				fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 
 				// check for special formats: mp3, ac3, dts, divx, pcm
 				switch (fi->AVIFile->GetFormatTag(j+1)) {
@@ -795,7 +795,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			for (i=1;i<=(int)lpdwSubtitleList[0];i++)
 			{
 				qwBias=0;
-				fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[1]);
+				fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[1]);
 		
 				lpAS=new AVISTREAM;
 				lpAS->Open(fi->AVIFile,lpdwSubtitleList[i]);
@@ -809,7 +809,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 				for (j=2;j<=(int)(dwSelectedFiles[0]);j++)
 				{
 					qwBias+=fi->AVIFile->GetNanoSecPerFrame()*fi->AVIFile->GetNbrOfChunks(0);
-					fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[j]);
+					fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[j]);
 
 					lpAS=new AVISTREAM;
 					lpAS->Open(fi->AVIFile,lpdwSubtitleList[i]);
@@ -866,7 +866,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 
 			for (i=1;i<=dwNbrOfFiles;i++)
 			{
-				fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+				fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 				m = fi->MKVFile;
 
 				m->SetActiveTrack(audio_streams->At(j));
@@ -958,7 +958,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			ssi[j] = new SUBTITLE_STREAM_INFO;
 			ZeroMemory(ssi[j],sizeof(*ssi[j]));
 			for (i=1;i<=dwNbrOfFiles;i++) {
-				fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+				fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 				m = fi->MKVFile;
 
 				m->SetActiveTrack(subs->At(j));
@@ -1010,7 +1010,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 // Dateien nur in Benutzung, wenn alles geklappt hat
 	for (i=1;i<=dwNbrOfFiles;i++)
 	{
-		fi = m_SourceFiles.GetFileInfo(dwSelectedFiles[i]);
+		fi = m_SourceFiles.GetFileInfoFromID(dwSelectedFiles[i]);
 		fi->bInUse=true;
 	}
 

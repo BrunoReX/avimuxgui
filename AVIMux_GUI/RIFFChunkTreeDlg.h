@@ -15,6 +15,7 @@
 #include "AVIFile.h"
 #include "ResizeableDialog.h"
 #include "afxwin.h"
+#include "HexViewListBox.h"
 
 class CRIFFChunkTreeDlg : public CResizeableDialog
 {
@@ -69,6 +70,8 @@ public:
 	afx_msg void OnBnClickedWait();
 	CButton m_WaitButton;
 	afx_msg void OnBnClickedWaitForCompleteTree();
+	CHexViewListBox m_HexView;
+	afx_msg void OnLbnSelchangeHexviewListbox2();
 };
 
 //{{AFX_INSERT_LOCATION}}

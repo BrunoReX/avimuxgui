@@ -18,6 +18,7 @@ BITSTREAM   access to a stream bit by bit
 #define STREAM_UNBUFFERED_WRITE     (STREAM_WRITE | STREAM_UNBUFFERED)
 #define STREAM_WRITE_OPEN_EXISTING  0x08
 #define STREAM_OVERLAPPED			0x10
+#define STREAM_THREADED				0x20
 
 #include "windows.h"
 
@@ -86,71 +87,8 @@ class STREAM_FILTER: public STREAM
 		int Close();
 };
 
-const FILESTREAM_ASYNCH_IO_INITIATED = 0x13;
-const FILESTREAM_ASYNCH_IO_FINISHED  = 0x17;
-const FILESTREAM_ASYNCH_IO_FAILED    = 0x00;
 
-class FILESTREAM : public STREAM
-{
-	private:
-		HANDLE		hFile;
-		__int64		iCurrentSize;
-		char		cWriteSemaphoreName[10];
-		__int64		iFilesize;
-		__int64		iCurrPos;
-		bool		bBuffered;
-		bool		bOverlapped;
-		char*		cFilename;
-		int			iPossibleAlignedReadCount;
-		bool		bDenyUnbufferedRead;
-		bool		bCanRead;
-		bool		bCanWrite;
 
-	protected:
-		void		virtual Flush();
-	public:
-		FILESTREAM(void);
-		virtual ~FILESTREAM(void);
-		int			virtual	Open (char* lpFileName,DWORD _dwMode);
-		int					SethFile (HANDLE _hFile);
-		HANDLE				GethFile (void) { return hFile; }
-		int			virtual	Close(void);
-		int			virtual	Seek(__int64 qwPos);
-		__int64		virtual GetPos(void);
-		__int64		virtual GetSize(void);
-		int			virtual	Read(void* lpDest,DWORD dwBytes);
-		int			virtual	ReadAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped);
-		int			virtual	WriteAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped);
-		int			virtual WaitForAsyncIOCompletion(OVERLAPPED* overlapped, DWORD* pdwBytesTransferred);
-		int			virtual IsOverlappedIOComplete(OVERLAPPED* overlapped);
-		int			virtual Write(void* lpSource,DWORD dwBytes);
-		bool		virtual IsEndOfStream(void);
-		int			virtual GetGranularity(void) { return 1; }
-		int			virtual TruncateAt(__int64 iPosition);
-};
-
-class BITSTREAM 
-{
-	private:
-		STREAM*		source;
-		DWORD		dwCurrBitPos;
-		void		LoadWord(void);
-		WORD		wData;
-		int			ReadBit(int iFlag = 0);
-
-	public:
-		BITSTREAM(void)	{ source=NULL; dwCurrBitPos=0; }
-		virtual ~BITSTREAM() {};
-		STREAM*			GetSource() { return source; }
-		int		virtual	Open(STREAM* lpStream);
-		int		virtual Close(void) { source=NULL; return STREAM_OK; }
-		bool	virtual	IsEndOfStream(void) { return (source->IsEndOfStream()&&(dwCurrBitPos==15)); }
-		int				Seek(__int64	qwPos);
-		int				ReadBits(int n, int iFlag = 0);
-		__int64			ReadBits64(int n, int iFlag = 0);
-		__int64			GetPos();
-
-};
 
 __int64 round(double x);
 

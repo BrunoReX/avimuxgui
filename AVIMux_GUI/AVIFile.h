@@ -579,7 +579,7 @@ class AVIFILEEX : public RIFFFILE
 		void				TryToRepairLargeChunks(bool bTry);
 		int					VBR_FrameCountTillPos(DWORD dwStream, __int64 iPos);
 // write-only
-		int					AddChunk(DWORD,void*,DWORD,DWORD);
+		int					AddChunk(DWORD,void*,DWORD,DWORD, __int64* file_pos_of_chunk = NULL);
 		int					BeginRECList(void);
 		int					EndRECList(void);
 		int					IsRecListOpen(void);

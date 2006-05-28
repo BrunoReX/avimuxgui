@@ -169,6 +169,9 @@ int VIDEOSOURCEFROMMATROSKA::Open(MATROSKA* matroska, int iStream)
 		}
 	}
 
+	if (info.m->IsDefault())
+		SetDefault(true);
+
 	if (info.m->IsBitrateIndicated(info.iStream)) {
 		return VS_OK;
 	}
@@ -177,6 +180,7 @@ int VIDEOSOURCEFROMMATROSKA::Open(MATROSKA* matroska, int iStream)
 		info.size = info.m->GetSize();
 		return VS_OK;
 	}
+
 
 	UpdateDuration(info.m->GetMasterTrackDuration());
 	ReInit();

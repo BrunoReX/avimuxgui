@@ -11,6 +11,7 @@
 #include "../FormatTime.h"
 #include "Languages.h"
 #include "FileDialogs.h"
+#include "..\Filestream.h"
 
 
 #ifdef _DEBUG

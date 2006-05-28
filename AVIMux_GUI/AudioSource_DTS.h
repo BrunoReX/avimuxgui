@@ -3,6 +3,7 @@
 
 #include "audiosource_generic.h"
 #include "audiosource_binary.h"
+#include "..\bitstream.h"
 
 const int DTS_FRAMETYPE_NORMAL		= 1;
 const int DTS_FRAMETYPE_TERMINATION	= 0;

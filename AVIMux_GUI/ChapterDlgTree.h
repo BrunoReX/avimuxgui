@@ -30,12 +30,16 @@ typedef struct
 class CChapterDlgTree : public CUnicodeTreeCtrl
 {
 // Konstruktion
+private:
+	char*	cTitleLanguagePriority;
+
 public:
 	CChapterDlgTree();
 
 // Attribute
 public:
 	void virtual GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult);
+	void SetTitleLanguagePriorityString(char* title_language_priority);
 	void OpenContextMenu(CPoint point);
 // Operationen
 public:

@@ -11,7 +11,9 @@ int  _stdcall UTF82Str(char* source, char* dest, int max_len = 16384);
 int  _stdcall UTF82Str(char* source, char** dest);
 
 int  _stdcall WStr2UTF8(char* source, char* dest, int max_len = 16384);
+int	 _stdcall WStr2UTF8(wchar_t* source, char* dest, int max_len = 16384);
 int  _stdcall WStr2UTF8(char* source, char** dest);
+int  _stdcall WStr2UTF8(wchar_t* source, char** dest);
 
 int  _stdcall Str2UTF8(char* source, char* dest, int max_len = 16384);
 int  _stdcall Str2UTF8(char* source, char** dest);
@@ -22,5 +24,6 @@ int  _stdcall Str2WStr(char* source, char** dest);
 int  _stdcall WStr2Str(char* source, char* dest, int max_len = 16384); 
 int  _stdcall WStr2Str(char* source, char** dest);
 
+extern char    cUTF8Hdr[];
 
 #endif

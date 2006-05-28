@@ -6,10 +6,12 @@ typedef struct {
 	char* cID;
 } EID_DESCRIPTOR;
 
+#include "Integers.h"
+
 #pragma warning(disable:4305)
 #pragma warning(disable:4309)
 
-extern const int VSizeInt_Len[256];
+//extern const int VSizeInt_Len[256];
 extern const __int64 undefined_lengths[];
 
 const char EID_EBML[] = { 0x1A, 0x45, 0xDF, 0xA3 };

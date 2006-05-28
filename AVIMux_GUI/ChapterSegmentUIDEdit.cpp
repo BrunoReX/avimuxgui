@@ -7,6 +7,7 @@
 #include "..\Matroska.h"
 #include "..\UnicodeCalls.h"
 #include "languages.h"
+#include "..\Filestream.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

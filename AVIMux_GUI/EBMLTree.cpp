@@ -73,7 +73,6 @@ void CEBMLTree::SetMode(int _iMode)
 	InvalidateRect(NULL);
 }
 
-//void CEBMLTree::OnGetdispinfo(NMHDR* pNMHDR, LRESULT* pResult) 
 void CEBMLTree::GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult) 
 {
 	TV_DISPINFO* pTVDispInfo = (TV_DISPINFO*)pNMHDR;

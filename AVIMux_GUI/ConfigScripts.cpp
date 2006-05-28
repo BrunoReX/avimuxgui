@@ -14,6 +14,7 @@
 #include "global.h"
 #include "../UnicodeCalls.h"
 #include "../Filenames.h"
+#include "../Filestream.h"
 
  HANDLE hGlobalMuxingStartedSemaphore;
  HANDLE hGlobalMuxSemaphore;

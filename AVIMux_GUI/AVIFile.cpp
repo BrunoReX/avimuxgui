@@ -2776,7 +2776,8 @@ void AVIFILEEX::MoveHDRL(bool bEnabled)
 }
 
 
-int AVIFILEEX::AddChunk(DWORD dwStreamNbr,void* lpData,DWORD dwSize,DWORD dwFlags)
+int AVIFILEEX::AddChunk(DWORD dwStreamNbr,void* lpData,DWORD dwSize,DWORD dwFlags,
+						__int64* file_pos_of_chunk)
 {
 	CHUNK*	NextChunk;
 	INDEX*	NextIndex;
@@ -2860,11 +2861,17 @@ int AVIFILEEX::AddChunk(DWORD dwStreamNbr,void* lpData,DWORD dwSize,DWORD dwFlag
 	
 		if (GetAVIType()==AT_STANDARD) {
 			NextIndex->SetData(dwStreamNbr,dwFlags,qwFilePos-dwMoviPos-8,dwSize,dwKind);
+			if (file_pos_of_chunk)
+				*file_pos_of_chunk = qwFilePos;
 		} else {
 			if (!bContinueChunk) {
 				NextIndex->SetData(dwStreamNbr,dwFlags,qwFilePos,dwSize,dwKind);
+				if (file_pos_of_chunk)
+					*file_pos_of_chunk = qwFilePos;
 			} else {
 				NextIndex->SetData(dwStreamNbr,dwFlags,qwFilePos-8,dwSize,dwKind);
+				if (file_pos_of_chunk)
+					*file_pos_of_chunk = qwFilePos - 8;
 			}
 		}
 		siStreams[dwStreamNbr].qwStreamLength+=dwSize;

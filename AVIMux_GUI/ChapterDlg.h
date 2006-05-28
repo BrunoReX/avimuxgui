@@ -8,7 +8,7 @@
 #include "ChapterDlgList.h"
 #include "UserDrawEdit.h"
 #include "resource.h"
-
+#include "..\Filestream.h"
 
 #if _MSC_VER > 1000
 #pragma once
