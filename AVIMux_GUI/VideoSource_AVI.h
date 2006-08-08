@@ -23,6 +23,7 @@ class VIDEOSOURCEFROMAVI: public VIDEOSOURCE
 		void		virtual* GetFormat();
 		int			virtual	Open(AVIFILEEX* avifile);
 		int			virtual GetFrame(void* lpDest,DWORD* lpdwSize,__int64* lpiTimecode = NULL, ADVANCEDREAD_INFO* lpAARI = NULL);
+		int			virtual GetName(char *lpDest);
 		int			virtual GetResolution(int* lpiWidth,int* lpiHeight);
 		DWORD		virtual GetPos();
 		int			virtual GetNbrOfFrames(DWORD dwKind=FT_ALL);

@@ -265,6 +265,7 @@ int MATROSKA::GetActiveSegment()
 
 void MATROSKA::FlushQueues()
 {
+	int as = GetActiveSegment();
 	for (int j=0;j<GetSegmentCount();j++) {
 		SetActiveSegment(j);
 		if (queue) {
@@ -273,6 +274,7 @@ void MATROSKA::FlushQueues()
 			}
 		}
 	}
+	SetActiveSegment(as);
 }
 
 int MATROSKA::SetActiveSegment(int iSegment)
@@ -619,7 +621,7 @@ int MATROSKA::Read(READ_INFO* pInfo, int iFlags)
 
 	int last_compression = GetTrackCompressionDescriptorCount(iTrack) - 1;
 
-	if (GetTrackCompression(iTrack, last_compression) == COMPRESSION_HDRSTRIPING) {
+	if (GetTrackCompression(iTrack, last_compression) == COMPRESSION_HDRSTRIPPING) {
 		
 		if (rbi->frame_sizes.empty()) {
 			rbi->cData->Prepend(0, GetTrackCompressionPrivate(iTrack, last_compression),
@@ -1211,7 +1213,10 @@ int MATROSKA::Close()
 			e_TargetSeekhead = e_SecondarySeekhead;		
 
 		FlushWriteBuffer();
-		SetSegmentDuration((float)ws.iLatestTimecode - (float)ws.iEarliestTimecode);
+		
+		if (ws.iLatestTimecode >= ws.iEarliestTimecode)
+			SetSegmentDuration((float)ws.iLatestTimecode - (float)ws.iEarliestTimecode);
+		
 		if (e_Cluster) {
 			if (IsClusterIndexEnabled()) {
 				e_Seekhead->AddEntry((char*)MID_CLUSTER,ws.iPosInSegment,1);
@@ -2348,7 +2353,7 @@ int MATROSKA::StoreBlock(ADDBLOCK *a)
 	tracks[iTrackIndex]->iFramesWritten[block_info.iLaceStyle]+=a->iFrameCountInLace;
 	tracks[iTrackIndex]->iLaceOverhead[block_info.iLaceStyle]+=block_info.iLaceOverhead;
 	tracks[iTrackIndex]->iTotalSize += a->cData->GetSize();
-	if (GetTrackCompression(iTrackIndex, 0) == COMPRESSION_HDRSTRIPING)
+	if (GetTrackCompression(iTrackIndex, 0) == COMPRESSION_HDRSTRIPPING)
 		tracks[iTrackIndex]->iTotalSize += GetTrackCompressionPrivateSize(iTrackIndex, 0);
 
 	tracks[iTrackIndex]->iTotalFrameCount += (a->iFrameCountInLace)?a->iFrameCountInLace:1;

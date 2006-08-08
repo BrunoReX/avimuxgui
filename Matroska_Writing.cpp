@@ -954,7 +954,7 @@ void EBMLMTrackInfo_Writer::Build()
 					e_CCPR->AppendChild_UInt((char*)MID_TRCE_CONTENTCOMPALGO, 0, -1);
 				}
 
-				if (compression->compression == COMPRESSION_HDRSTRIPING) {
+				if (compression->compression == COMPRESSION_HDRSTRIPPING) {
 					e_CCPR->AppendChild_UInt((char*)MID_TRCE_CONTENTCOMPALGO, 3, -1);
 					e_CCPR->AppendChild_Binary((char*)MID_TRCE_CONTENTCOMPSETTINGS,
 						new CBuffer(compression->compression_private_size, 

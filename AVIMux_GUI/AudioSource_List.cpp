@@ -52,6 +52,7 @@ AUDIOSOURCELIST::Append(AUDIOSOURCE* pNext)
 		}
 	}
 
+	pNext->SetDelayMMS(this);
 	pNext->ReInit();
 
 	return AS_OK;
@@ -116,8 +117,16 @@ int AUDIOSOURCELIST::Read(void* lpDest, DWORD dwMicrosecDesired, DWORD* lpdwMicr
 
 	// can read sth from current source?
 	if (!info.active_source->IsEndOfStream()) {
-		int iRes = info.active_source->Read(lpDest,dwMicrosecDesired,
+		int res = info.active_source->Read(lpDest,dwMicrosecDesired,
 			lpdwMicrosecRead,lpqwNanosecRead,lpiTimecode,lpAARI);
+
+		/* if no real data was read and suddenly the end of the stream
+		   has been reached, the end was crap */
+		if (res == 0 && info.active_source->IsEndOfStream()) {
+			return Read(lpDest, dwMicrosecDesired, lpdwMicrosecRead,
+				lpqwNanosecRead, lpiTimecode, lpAARI);
+		}
+
 		if (lpiTimecode) {
 			SetCurrentTimecode(*lpiTimecode * info.active_source->GetTimecodeScale(), TIMECODE_UNSCALED);
 			*lpiTimecode = GetCurrentTimecode();
@@ -149,7 +158,7 @@ int AUDIOSOURCELIST::Read(void* lpDest, DWORD dwMicrosecDesired, DWORD* lpdwMicr
 			}
 		}
 
-		return iRes;
+		return res;
 	} else {
 		// end of list?
 		if (info.iActiveSource >= info.iCount-1) {

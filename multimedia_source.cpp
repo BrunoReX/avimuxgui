@@ -23,6 +23,29 @@ MULTIMEDIASOURCE::MULTIMEDIASOURCE()
 	info.dStretchFactor = 1;
 	size_guesser = new CSizeGuesser;
 	info.bAVIOutputPossible = true;
+	accumulatedDelay = 0;
+	delayMMS = NULL;
+}
+
+__int64 MULTIMEDIASOURCE::GetAccumulatedDelay()
+{
+	if (delayMMS)
+		return delayMMS->GetAccumulatedDelay();
+	else
+		return accumulatedDelay;
+}
+
+void MULTIMEDIASOURCE::AddToAccumulatedDelay(__int64 valueToAdd)
+{
+	if (delayMMS)
+		delayMMS->AddToAccumulatedDelay(valueToAdd);
+	else
+		accumulatedDelay += valueToAdd;
+}
+
+void MULTIMEDIASOURCE::SetDelayMMS(MULTIMEDIASOURCE* delayMMS)
+{
+	this->delayMMS = delayMMS;
 }
 
 MULTIMEDIASOURCE::~MULTIMEDIASOURCE()

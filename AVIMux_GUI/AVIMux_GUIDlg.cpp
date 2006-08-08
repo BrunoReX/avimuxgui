@@ -20,7 +20,19 @@ WM_QUIT
 
 		- fix: when pressing space on track title/lng, a checkbox appears
 		- fix: free space warning when overwriting files
-
+		
+  1.17.7
+        - fixed: improved joining of b0rkily joint files
+		- fixed: reenable raw video stream extraction
+		- fixed: crash on WAV files introduced with file highlighting
+		- fixed: high CPU load when remuxing AVI and showing the progress view
+		- fixed: problem in the SSA parser causing a crash when some attributes for non-existant
+		- fixed: b0rked duration when writing MKC files
+		- fixed: wrong MP3 identification for small unknown files
+		- fixed: unb0rked multi segment file reading
+		- fixed: don't b0rk anymore file titles read from AVI files if they contain non-ASCII characters
+		- fixed: bad MP3 CBR identification when the file has garbage at the beginning
+		- fixed: forgot to handle stream names for AVI video streams
 
   1.17.6:
         - fixed: video stream default flag not imported
@@ -598,7 +610,7 @@ __int64 SetLaceSetting(char* cName, CAttribs* settings, __int64 iUse, __int64 iL
 	
 RECT protocol_client_rect;
 
-void CAVIMux_GUIDlg::AddProtocolLine(char* lpcText,DWORD dwDebugLevel, int dwCC)
+void CAVIMux_GUIDlg::AddProtocolLine(char* lpcText, DWORD dwDebugLevel, int dwCC)
 {
 	SYSTEMTIME time;
 	GetLocalTime(&time);
@@ -618,7 +630,7 @@ void CAVIMux_GUIDlg::AddProtocolLine(char* lpcText,DWORD dwDebugLevel, int dwCC)
 	if (!hLogFile && bLogFile) {
 		SYSTEMTIME systemtime;
 		GetSystemTime(&systemtime);
-		char cTemp[50]; cTemp[0]=0;
+		char cTemp[256]; cTemp[0]=0;
 		sprintf(cTemp, "%04d%02d%02d-%02d%02d%02d.txt", (int)systemtime.wYear, (int)systemtime.wMonth, (int)systemtime.wDay,
 			(int)systemtime.wHour, (int)systemtime.wMinute, (int)systemtime.wSecond);
 		strcat(cLogFileName, cTemp);
@@ -668,12 +680,14 @@ void CAVIMux_GUIDlg::AddProtocolLine(char* lpcText,DWORD dwDebugLevel, int dwCC)
 			m_Protocol.UpdateWindow();
 
 		} while ((cString=c) && (cString++));
-	}
 
-	RECT r;
-	m_Protocol.GetClientRect(&r);
-	if (memcmp(&r, &protocol_client_rect, sizeof(RECT)))
-		UpdateProtocolColumn();
+		RECT r;
+		m_Protocol.GetClientRect(&r);
+		if (memcmp(&r, &protocol_client_rect, sizeof(RECT))) {
+			UpdateProtocolColumn();
+			protocol_client_rect = r;
+		}
+	}
 
 }
 
@@ -1748,6 +1762,10 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 						
 						m_Enh_Filelist.SetItemText(iIndex_Enh,2,"WAV");
 						asi->bNameFromFormatTag = true;
+
+						asi->lpdwFiles = new DWORD[2];
+						asi->lpdwFiles[0]=1;
+						asi->lpdwFiles[1]=fi->file_id;
 
 						sprintf(cFmt, "WAV");
 					}
@@ -4781,7 +4799,10 @@ void CAVIMux_GUIDlg::OnSelchangeSourcefilelist()
 			if (fi->dwType & FILETYPE_MKV) {
 				SetWindowTextUTF8(hTitleEdit, fi->MKVFile->GetSegmentTitle());
 			} else if (fi->dwType & FILETYPE_AVI) {
-				SetWindowTextUTF8(hTitleEdit, fi->AVIFile->GetTitle());
+				char* utf8 = NULL;
+				Str2UTF8(fi->AVIFile->GetTitle(), &utf8);
+				SetWindowTextUTF8(hTitleEdit, utf8);
+				delete utf8;
 			} else SetWindowTextUTF8(hTitleEdit, "");
 		}		
 	}

@@ -454,8 +454,8 @@ bool CVideoInformationDlg::InitDialog_Matroska()
 					char* compr = "";
 					if (mkvfile->GetTrackCompression(j, 0) == COMPRESSION_ZLIB) 
 						compr = "zlib";
-					if (mkvfile->GetTrackCompression(j, 0) == COMPRESSION_HDRSTRIPING) 
-						compr = "header striping";
+					if (mkvfile->GetTrackCompression(j, 0) == COMPRESSION_HDRSTRIPPING) 
+						compr = "header stripping";
 
 					sprintf(buffer,"%-20s: %s","compression",compr);
 					Tree_Insert(&m_Tree,buffer,hTrack);

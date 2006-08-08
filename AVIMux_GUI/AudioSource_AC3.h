@@ -18,9 +18,9 @@ class AC3SOURCE: public AUDIOSOURCEFROMBINARY
 	private:
 		AC3INFO			ac3info;
 		bool			bUseExternalSilence;
-		RESYNCCALLBACK  lpRCB;
-		DWORD			dwRCBUserData;
-		DWORD			dwReturnSilence;
+	//	RESYNCCALLBACK  lpRCB;
+	//	DWORD			dwRCBUserData;
+	//	DWORD			dwReturnSilence;
 		void*			_silence;
 		byte*			lpbFirstFrame;
 		int				ReadFrame(void* lpDest,DWORD* lpdwMicroSecRead,__int64 *lpqwNanoSecRead,
@@ -28,12 +28,12 @@ class AC3SOURCE: public AUDIOSOURCEFROMBINARY
 	protected:
 		int		virtual doRead(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdwMicroSecRead,__int64* lpqwNanoSecRead);
 		int     virtual doClose();
-
+		int		virtual ConvertCrapDataToSilence(int size, int frameSize);
 	public:
 		AC3SOURCE();
 		AC3SOURCE(STREAM* lpStream);
 		virtual ~AC3SOURCE();
-		void	virtual SetResyncCallBack (RESYNCCALLBACK lpNewCallback,DWORD dwUserData) { lpRCB=lpNewCallback; dwRCBUserData=dwUserData; }
+//		void	virtual SetResyncCallBack (RESYNCCALLBACK lpNewCallback,DWORD dwUserData) { lpRCB=lpNewCallback; dwRCBUserData=dwUserData; }
 		int		virtual Open(STREAM* lpStream);
 		int		virtual GetChannelCount();
 		int		virtual	GetBitrate();

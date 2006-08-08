@@ -674,6 +674,7 @@ void CChapterDlg::OnSaveas()
 					ComposeVersionString(v);
 					m->SetAppName(v);
 					m->SetChapters(c, -2);
+					m->SetSegmentDuration(0.0f);
 					m->Close();
 					delete m;
 					f->Close();

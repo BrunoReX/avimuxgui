@@ -1,3 +1,17 @@
+/* The CACHE class implements a transparent thread safe cache system
+   that features asnychronous read ahead, asynchronous writeback and
+   unbuffered I/O with an underlying FILESTREAM class. However, note
+   that thread-safety and asnychronous read-ahead are mutually exclusive.
+
+   I had to do this a second time from scratch because the first attempt
+   ended up "fubar". It should work correctly now.
+
+   Todo: Check if latest modifications to respect the stream offset
+   did not b0rk anything
+
+*/
+
+
 #include "stdafx.h"
 #include "Cache.h"
 #include "math.h"
@@ -483,6 +497,7 @@ CACHE::~CACHE()
 	Close();
 
 	for (int i=0; i<iNumberOfCacheLines; i++) {
+		/* complete open read requests -> success is obivously not necessary */
 		if (cache_lines[i]->bBeingRead)
 			WaitUntilReadyForRead(i, false);
 
@@ -589,7 +604,7 @@ int CACHE::GetLastAccessedCacheLineIndex(bool read)
 __int64 CACHE::GetAccessPosition(bool read)
 {
 	if (!bThreadsafe)
-		return (read?sts.iReadPosition:sts.iWritePosition);
+		return (read?sts.iReadPosition:sts.iWritePosition)/*-GetOffset()*/;
 	else {
 		EnterCritical();
 		GetThreadSpecific_NCS();
@@ -732,7 +747,7 @@ int CACHE::Open(STREAM* stream, int mode)
 	iStreamSize = GetSource()->GetSize();
 	sts.iReadPosition = -1;
 	sts.iWritePosition = -1;
-	iLastPossibleWritePos = max(0,iStreamSize);
+	iLastPossibleWritePos = max(0, iStreamSize);
 	
 	//hAccessMutex = CreateMutex(NULL, false, NULL); 
 	InitializeCriticalSection(&critical_section);
@@ -1232,7 +1247,7 @@ int CACHE::Read(void* pDest, DWORD dwBytes)
                  it might be necessary to lock this one as well since a real 
 				 read ahead could occur here under those circumstances */
 		LockCacheLine(cl);
-		if (!WaitUntilReadyForRead(last_index, true)) {
+		if (WaitUntilReadyForRead(last_index, true) <= 0) {
 			UnlockCacheLine(cl);
 			LeaveCritical();
 			return -1;
@@ -1452,19 +1467,21 @@ int CACHE::Write(void* pSrc, DWORD dwBytes)
 __int64 CACHE::GetPos()
 {
 	if (CanWrite())
-		return GetAccessPosition(false);
+		return GetAccessPosition(false) - GetOffset();
 
-	return GetAccessPosition(true);
+	return GetAccessPosition(true) - GetOffset();
 }
 
 __int64 CACHE::GetSize()
 {
-	return iStreamSize;
+	return iStreamSize - GetOffset();
 }
 
 int CACHE::Seek(__int64 iPosition)
 {
 	EnterCritical();
+
+	iPosition += GetOffset();
 
 	bool r = false;
 	bool w = false;

@@ -423,8 +423,8 @@
 #define IDC_DFN_SEGMENT_TITLE           1371
 #define IDC_DFN_FIRST_SOURCE            1372
 #define IDC_HEXVIEW_LISTBOX2            1373
-#define IDC_CHECK1                      1374
 #define IDC_OUTPUT_THREADED             1374
+#define IDC_HOTKEY1                     1375
 #define ID_INFORMATIONEN                40001
 #define IDM_VIDEOINFORMATION            40001
 #define ID_TEST                         40002
@@ -544,7 +544,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        170
 #define _APS_NEXT_COMMAND_VALUE         40112
-#define _APS_NEXT_CONTROL_VALUE         1375
+#define _APS_NEXT_CONTROL_VALUE         1376
 #define _APS_NEXT_SYMED_VALUE           176
 #endif
 #endif

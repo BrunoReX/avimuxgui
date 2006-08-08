@@ -31,13 +31,13 @@ AC3SOURCE::AC3SOURCE()
 	_silence = NULL;
 	ZeroMemory(&ac3info,sizeof(ac3info));
 	lpbFirstFrame = NULL;
-	lpRCB = NULL;
+//	lpRCB = NULL;
 }
 
 AC3SOURCE::AC3SOURCE(STREAM* lpStream)
 {
 	_silence = NULL;
-	lpRCB = NULL;
+//	lpRCB = NULL;
 	lpbFirstFrame = NULL;
 	ZeroMemory(&ac3info,sizeof(ac3info));
 	Open(lpStream);
@@ -103,7 +103,7 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 	BYTE		temp[5000];
 	__int64		qwTemp;
 	DWORD		dwCrapData;
-	DWORD		dwCBRes;
+//	DWORD		dwCBRes;
 
 	if (lpqwNanoSecRead) *lpqwNanoSecRead=0;
 	if (lpdwMicroSecRead) *lpdwMicroSecRead=0;
@@ -112,16 +112,7 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 	qwTemp=qwOldPos;
 	iOffset=GetSource()->GetOffset();
 
-	if (dwReturnSilence)
-	{
-		if (!bUseExternalSilence) {
-			memcpy(lpDest,lpbFirstFrame,ac3info.dwFrameSize);
-			memcpy(si,lpbFirstFrame,7);
-			dwRead=ac3info.dwFrameSize;
-		} else {
-			dwRead=silence->Read(lpDest,0,lpdwMicroSecRead,lpqwNanoSecRead);
-		}
-	} else {
+	if (GetAccumulatedDelay() < GetFrameDuration() / 2 || GetFrameDuration() == 0) {
 		if (GetSource()->Read(si,sizeof(AC3FRMHDR))!=sizeof(AC3FRMHDR)) {
 			GetSource()->Seek(qwOldPos);
 			if (GetSource()->Read(si,sizeof(AC3FRMHDR))!=sizeof(AC3FRMHDR)) {
@@ -146,22 +137,47 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 			if (dwCrapData==dwMaxGap) {
 				return 0;
 			}
-			if (lpRCB) {
+		/*	if (lpRCB) {
 				dwCBRes=(*lpRCB)(qwTemp,(DWORD)(qwOldPos-qwTemp),dwRCBUserData);
 				if ((dwCBRes&0xFFFF)==AC3RCB_INSERTSILENCE)
 				{
 					dwReturnSilence+=dwCBRes>>16;
 				}
-			}
+			} */
+
+			ConvertCrapDataToSilence(dwCrapData, ac3info.dwFrameSize);
 		}
+
 		GetSource()->Seek(qwOldPos);
-		if (!dwReturnSilence) {
-			if (GetSource()->Read(si,sizeof(AC3FRMHDR))!=sizeof(AC3FRMHDR)) {
-				GetSource()->Seek(qwOldPos);
-				return 0; 
-			}
+//		if (!dwReturnSilence) {
+//		}
+		
+	}
+
+	if (GetAccumulatedDelay() >= GetFrameDuration()/2 && GetFrameDuration()>0)
+	{
+		if (!bUseExternalSilence) {
+			memcpy(lpDest,lpbFirstFrame,ac3info.dwFrameSize);
+			memcpy(si,lpbFirstFrame,7);
+			dwRead=ac3info.dwFrameSize;
+			AddToAccumulatedDelay(-GetFrameDuration());
+			if (lpdwMicroSecRead)
+				*lpdwMicroSecRead = ac3info.iFrameDuration / 1000000;
+			if (lpqwNanoSecRead)
+				*lpqwNanoSecRead = ac3info.iFrameDuration;
+			return dwRead;
+		} else {
+			dwRead=silence->Read(lpDest, 0, lpdwMicroSecRead, lpqwNanoSecRead);
+			AddToAccumulatedDelay(-*lpqwNanoSecRead);
+			return dwRead;
 		}
 	}
+
+	if (GetSource()->Read(si,sizeof(AC3FRMHDR))!=sizeof(AC3FRMHDR)) {
+		GetSource()->Seek(qwOldPos);
+		return 0; 
+	}
+
 	dwFreqIndex=si->bFrszcode >> 6;
 	dwBitrateIndex=si->bFrszcode & 0x3F;
 	dwChannelIndex=si->AC3mod >> 5; 
@@ -179,11 +195,17 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 		ac3info.dwFrequency=dwFrequencies[dwFreqIndex];
 	}
 
-	if (!dwReturnSilence) {
+//	if (!dwReturnSilence) {
 		dwRead=GetSource()->Read(&(((BYTE*)lpDest)[7]),dwFrameSize-7)+7;
-	}
+//	}
 
 	if (dwRead!=dwFrameSize) {
+
+		ConvertCrapDataToSilence(dwRead, dwFrameSize);
+/*		double fraction = (double)dwRead / (double)dwFrameSize;
+		__int64 delay = fraction * GetFrameDuration();
+		AddToAccumulatedDelay(delay);
+*/
 		dwRead=0;
 	}
 
@@ -195,9 +217,18 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 	if (lpdwMicroSecRead) 
 		*lpdwMicroSecRead=(DWORD)round(8000*z);
 	
-	if (dwReturnSilence) dwReturnSilence--;
+//	if (dwReturnSilence) dwReturnSilence--;
 
 	return dwRead;
+}
+
+int AC3SOURCE::ConvertCrapDataToSilence(int size, int frameSize)
+{
+	double fraction = (double)size / (double)frameSize;
+	__int64 delay = fraction * GetFrameDuration();
+	AddToAccumulatedDelay(delay);
+
+	return 1;
 }
 
 int AC3SOURCE::doRead(void* lpDest,DWORD dwMicroSecDesired,
@@ -248,9 +279,9 @@ int AC3SOURCE::Open(STREAM* lpStream)
 	if (!lpStream || lpStream->GetSize() <= 0)
 		return AS_ERR;
 
-	dwRCBUserData=0;
-	lpRCB=NULL;
-	dwReturnSilence=0;
+//	dwRCBUserData=0;
+//	lpRCB=NULL;
+//	dwReturnSilence=0;
 	lpbFirstFrame=NULL;
 	ZeroMemory(Buffer,sizeof(Buffer));
 	int	iRes=AUDIOSOURCEFROMBINARY::Open(lpStream);

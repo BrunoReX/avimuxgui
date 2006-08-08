@@ -33,6 +33,15 @@ __int64 VIDEOSOURCE::GetNanoSecPerFrame(void)
 	return 0;
 }
 
+__int64 VIDEOSOURCE::GetFeature(__int64 iFeature)
+{
+	switch (iFeature)
+	{
+		case FEATURE_EXTRACTBIN: return 1; break;
+		default: return MULTIMEDIASOURCE::GetFeature(iFeature);
+	}
+}
+
 int VIDEOSOURCE::Seek(__int64 iTime)
 {
 	return VS_INVALIDCALL;

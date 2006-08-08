@@ -2,6 +2,7 @@
 #define I_MULTIMEDIASOURCE
 
 #include "Compression.h"
+#include <vector>
 
 const int MMS_INVALID	= 0x00;
 const int MMS_VIDEO		= 0x01;
@@ -23,7 +24,6 @@ typedef struct
 		bool				bDefault;
 		
 		int					iCompression;
-
 } MULTIMEDIASOURCE_INFO;
 
 
@@ -37,6 +37,25 @@ typedef struct
 	int*		iFramesizes;
 	int			iFileEnds;
 } ADVANCEDREAD_INFO;
+
+
+/* make up a universal read structure here */
+typedef struct
+{
+	__int64		timecode;
+	__int64		duration;
+	__int64		nextTimecode;
+
+	int			flags;
+
+	std::vector<int> frameSizes;
+
+	int			totalDataSize;
+	union {
+		void*		data;
+		char*		cData;
+	};
+} MULTIMEDIA_READ_STRUCT;
 
 const int TIMECODE_UNSCALED = 0x01;
 //const __int64 TIMECODE_UNDEFINED = 0x7FFFFFFFFFFFFFFF;
@@ -90,6 +109,8 @@ class MULTIMEDIASOURCE
 		MULTIMEDIASOURCE_INFO info;
 		CSizeGuesser*         size_guesser;
 		
+		MULTIMEDIASOURCE* delayMMS;
+		__int64 accumulatedDelay;
 	protected:
 		char*				lpcName;
 		char*				lpcLangCode;
@@ -141,6 +162,11 @@ class MULTIMEDIASOURCE
 
 		int			virtual GetStrippableHeaderBytes(void* pBuffer, int max);
 		int			virtual IsDefault();
+
+		// delay
+		__int64		GetAccumulatedDelay();
+		void		AddToAccumulatedDelay(__int64 valueToAdd);
+		void		SetDelayMMS(MULTIMEDIASOURCE* delayMMS);
 
 		MULTIMEDIASOURCE(void);
 		virtual ~MULTIMEDIASOURCE(void);

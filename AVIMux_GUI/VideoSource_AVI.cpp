@@ -27,6 +27,10 @@ bool VIDEOSOURCEFROMAVI::IsCFR()
 	return true;
 }
 
+int VIDEOSOURCEFROMAVI::GetName(char* lpDest)
+{
+	return info.avifile[0]->GetStreamName(0, lpDest);
+}
 
 __int64 VIDEOSOURCEFROMAVI::GetUnstretchedDuration()
 {

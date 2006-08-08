@@ -404,8 +404,9 @@ BEGIN
     EDITTEXT        IDC_DESTFILE,69,370,351,12,ES_AUTOHSCROLL | ES_READONLY | 
                     NOT WS_TABSTOP
     LTEXT           "Position:",IDS_MAIN_PRG_FRAMES,282,359,28,8
-    EDITTEXT        IDC_FRAMES,313,357,107,12,ES_AUTOHSCROLL | ES_READONLY | 
-                    NOT WS_TABSTOP,WS_EX_CLIENTEDGE | WS_EX_RIGHT
+    EDITTEXT        IDC_FRAMES,313,357,107,12,ES_RIGHT | ES_AUTOHSCROLL | 
+                    ES_READONLY | NOT WS_BORDER | NOT WS_TABSTOP,
+                    WS_EX_CLIENTEDGE | WS_EX_RIGHT
     PUSHBUTTON      "Videoquelle hinzufügen",IDC_ADDAVILIST,14,74,416,13,NOT 
                     WS_TABSTOP
     LISTBOX         IDC_SOURCEFILELIST,14,19,416,52,LBS_OWNERDRAWFIXED | 
@@ -641,7 +642,7 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,17,6,0
+ FILEVERSION 1,17,6,1
  PRODUCTVERSION 1,0,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
@@ -658,7 +659,7 @@ BEGIN
         BLOCK "040704b0"
         BEGIN
             VALUE "FileDescription", "AVI-Mux GUI"
-            VALUE "FileVersion", "1, 17, 6, 0"
+            VALUE "FileVersion", "1, 17, 6, 1"
             VALUE "InternalName", "AVIMux_GUI"
             VALUE "LegalCopyright", "Copyright (C) 2002 - 2006"
             VALUE "OriginalFilename", "AVIMux_GUI.EXE"
@@ -1033,7 +1034,7 @@ BEGIN
     IDS_CANTOPENMP3         "Die MP3/AC3/DTS-Quelldatei konnte nicht geöffnet werden. Vermutlich ist der erste Frameheader fehlerhaft."
     IDS_VILB_SETMAHFLAGS    "MainAVIHeader.dwFlags ändern"
     IDS_VERSION             "Version"
-    IDS_VERSION_INFO        "1.17.6"
+    IDS_VERSION_INFO        "1.17.7"
     IDS_VILB_CHUNKSIZES     "Chunkgrößen"
     IDS_VILB_OVER           "über"
     IDS_VILB_UPTO           "bis zu"

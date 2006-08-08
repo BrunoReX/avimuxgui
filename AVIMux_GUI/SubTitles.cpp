@@ -1559,7 +1559,18 @@ int SUBTITLESOURCE::SSAStylesEqual(SSA_STYLE_STRUCT* lpSSA1,SSA_STYLE_STRUCT* lp
 {
 	for (int i=1;i<18;i++)
 	{
-		if (strcmp(((SSA_STYLE*)lpSSA1)->lpcArray[i],((SSA_STYLE*)lpSSA2)->lpcArray[i])) return 0;
+		if (
+			(((SSA_STYLE*)lpSSA1)->lpcArray[i] == 0) ^
+			(((SSA_STYLE*)lpSSA2)->lpcArray[i] == 0)
+			
+			)
+			return 0;
+
+		if (((SSA_STYLE*)lpSSA1)->lpcArray[i] != NULL &&
+			((SSA_STYLE*)lpSSA2)->lpcArray[i] != NULL)
+		{
+			if (strcmp(((SSA_STYLE*)lpSSA1)->lpcArray[i],((SSA_STYLE*)lpSSA2)->lpcArray[i])) return 0;
+		}
 	}
 
 	return 1;

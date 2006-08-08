@@ -1504,7 +1504,7 @@ int EBMLM_Segment::RetrieveInfo()
 										tci.is_decompressed = 0;
 									}
 									if (cpr_search[0][0]->AsInt() == 3) {
-										tci.compression = COMPRESSION_HDRSTRIPING;
+										tci.compression = COMPRESSION_HDRSTRIPPING;
 										tci.is_decompressed = 1;
 									}
 								}

@@ -1249,6 +1249,8 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 // set stream headers and formats
 	AVIOut->SetStreamHeader(0,lpDAI->videosource->GetAVIStreamHeader());
 	AVIOut->SetStreamFormat(0,lpDAI->videosource->GetFormat());
+	v->GetName(Buffer);
+	AVIOut->SetStreamName(0, Buffer);
 	AVIOut->GetStdIndexOverhead();
 
 // seek audio streams to beginning
@@ -1395,6 +1397,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 // mux
 	//while ((dwFrameCountTotal<lpDAI->dwMaxFrames)&&(!bStop))
 
+	// lpDAI->dlg->m_Protocol.ShowWindow(SW_HIDE);
 
 	while ((!v->IsEndOfStream())&&(!bStop))
 	{
@@ -1409,8 +1412,8 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 				AddOverhead(qwStats,dwReclistOverhead);
 			}
 			bRecListEmpty=true;
-			wsprintf(cBuffer,"begin rec list at frame %d",dwFrameCountTotal);
-			lpDAI->dlg->AddProtocolLine(cBuffer,3);
+		//	wsprintf(cBuffer,"begin rec list at frame %d",dwFrameCountTotal);
+		//	lpDAI->dlg->AddProtocolLine(cBuffer,3);
 		}
 		j=0; dwRecListSize=0;
 		bFinishImmediately=false;
@@ -1530,18 +1533,18 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 			bFinishImmediately=false;
 		}
 	// add audio
-		wsprintf(cBuffer,"  frames total: %6d",dwFrameCountTotal);
-		lpDAI->dlg->AddProtocolLine(cBuffer,3);
+	//	wsprintf(cBuffer,"  frames total: %6d",dwFrameCountTotal);
+	//	lpDAI->dlg->AddProtocolLine(cBuffer,3);
 
 		bFirst=false;
 		dwAudioBPS=0;
 		for (i=0;i<lpDAI->dwNbrOfAudioStreams;i++)
 		{
 			WaitForSingleObject(hSem, INFINITE);
-			if (dwFrameCountTotal==lpDAI->dwMaxFrames)
+			/*if (dwFrameCountTotal==lpDAI->dwMaxFrames)
 			{
 				iSize=1;
-			}
+			}*/
 			iSize=1;
 			dwAudioBPS+=lpDAI->asi[i]->audiosource->GetAvgBytesPerSec();
 			// as long as more audio is required
@@ -1594,8 +1597,8 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 			ReleaseSemaphore(hSem,1,NULL);
 		}
 		
-		wsprintf(cBuffer,"  audio: %6d bytes",iSize);
-		lpDAI->dlg->AddProtocolLine(cBuffer,3);
+	//	wsprintf(cBuffer,"  audio: %6d bytes",iSize);
+	//	lpDAI->dlg->AddProtocolLine(cBuffer,3);
 
 		dwAudioBPVF=(DWORD)((double)dwAudioBPS*(double)(i_vs_nspf)/1000000000);
 		// close rec-list if necessary
@@ -1764,6 +1767,10 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 						NextAVIOut->SetStreamHeader(i,AVIOut->GetStreamHeader(i));
 						NextAVIOut->SetStreamFormat(i,AVIOut->GetStreamFormat(i));
 						NextAVIOut->SetStreamDefault(i, AVIOut->IsDefault(i));
+					}
+					if (v) {
+						v->GetName(Buffer);
+						NextAVIOut->SetStreamName(0, Buffer);
 					}
 					for (i=0;i<lpDAI->dwNbrOfAudioStreams;i++)
 					{
@@ -2319,7 +2326,7 @@ MATROSKA_TRACK_SOURCE_HDRSTIP::Open(MATROSKA* m, int t, MULTIMEDIASOURCE* a)
 		byte_count = 0;
 
 	if (byte_count) {
-		m->AddTrackCompression(t, COMPRESSION_HDRSTRIPING, bytes, byte_count);
+		m->AddTrackCompression(t, COMPRESSION_HDRSTRIPPING, bytes, byte_count);
 	}
 
 	return 1;
@@ -2744,6 +2751,10 @@ int MuxThread_MKV(DEST_AVI_INFO* lpDAI)
 	}
 
 	audio_lace_config = new LACE_DESCRIPTOR[lpDAI->dwNbrOfAudioStreams];
+	
+	for (i=0;i<lpDAI->dwNbrOfAudioStreams;i++)
+		audio_lace_config[i].iLength = 0;
+
 	for (i=0;i<100;i++) bDoLace[i] = !!(int)s->GetInt("output/mkv/lacing/style");
 
 	// set filename to mka if audio-only
@@ -3479,7 +3490,7 @@ start:
 
 							mts[GetStreamNumber(lpDAI, STREAMTYPE_AUDIO, i)]->Put(&a);
 
-							m->Write(&a);
+//							m->Write(&a);
 							DecBufferRefCount(&a.cData);
 							if (a.iFrameSizes) delete[] a.iFrameSizes;
 							AddAudioSize(qwStats,iRead,ADS_NOTEVEN);

@@ -44,6 +44,7 @@ class VIDEOSOURCE: public MULTIMEDIASOURCE
 		void		virtual *GetFormat(void);
 		int			virtual GetFormatSize(void);
 		DWORD		virtual GetFourCC(void);
+		__int64		virtual GetFeature(__int64 iFeature);
 		int			virtual GetFrame(void* lpDest,DWORD* lpdwSize,__int64* lpiTimecode = NULL, ADVANCEDREAD_INFO* lpAARI = NULL);
 		int			virtual GetLatestReference(int* lpiCount = NULL, __int64* lpiRef1 = NULL, __int64* lpiRef2 = NULL);
 		int			virtual GetLatestReferenceAbsolute(int* lpiCount = NULL, __int64* iThis = 0, __int64* lpiRef1 = NULL, __int64* lpiRef2 = NULL);

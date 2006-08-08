@@ -263,6 +263,14 @@ void CAudioSourceTree::OpenContextMenu(CPoint point)
 				put_sep;
 				c->AppendMenu(MF_STRING, IDM_EXTRACT_SUB2TEXT, LoadString(STR_MAIN_A_EXTRSUB2TEXT));
 			}
+		} else
+		if (tii->iID == TIIID_VSI) {
+			VIDEO_STREAM_INFO* vsi = tii->pVSI;
+			VIDEOSOURCE* v = vsi->videosource;
+			if (v->GetFeature(FEATURE_EXTRACTBIN)) {
+				put_sep;
+				c->AppendMenu(MF_STRING, IDM_EXTRACT_BINARY, LoadString(STR_MAIN_A_EXTRBIN));
+			}
 		}
 
 		ClientToScreen(&point);
@@ -287,7 +295,12 @@ typedef struct
 {
 	FILESTREAM* file;
 	CAVIMux_GUIDlg* dlg;
-	AUDIOSOURCE* a;
+	int id;
+	union {
+		AUDIOSOURCE* a;
+		VIDEOSOURCE* v;
+		MULTIMEDIASOURCE* m;
+	};
 
 } EXTRACT_THREAD_DATA;
 
@@ -299,17 +312,27 @@ int ExtractThread(EXTRACT_THREAD_DATA*	lpETD)
 	lpETD->dlg->AddProtocolLine("started extracting binary", 4);
 
 	AUDIOSOURCE* a = lpETD->a;
-	a->Enable(1);
+	lpETD->m->Enable(1);
 	FILESTREAM* f = lpETD->file;
 	char cTime[20];
-	char* lpBuffer = new char[2<<20];
+	char* lpBuffer = new char[1<<20];
 	int iLastTime = GetTickCount();
-	a->ReInit();
+	lpETD->m->ReInit();
 
 	while (!a->IsEndOfStream() && !DoStop()) {
 		__int64 iTimecode;
 		__int64 iNS;
-		f->Write(lpBuffer,a->Read(lpBuffer,1000000,NULL,&iNS,&iTimecode));
+
+		if (lpETD->id == TIIID_ASI)
+			f->Write(lpBuffer,a->Read(lpBuffer,1000000,NULL,&iNS,&iTimecode));
+		if (lpETD->id == TIIID_VSI) {
+			DWORD dwSize;
+			ADVANCEDREAD_INFO ari;
+			lpETD->v->GetFrame(lpBuffer, &dwSize, &iTimecode, &ari);
+			iNS = ari.iDuration;
+			f->Write(lpBuffer,dwSize);
+		}
+
 		if (GetTickCount()-iLastTime>100 || a->IsEndOfStream()) {
 			Millisec2Str((iTimecode * a->GetTimecodeScale() + iNS)/ 1000000,cTime);
 			lpETD->dlg->m_Prg_Frames.SetWindowText(cTime);
@@ -473,7 +496,10 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 	HTREEITEM hItem;
 	TREE_ITEM_INFO* tii;
 	AUDIO_STREAM_INFO* asi;
+	VIDEO_STREAM_INFO* vsi;
+	MULTIMEDIA_STREAM_INFO* msi;
 	AUDIOSOURCE* a;
+	VIDEOSOURCE* v;
 	SUBTITLE_STREAM_INFO* ssi;
 	SUBTITLESOURCE* s;
 	OPENFILENAME o; 
@@ -496,16 +522,32 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 			hItem = GetSelectedItem();
 			tii = (TREE_ITEM_INFO*)GetItemData(hItem);
 			asi = tii->pASI;
-			a = asi->audiosource;
+			msi = tii->pMSI;
+			vsi = tii->pVSI;
 
-			iFmt = a->GetFormatTag();
-			cFmt = a->GetCodecID();
+
+			if (tii->iID == TIIID_ASI) {
+				a = asi->audiosource;
+				v = NULL;
+			} else {
+				a = NULL;
+				v = vsi->videosource;
+			}
+
+
+			if (a) {
+				iFmt = a->GetFormatTag();
+				cFmt = a->GetCodecID();
+			} else {
+				cFmt = "";
+				iFmt = 0;
+			}
 			
 			if (iFmt == 0x0055 || cFmt && !strcmp(cFmt,"A_MPEG/L3")) {
 				strcpy(cFilter,"*.mp3|*.mp3||");
 				strcpy(cDefExt,"mp3");
 			} else
-			if (cFmt && !strcmp(cFmt,"A_MPEG/L2")) {
+			if (iFmt == 0x0050 || cFmt && !strcmp(cFmt,"A_MPEG/L2")) {
 				strcpy(cFilter,"*.mp2|*.mp2||");
 				strcpy(cDefExt,"mp2");
 			} else
@@ -532,7 +574,12 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 				lpETD->file = new FILESTREAM;
 				if (lpETD->file->Open(o.lpstrFile,STREAM_WRITE)!=STREAM_ERR) {
 					lpETD->dlg = cMainDlg;
-					lpETD->a = a;
+					lpETD->id = tii->iID;
+					if (a)
+						lpETD->a = a;
+					else
+					if (v)
+						lpETD->v = v;
 					cMainDlg->m_Prg_Dest_File.SetWindowText(o.lpstrFile);
 					thread=AfxBeginThread((AFX_THREADPROC)ExtractThread,lpETD);
 				} else {

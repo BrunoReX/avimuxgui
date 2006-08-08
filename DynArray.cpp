@@ -1,3 +1,9 @@
+/* All this is nonsense, I made it before actually learning that there was
+   the STL. Migrating everything to use the STL instead of this is quite
+   some work though...
+*/
+
+
 #include "stdafx.h"
 #include "dynarray.h"
 #include "stdlib.h"

@@ -103,7 +103,7 @@ int MP3SOURCE::Open(STREAM* lpStream)
 		while ( (!fh->SyncOK()||(!dwFrequency)||(!fh->GetBitrate())) && (qwPos<GetResyncRange()) & 
 			(!IsEndOfStream()));		
 		GetSource()->SetOffset(dwStart);
-		if (GetSource()->GetOffset()>=GetResyncRange()-4) 
+		if (GetSource()->GetOffset()>=GetResyncRange()-4 || (!fh->SyncOK() && IsEndOfStream())) 
 		{
 			GetSource()->SetOffset(0);
 			return AS_ERR;
@@ -524,6 +524,7 @@ bool MP3SOURCE::ScanForCBR(DWORD dwNbrOfFrames)
 	int		iPadd;
 
 	qwPos=GetSource()->GetPos();
+	GetSource()->Seek(0);
 	iFirstFrameSize=fh->GetFrameSize(&iPadd);
 	iFrameSize=iFirstFrameSize;
 	while ( bConstantFrameSize=(abs((iFrameSize=fh->GetFrameSize(&iPadd))-iFirstFrameSize)<=1),

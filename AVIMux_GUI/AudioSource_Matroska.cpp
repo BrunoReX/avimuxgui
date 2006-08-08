@@ -197,7 +197,7 @@ int AUDIOSOURCEFROMMATROSKA::GetStrippableHeaderBytes(void* pBuffer, int max)
 	}
 
 
-	if (GetSource()->GetTrackCompression(GetSourceStream(), 0) == COMPRESSION_HDRSTRIPING) {
+	if (GetSource()->GetTrackCompression(GetSourceStream(), 0) == COMPRESSION_HDRSTRIPPING) {
 		int size = GetSource()->GetTrackCompressionPrivateSize(GetSourceStream(), 0);
 		void* p = malloc(size);
 		GetSource()->GetTrackCompressionPrivate(GetSourceStream(), 0, p);
