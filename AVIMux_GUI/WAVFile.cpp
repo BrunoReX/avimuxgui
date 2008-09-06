@@ -44,7 +44,7 @@ int WAVEFILE::GetGranularity()
 
 WAVEFILE::~WAVEFILE()
 {
-
+	Close();
 }
 
 int WAVEFILE::Open(STREAM* lpStream,DWORD _dwAccess)
@@ -81,7 +81,7 @@ int WAVEFILE::Open(STREAM* lpStream,DWORD _dwAccess)
 		}
 		dwStreamSize=chhdr.dwLength;
 		dwDataStart=(DWORD)(GetSource()->GetPos());
-		dwAccess=WAVE_OPEN_READ;
+		dwAccess=WAVE_OPEN_ERROR;
 	}
 
 	return WAVE_GENERIC_OK;
@@ -107,8 +107,10 @@ int WAVEFILE::Close()
 	if (!bOpen) 
 		return WAVE_GENERIC_ERROR;
 
-	if (lpwfe) 
+	if (lpwfe) {
 		free(lpwfe);
+		lpwfe = NULL;
+	}
 
 	InitValues();
 

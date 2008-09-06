@@ -55,15 +55,17 @@ typedef struct
 	unsigned __int16 crc16;
 } ADTSHEADER;
 
-class AACSOURCE: public AUDIOSOURCEFROMBINARY
+class AACSOURCE: public CBinaryAudioSource
 {
 	private:
 		AACINFO		aacinfo;
-		BITSTREAM*	bitsource;
+		IBitStream*	bitsource;
 		ADTSHEADER h; // adts headers of last frame that has been read
 
 		void		ReadADTSHeader(ADTSHEADER* h);
 		int			ReadFrame_ADTS(void* lpDest,DWORD* lpdwMicroSecRead,__int64 *lpqwNanoSecRead);
+		int	virtual AACSOURCE::ReadFrame(MULTIMEDIA_DATA_PACKET**);
+
 		int			GetProfile();
 	protected:
 		void		SetChannelCount(int i);

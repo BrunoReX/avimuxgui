@@ -94,6 +94,15 @@ void CUnicodeTreeCtrl::GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult)
 	*pResult = 0;
 }
 
+HTREEITEM CUnicodeTreeCtrl::GetTopMostParentItem(HTREEITEM hItem)
+{
+	HTREEITEM h = hItem;
+
+	while (GetParentItem(h)) h = GetParentItem(h);
+
+	return h;
+}
+
 void CUnicodeTreeCtrl::OnGetdispinfo(NMHDR* pNMHDR, LRESULT* pResult) 
 {
 	if (!pNMHDR) {
@@ -273,7 +282,7 @@ void CUnicodeTreeCtrl::SetItemData(HTREEITEM hItem, DWORD dwData)
 	InvalidateRect(&r);
 }
 
-DWORD CUnicodeTreeCtrl::GetItemData(HTREEITEM hItem)
+DWORD_PTR CUnicodeTreeCtrl::GetItemData(HTREEITEM hItem)
 {
 	if (!hItem) return NULL;
 	UNICODETREEITEM_DATA* data = (UNICODETREEITEM_DATA*)CTreeCtrl::GetItemData(hItem);

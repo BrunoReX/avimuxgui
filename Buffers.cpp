@@ -4,8 +4,9 @@
 #include "memory.h"
 #include "stdlib.h"
 #include "strings.h"
-#include "matroska.h"
-
+//#include "matroska.h"
+#include "assert.h"
+#include "Finalizer.h"
 #ifdef DEBUG_NEW
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -58,10 +59,16 @@ void CBuffer::SetSize(int _iSize)
 		if (iSize && lpData) 
 			free(lpData);
 		
-		lpData=(char*)malloc(_iSize+1);
-		
-		((BYTE*)lpData)[_iSize] = 0;
-		
+		if (_iSize)
+		{
+			lpData=(char*)malloc(_iSize+1);
+			((BYTE*)lpData)[_iSize] = 0;
+		}
+		else
+		{
+			printf("???");
+		}
+
 		iSize=_iSize;
 		
 		iAllocedSize=iSize;
@@ -241,6 +248,8 @@ float CBuffer::AsFloat()
 
 double CBuffer::AsBSWFloat()
 {
+	double result;
+
 	if (GetSize()==4) {
 		int d;
 		reverse((char*)GetData(), (char*)&d, 4);
@@ -256,10 +265,16 @@ double CBuffer::AsBSWFloat()
 	if (GetSize()==10) {
 		char d[10];
 		reverse((char*)GetData(), (char*)d, 10);
-		return *((long double*)d);
+		__asm {
+			lea eax, d
+			fld tbyte ptr [eax]
+			lea eax, result
+			fstp qword ptr [eax]
+		}
+//		return *((long double*)d);
 	}
 
-	return 0;
+	return result;
 }
 
 void CBuffer::Refer(CBuffer** p)
@@ -283,28 +298,30 @@ void CBuffer::SetExternal(void* lpsource, int size)
 
 void CStringBuffer::Set(char* s, int iFlags)
 {
+//	_ASSERT((iFlags | CSB_FLAGS) != CSB_FLAGS);
+
 	bASCII = false;
 	bUTF8 = false;
 	bUTF16 = false;
 
-	if ((iFlags & 0x1C) == 0) iFlags|=CSB_ASCII;
+	if ((iFlags & 0x03) == 0) iFlags|=CSB_ASCII;
 
-	if (iFlags & CSB_ASCII) {
-		b[0]->SetSize(1+strlen(s));
+	if ((iFlags & 0x03) == CSB_ASCII) {
+		b[0]->SetSize(1+(int)strlen(s));
 		b[0]->SetData(s);
 		bASCII = true;
 		iOutputFormat = CSB_ASCII;
 	}
 
-	if (iFlags & CSB_UTF8) {
-		b[1]->SetSize(1+strlen(s));
+	if ((iFlags & 0x03) == CSB_UTF8) {
+		b[1]->SetSize(1+(int)strlen(s));
 		b[1]->SetData(s);
 		bUTF8 = true;
 		iOutputFormat = CSB_UTF8;
 	}
 
-	if (iFlags & CSB_UTF16) {
-		b[2]->SetSize(2+2*wcslen((const wchar_t*)s));
+	if ((iFlags & 0x03) == CSB_UTF16) {
+		b[2]->SetSize(2+2*(int)wcslen((const wchar_t*)s));
 		b[2]->SetData(s);
 		bUTF16 = true;
 		iOutputFormat = CSB_UTF16;
@@ -369,7 +386,7 @@ void CStringBuffer::Prepare(int iFormat)
 	// if only UTF16 is present, set UTF8 as well
 	if (!bUTF8 && !bASCII && bUTF16) {
 		WStr2UTF8(b[2]->AsString(),&d);
-		b[1]->SetSize(1+strlen(d));
+		b[1]->SetSize(1+(int)strlen(d));
 		b[1]->SetData(d);
 		bUTF8 = true;
 	}
@@ -378,23 +395,26 @@ void CStringBuffer::Prepare(int iFormat)
 		case CSB_ASCII:
 			if (bUTF16) {
 				WStr2Str(b[2]->AsString(), &d);
-				b[0]->SetSize(1+strlen(d));
+				b[0]->SetSize(1+(int)strlen(d));
 				b[0]->SetData(d);
 				bASCII = true;
+				free(d);
 			}
 			if (bUTF8) {
 				UTF82Str(b[1]->AsString(), &d);
-				b[0]->SetSize(strlen(d)+1);
+				b[0]->SetSize((int)strlen(d)+1);
 				b[0]->SetData(d);
 				bASCII = true;
+				free(d);
 			}
 			break;
 		case CSB_UTF8:
 			if (bASCII) {
 				Str2UTF8(b[0]->AsString(),&d);
-				b[1]->SetSize(strlen(d)+1);
+				b[1]->SetSize((int)strlen(d)+1);
 				b[1]->SetData(d);
 				bUTF8 = true;
+				free(d);
 			}
 			break;
 	}
@@ -431,7 +451,7 @@ CStringBuffer::CStringBuffer()
 	SetRefCount(1);
 }
 
-CStringBuffer::CStringBuffer(char* s, int iFlags)
+CStringBuffer::CStringBuffer(const char* s, int iFlags)
 {
 	lpData = NULL;
 
@@ -439,10 +459,11 @@ CStringBuffer::CStringBuffer(char* s, int iFlags)
 	b[1] = new CBuffer(0, NULL, CBN_REF1);
 	b[2] = new CBuffer(0, NULL, CBN_REF1);
 
-	Set(s, iFlags);
+	Set((char*)s, iFlags);
 
 	if (iFlags & CBN_REF1) SetRefCount(1);
 }
+
 
 CAttribs::CAttribs()
 {
@@ -467,7 +488,6 @@ void CAttribs::Init()
 	ZeroMemory(pEntries, sizeof(ATTRIBUTE_ENTRY*)*iEntryCount);
 }
 
-#define __ASSERT(a, b) if(!a) printf("%s\n", b);
 
 int CAttribs::Position(char* cName)
 {
@@ -510,6 +530,8 @@ ATTRIBUTE_ENTRY* CAttribs::Find(char* cName)
 CAttribs* CAttribs::GetAttr(char* cName)
 {
 	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	Finalizer<char, void, free> tGuard(t);
+
 	while (*cName) {
 	if (*cName != ' ')
 			t[i++]=*cName++;
@@ -523,7 +545,7 @@ CAttribs* CAttribs::GetAttr(char* cName)
 
     ATTRIBUTE_ENTRY* e = Find(t);
 
-	free(t);
+//	free(t);
 
 	if (e) 
 		return (CAttribs*)e->pData;
@@ -554,6 +576,8 @@ CAttribs* CAttribs::Resolve(char* cPath, char** cName)
 
 	char* next;
 	char* c = new char[1+strlen(cPath)];
+	Finalizer<char, char, delete_array> cGuard(c);
+
 	strcpy(c,cPath);
 	char* d=c;
 	CAttribs* a = this, *b = NULL;
@@ -570,7 +594,7 @@ CAttribs* CAttribs::Resolve(char* cPath, char** cName)
 	}
 
 	if (cName) *cName = &cPath[(size_t)d-(size_t)c];
-	delete c;
+//	delete c[];
 
 	return a;
 }
@@ -627,6 +651,8 @@ void CAttribs::Delete()
 void CAttribs::SetInt(char* cName, __int64 pData)
 {
 	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	Finalizer<char, void, free> tGuard(t);
+
 	while (*cName) {
 	if (*cName != ' ')
 			t[i++]=*cName++;
@@ -656,12 +682,14 @@ void CAttribs::SetInt(char* cName, __int64 pData)
 		}
 	}
 
-	free(t);
+//	free(t);
 }
 
 void CAttribs::SetStr(char* cName, char* value)
 {
 	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	Finalizer<char, void, free> tGuard(t);
+
 	while (*cName) {
 	if (*cName != ' ')
 			t[i++]=*cName++;
@@ -692,12 +720,14 @@ void CAttribs::SetStr(char* cName, char* value)
 		}
 	}
 
-	free(t);
+//	free(t);
 }
 
 __int64 CAttribs::GetInt(char* cName) 
 {
 	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	Finalizer<char, void, free> tGuard(t);
+
 	while (*cName) {
 	if (*cName != ' ')
 			t[i++]=*cName++;
@@ -715,13 +745,13 @@ __int64 CAttribs::GetInt(char* cName)
 
 	if (entry && entry->pData) {
 		if (entry->iType == ATTRTYPE_INT64) {
-			free(t);
+	//		free(t);
 			__int64 d = *(__int64*)entry->pData; 
 			return (d);
 		}
 
 		if (entry->iType == ATTRTYPE_ASCII && entry->iFlags == ATTRTYPE_UTF8) {
-			free(t);
+	//		free(t);
 			__int64 d = _atoi64((char*)entry->pData);
 			return (d);
 		}
@@ -732,7 +762,7 @@ __int64 CAttribs::GetInt(char* cName)
 	sprintf(msg, "Requested uninitialized integer:%c%c GetInt for Element %s", 13,10,cName);
 	MessageBoxA(0, msg, "Error", MB_OK | MB_ICONERROR);
 
-	free(t);
+//	free(t);
 
 	return 0;
 }
@@ -740,6 +770,8 @@ __int64 CAttribs::GetInt(char* cName)
 int CAttribs::GetStr(char* cName, char** cDest) 
 {
 	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	Finalizer<char, void, free> tGuard(t);
+
 	while (*cName) {
 	if (*cName != ' ')
 			t[i++]=*cName++;
@@ -756,10 +788,10 @@ int CAttribs::GetStr(char* cName, char** cDest)
 	ATTRIBUTE_ENTRY*	entry = Find(cName);
 
 	if (entry && entry->pData) {
-		free(t);
+//		free(t);
 
 		if (entry->iType == ATTRTYPE_ASCII || entry->iType == ATTRTYPE_UTF8) {
-			int l = strlen((char*)entry->pData);
+			int l = (int)strlen((char*)entry->pData);
 			(*cDest) = (char*)calloc(1, 1+l);
 			memcpy(*cDest, entry->pData, l);
 			return l;
@@ -768,7 +800,7 @@ int CAttribs::GetStr(char* cName, char** cDest)
 		if (entry->iType == ATTRTYPE_INT64) {
 			char c[32]; c[0]=0;
 			_snprintf(c, 32, "%I64d", *((__int64*)entry->pData));
-			int l = strlen(c);
+			int l = (int)strlen(c);
 			(*cDest) = (char*)calloc(1, 1+l);
 			memcpy(*cDest, entry->pData, l);
 			return l;
@@ -783,7 +815,7 @@ int CAttribs::GetStr(char* cName, char** cDest)
 	sprintf(msg, "Requested uninitialized string:%c%c GetInt for Element %s", 13,10,cName);
 	MessageBoxA(0, msg, "Error", MB_OK | MB_ICONERROR);
 
-	free(t);
+//	free(t);
 
 
 	return 0;
@@ -799,6 +831,8 @@ __int64 CAttribs::GetIntWithDefault(char* cName, __int64 _default)
 int CAttribs::Exists(char* cName)
 {
 	char* t = (char*)malloc(1024); t[0]=0; int i=0; int changed = 0; 
+	Finalizer<char, void, free> tGuard(t);
+
 	while (*cName) {
 	if (*cName != ' ')
 			t[i++]=*cName++;
@@ -812,7 +846,7 @@ int CAttribs::Exists(char* cName)
 
 	ATTRIBUTE_ENTRY*	entry = Find(t);
 
-	free(t);
+//	free(t);
 
 	return (!!entry);
 }
@@ -898,19 +932,19 @@ void CAttribs::Export(CAttribs* a)
 
 }
 
-void CAttribs::Add(char* cName, int iFlags, int iType, void* pData)
+void CAttribs::Add(const char* cName, int iFlags, int iType, void* pData)
 {
 	ATTRIBUTE_ENTRY*	entry;
 	CAttribs* a;
 	int position, size;
 	char* n;
 
-	a = Resolve(cName, &n);
+	a = Resolve((char*)cName, &n);
 
 	position = Position(n);
 	entry = new ATTRIBUTE_ENTRY;
 	ZeroMemory(entry,sizeof(*entry));
-	entry->cName = new char[size = strlen(n)+1];
+	entry->cName = new char[size = (int)strlen(n)+1];
 	memcpy(entry->cName,n,size);
 	entry->iFlags = FATTR_VALID;
 	entry->iType = iType;
@@ -985,19 +1019,19 @@ int CAttribs::Import(XMLNODE* xml)
 	if (!xml)
 		return 1;
 
-	if (xml->pChild || !xml->cValue || !xml->cValue[0]) {
-		CAttribs* a = GetAttr(xml->cNodeName);
+	if (xml->pChild || (xml->cValue.empty() && !xml->ValuePresent())) {
+		CAttribs* a = GetAttr((char*)xml->cNodeName.c_str());
 		if (!a) {
-			Add(xml->cNodeName, FATTR_ADDATTR_CREATE, ATTRTYPE_ATTRIBS, NULL);
-			a = GetAttr(xml->cNodeName);
+			Add(xml->cNodeName.c_str(), FATTR_ADDATTR_CREATE, ATTRTYPE_ATTRIBS, NULL);
+			a = GetAttr((char*)xml->cNodeName.c_str());
 		}
 		a->Import((XMLNODE*)xml->pChild);
 	} else {
-		if (isint(xml->cValue)) {
-			int i = atoi(xml->cValue);
-			SetInt(xml->cNodeName, i);
+		if (isint(xml->cValue.c_str())) {
+			int i = atoi(xml->cValue.c_str());
+			SetInt((char*)xml->cNodeName.c_str(), i);
 		} else {
-			SetStr(xml->cNodeName, xml->cValue);
+			SetStr((char*)xml->cNodeName.c_str(), (char*)xml->cValue.c_str());
 		}
 	}
 

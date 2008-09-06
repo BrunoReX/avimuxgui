@@ -31,9 +31,10 @@ class MP3FRAMEHEADER
 		int			HasCRC();
 		int			GetPadding(void);
 		bool		SyncOK(void);
+		bool		IsValid(void);
 };
 
-class MP3SOURCE: public AUDIOSOURCEFROMBINARY
+class MP3SOURCE: public CBinaryAudioSource
 {
 	private:
 		MP3FRAMEHEADER*	fh;
@@ -60,6 +61,7 @@ class MP3SOURCE: public AUDIOSOURCEFROMBINARY
 		int		virtual doRead(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdwMicroSecRead,
 								__int64* lpqwNanoSecRead=NULL);
 		int		virtual	doClose(void);
+		int		virtual FindNextFrameHeader(int MaxSearchLength, int& BadBytes);
 	public:
 		MP3SOURCE(void);
 		MP3SOURCE(STREAM* lpStream);
@@ -67,6 +69,8 @@ class MP3SOURCE: public AUDIOSOURCEFROMBINARY
 		bool	virtual IsCBR(void) { return bCBR; }
 		int		virtual Open(STREAM* lpStream);
 		int		virtual	ReadFrame(void* lpDest,DWORD* lpdwMicroSecRead,__int64* lpdwNanoSecRead);
+		int		virtual	ReadFrame(MULTIMEDIA_DATA_PACKET** packet);
+
         int     virtual GetChannelCount(void);
 		int		virtual	GetFrequency(void);
 		__int64 virtual GetFrameDuration(void);

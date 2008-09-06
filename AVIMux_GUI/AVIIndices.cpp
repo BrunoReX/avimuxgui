@@ -28,7 +28,7 @@ INDEX::INDEX(void)
 	dwTest=0;
 	dwKind=0;
 	qwBegin=0;
-	qwEnd=(__int64)1<<63-1;
+	qwEnd=(((__int64)1)<<63)-1;
 }
 
 INDEX::~INDEX(void)

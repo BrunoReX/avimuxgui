@@ -1,7 +1,4 @@
-/* All this is nonsense, I made it before actually learning that there was
-   the STL. Migrating everything to use the STL instead of this is quite
-   some work though...
-*/
+/* Very old code that needs to be replaced using STL */
 
 
 #include "stdafx.h"
@@ -112,23 +109,3 @@ void CDynIntArray::DeleteAll()
 	}
 }
 
-CHashIntArray::CHashIntArray()
-{
-	iElementSize = sizeof(CDynIntArray*);
-}
-
-void CHashIntArray::SetSize(int iSize)
-{
-	iCount = iSize;
-	iMaxCount = iSize;
-	pData = (CDynIntArray**)realloc(pData,iCount*iElementSize);
-}
-
-void CHashIntArray::DeleteAll()
-{
-	for (int i=0;i<iCount;i++) {
-		pData[i]->DeleteAll();
-		delete pData[i];
-	}
-	if (pData) delete pData;
-}

@@ -6,7 +6,7 @@
 #include "AVIMux_GUIDlg.h"
 #include "AVIFile.h"
 #include "SourceFileListBox.h"
-#include "..\Filestream.h"
+#include "..\FileStream.h"
 #include <algorithm>
 
 #include "mode2form2reader.h"
@@ -314,7 +314,7 @@ int file_index_to_delete = -1;
 BOOL CSourceFileListBox::OnCommand(WPARAM wParam, LPARAM lParam) 
 {
 	FILE_INFO*	lpFI = NULL;
-	FILESTREAM*	dest;
+	CFileStream*	dest;
 	EXTRACTM2F2_THREAD_DATA*	lpETD;
 	CWinThread*	thread;
 	CFileDialog*	cfd;
@@ -341,7 +341,7 @@ BOOL CSourceFileListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 			if (cfd->DoModal()==IDOK)
 			{
 				if (lpFI = GetFileInfo()) {
-					dest=new FILESTREAM;
+					dest=new CFileStream;
 					if (dest->Open(cfd->GetPathName().GetBuffer(255),STREAM_WRITE)==STREAM_ERR)
 					{
 						cStr1=LoadString(IDS_COULDNOTOPENOUTPUTFILE);

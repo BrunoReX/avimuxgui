@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "xmlfiles.h"
 
-int FileIsXML(CTEXTFILE* t)
+int FileIsXML(CTextFile* t)
 {
 	__int64 pos = t->GetPos();
 	bool done = false;
@@ -17,7 +17,12 @@ int FileIsXML(CTEXTFILE* t)
 			if (c == '<') {
 				level++;
 				if (level == 1) {
-					c = t->ReadChar(TFRC_NOLINEBREAKS | TFRC_DONTUPDATEPOS);
+					__int64 currentPos = t->GetPos();
+					do
+					{
+						c = t->ReadChar<char>(TFRC_NOLINEBREAKS | TFRC_DONTUPDATEPOS);
+					} while ((!c || c==0x0A || c==0x0D) && (!t->IsEndOfStream()));
+					t->Seek(currentPos);
 					if (c != '?' && c != '!') {
 						t->Seek(t->GetPos()-1);
 						done = 1;
@@ -29,7 +34,12 @@ int FileIsXML(CTEXTFILE* t)
 					level--;
 
 				if (level == 0) {
-					c = t->ReadChar(TFRC_NOLINEBREAKS | TFRC_DONTUPDATEPOS);
+					__int64 currentPos = t->GetPos();
+					do
+					{
+						c = t->ReadChar<char>(TFRC_NOLINEBREAKS | TFRC_DONTUPDATEPOS);
+					} while ((!c || c==0x0A || c==0x0D) && (!t->IsEndOfStream()));
+					t->Seek(currentPos);
 					if (c != '<')
 						done = 1;	
 				}
@@ -42,7 +52,7 @@ int FileIsXML(CTEXTFILE* t)
 	return 0;
 }
 
-int Textfile2String(CTEXTFILE* t, char* c)
+int Textfile2String(CTextFile* t, char* c)
 {
 	c[0]=0;
 	int j=0;
@@ -55,3 +65,28 @@ int Textfile2String(CTEXTFILE* t, char* c)
 	return j;
 }
 
+char* Textfile2String(CTextFile* t)
+{
+	/* size of output string cannot be easily determined because of possible
+	   conversions between UTF-16, UTF-8 and ANSI */
+
+	int totalSize = 0;
+	int sizeOfLine = 0;
+	__int64 position = t->GetPos();
+	char* pTemp;
+
+	do 
+	{
+		sizeOfLine = t->ReadLine(&pTemp);
+		if (sizeOfLine > 0)
+			totalSize += sizeOfLine;
+		free(pTemp);
+	} while (sizeOfLine > -1);
+	
+	pTemp = (char*)malloc(totalSize+1);
+
+	t->Seek(position);
+	Textfile2String(t, pTemp);
+
+	return pTemp;
+}

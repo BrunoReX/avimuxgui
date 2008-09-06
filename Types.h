@@ -8,5 +8,8 @@
 #define uint32 unsigned __int32
 #define uint64 unsigned __int64
 
+#ifndef uint
+#define uint uint32
+#endif
 
 #endif

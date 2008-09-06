@@ -12,7 +12,7 @@ int Filename2LongFilename(char* in, char* out, int out_buf_len)
 	char* org_in = in;
 	char* org_out = out;
 	out[0]=0;
-	int in_buf_len = strlen(in) + 1;
+	int in_buf_len = (int)strlen(in) + 1;
 	
 	char new_in[65536]; 
 	new_in[0]=0;
@@ -123,7 +123,7 @@ void FilenameKeepName(char* in_out)
 		strcpy(cbegin, clast_backslash+1);
 }
 
-int UTF8CharLen(char in)
+int here_UTF8CharLen(char in)
 {
 	unsigned char uin = (unsigned char)in;
 
@@ -158,7 +158,7 @@ int UTF8CharLen(char in)
 void FilenameRemoveIllegalCharactersUTF8(char* in_out, char replacement)
 {
 	while (*in_out) {
-		int cl = UTF8CharLen(*in_out);
+		int cl = here_UTF8CharLen(*in_out);
 		if (cl < 1)
 			return;
 

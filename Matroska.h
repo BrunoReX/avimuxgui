@@ -9,6 +9,7 @@
 #include "matroska_writing.h"
 #include "Queue.h"
 #include "Chapters.h"
+#include "ITitleSet.h"
 #include <vector>
 
 const int		MMODE_READ	= 1;
@@ -28,8 +29,6 @@ const int LINKTYPE_MEDIUM = 0x00;
 const int LINKTYPE_HARD = 0x01;
 
 char* MKV_LINKTYPE_NAMES[];
-
-#define uint unsigned int
 
 static const char* MSTRT_names[] = { "", "video", "audio", "complex", "", "", "", "", "",
 									 "", "", "", "", "", "", "", "logo", "subs", "button", "",
@@ -83,20 +82,21 @@ typedef struct
 		int						iAVImode;
 		bool					bDeb0rkReferences;
 
-		__int64					bClusterIndex;
+		bool					bClusterIndex;
 		__int64					bRandomizeElementOrder;
 		
 		__int64					iBlocksInCluster;
 
-		__int64					bClusterPosition;
-		__int64					bPrevClusterSize;
-		__int64					bCueBlockNumber;
+		bool					bClusterPosition;
+		bool					bPrevClusterSize;
+		bool					bCueBlockNumber;
 
 		__int64					bWriteCues; // 1 video, 2 audio, 4 subs
-		__int64					bWriteFlagDefault;
-		__int64					bWriteFlagLacing;
-		__int64					bWriteFlagEnabled;
-		
+		bool					bWriteFlagDefault;
+		bool					bWriteFlagLacing;
+		bool					bWriteFlagEnabled;
+		bool					bWriteFlagForced;
+
 		__int64					bDisplayWidth_Height;
 		float					fSetDuration;
 		__int64					i1stElementInFile;
@@ -196,7 +196,27 @@ const int UIDTYPE_NEXTUID    = 0x02;
 const int UIDTYPE_SEGMENTFAMILY = 0x03;
 char* MKV_UID_NAMES[];
 
-class MATROSKA
+/* to be used with a (future) MATROSKA::Enable() functioon */
+#define MF_WRITE_PREV_CLUSTER_SIZE  0x00000001
+#define MF_WRITE_CLUSTER_POSITION   0x00000002
+
+#define MF_WRITE_CLUSTER_INDEX      0x00000004
+#define MF_WRITE_DISPLAY_WH         0x00000008
+#define MF_WRITE_CUE_BLOCK_NUMBER   0x00000010
+#define MF_WRITE_CUES               0x00000020
+#define MF_CUE_AUTO_SIZE      0x00000040
+#define MF_WRITE_FLAG_DEFAULT 0x00000080
+#define MF_WRITE_FLAG_ENABLED 0x00000100
+#define MF_WRITE_FLAG_LACED   0x00000200
+#define MF_WRITE_FLAG_FORCED  0x00000400
+#define MF_SHIFT_FIRST_CLUSTER_TIMECODE 0x00000800
+#define MF_WRITE_RANDOM_ELEMENT_ORDER 0x00001000
+
+#define MFA_ENABLE 0x17
+#define MFA_DISABLE 0x23
+#define MFA_RETRIEVE_ONLY 0x41
+
+class MATROSKA : public CHasTitles
 {
 	private:
 	// access
@@ -272,6 +292,7 @@ class MATROSKA
 		void			RenderChapterSegmentUIDTags(EBMLElement_Writer* pParent, CChapters* c);
 		void*			GetTrackCompressionPrivate(int iTrack, int index);
 	public:
+		virtual ITitleSet* GetTitleSet();
 		STREAM*			GetSource();
 	// blocks (read)
 		int				Read(READ_INFO* pInfo, int iFlags = MRF_CURRENT);
@@ -310,19 +331,20 @@ class MATROSKA
 		void			SetMaxBlockGapFactor(int iFactor);
 	// segment info (write)
 		void			Deb0rkReferences(bool bDeb0rk = true); // not yet implemented
-		void			EnablePrevClusterSize(int bEnable);
-		void			EnableClusterPosition(int bEnable);
-		void			EnableClusterIndex(int bEnable);
+//		void			EnablePrevClusterSize(int bEnable);
+//		void			EnableClusterPosition(int bEnable);
+//		void			EnableClusterIndex(int bEnable);
 		void			EnableDisplayWidth_Height(int bEnable);
-		void			EnableCueBlockNumber(int bEnable);
+//		void			EnableCueBlockNumber(int bEnable);
 		void			EnableCues(int iStreamType, int bEnable);
 		void			EnableCueAutosize(int enabled);
-		void			EnableWriteFlagEnabled(int bEnable);
-		void			EnableWriteFlagDefault(int bEnable);
-		void			EnableWriteFlagLacing(int bEnable);
+//		void			EnableWriteFlagEnabled(int bEnable);
+//		void			EnableWriteFlagDefault(int bEnable);
+//		void			EnableWriteFlagLacing(int bEnable);
 		void			EnableShiftFirstClusterTimecode2Zero(int bEnable = true);
 		void			EnableRandomizeElementOrder(int bEnable = true);
 
+		bool			Enable(unsigned __int64 flag, int additonal_info, int action);
 
 		int				GetLaceStyle();
 		__int64			GetMaxClusterSize();
@@ -332,15 +354,15 @@ class MATROSKA
 		int				GetCueCount(int flag = 2); // 1 = created, 2 = written
 		__int64			GetSeekheadSize();
 		bool			Is1stClusterLimited();
-		bool			IsClusterPositionEnabled();
+//		bool			IsClusterPositionEnabled();
 		bool			IsDisplayWidth_HeightEnabled();
-		bool			IsPrevClusterSizeEnabled();
+//		bool			IsPrevClusterSizeEnabled();
 		bool			IsCuesEnabled(int iStreamType);
 		bool			IsCueAutoSizeEnabled(void);
-		int				IsClusterIndexEnabled();
-		int 			IsEnabled_WriteFlagEnabled();
-		int 			IsEnabled_WriteFlagDefault();
-		int 			IsEnabled_WriteFlagLacing();
+//		int				IsClusterIndexEnabled();
+//		int 			IsEnabled_WriteFlagEnabled();
+//		int 			IsEnabled_WriteFlagDefault();
+//		int 			IsEnabled_WriteFlagLacing();
 		int				IsEndOfSegment();
 		void			SetLaceStyle(int iStyle);
 		void			SetMaxClusterSize(__int64 iSize); // kByte
@@ -408,6 +430,7 @@ class MATROSKA
 
 		__int64			GetTrackDuration(int iTrack = -1);
 		char*			GetTrackName(int iTrack = -1);
+		ITitleSet*		GetTrackTitleSet(int iTrack = -1);
 		int				GetTrackNumber(int iTrack = -1);
 		int				GetTrackType(int iTrack = -1);
 		__int64			GetTrackUID(int iTrack = -1);
@@ -420,7 +443,7 @@ class MATROSKA
 		int				IsLaced(int iTrack = -1);
 		int				IsSparse(int iTrack = -1);
 		int				IsForced(int iTrack = -1);
-		int				IsCueBlockNumberEnabled();
+//		int				IsCueBlockNumberEnabled();
 		void			SelectSingleStream(int iStream);
 		void			SelectStreams(int* iStreams); // -1 - terminated!!
 		int 			SetSparseFlag(int iTrack, int bFlag);
@@ -442,7 +465,7 @@ class MATROSKA
 
 		void			SetTrackInfo(int iTrack, MATROSKA* m = NULL, int iSourceTrack = NULL);
 		void			SetTrackLanguageCode(int iTrack,char* cName);
-		void			SetTrackName(int iTrack,char* cName);
+		void			SetTrackName(int iTrack, char* cName, char* cLanguage = "");
 		void			SetTrackNumber(int iTrack, int iNbr);
 		void			SetTrackType(int iTrack, int iType);
 

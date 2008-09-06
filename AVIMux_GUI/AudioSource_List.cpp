@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "audiosource_list.h"
 #include "..\matroska.h"
+#include "TraceFile.h"
+#include "..\FormatTime.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -21,7 +23,7 @@ AUDIOSOURCELIST::~AUDIOSOURCELIST()
 {
 }
 
-AUDIOSOURCELIST::Append(AUDIOSOURCE* pNext)
+int AUDIOSOURCELIST::Append(AUDIOSOURCE* pNext)
 {
 	info.audiosources = (AUDIOSOURCE**)realloc(info.audiosources,(info.iCount+1)*sizeof(AUDIOSOURCE*));
 	info.audiosources[info.iCount] = pNext;
@@ -32,8 +34,10 @@ AUDIOSOURCELIST::Append(AUDIOSOURCE* pNext)
 		pNext->SetBias(0);
 		char cBuffer[2048];
 		ZeroMemory(cBuffer,sizeof(cBuffer));
-		pNext->GetName(cBuffer);
-		SetName(cBuffer);
+	//	pNext->GetName(cBuffer);
+	//	SetName(cBuffer);
+		GetTitleSet()->Import(pNext->GetTitleSet());
+
 		ZeroMemory(cBuffer,sizeof(cBuffer));
 		pNext->GetLanguageCode(cBuffer);
 		SetLanguageCode(cBuffer);
@@ -120,7 +124,7 @@ int AUDIOSOURCELIST::Read(void* lpDest, DWORD dwMicrosecDesired, DWORD* lpdwMicr
 		int res = info.active_source->Read(lpDest,dwMicrosecDesired,
 			lpdwMicrosecRead,lpqwNanosecRead,lpiTimecode,lpAARI);
 
-		/* if no real data was read and suddenly the end of the stream
+		/* if no real data was read and suddently the end of the stream
 		   has been reached, the end was crap */
 		if (res == 0 && info.active_source->IsEndOfStream()) {
 			return Read(lpDest, dwMicrosecDesired, lpdwMicrosecRead,
@@ -165,6 +169,22 @@ int AUDIOSOURCELIST::Read(void* lpDest, DWORD dwMicrosecDesired, DWORD* lpdwMicr
 			return AS_ERR;
 		} else {
 		// one more file available
+
+			/* create log entry */
+			char cTime[64]; memset(cTime, 0, sizeof(cTime));
+			Millisec2Str(info.active_source->GetCurrentTimecode() *
+				info.active_source->GetTimecodeScale() / 1000000, cTime);
+
+			char cName[1024]; memset(cName, 0, sizeof(cName));
+			GetName(cName);
+
+			char cMsg[2048]; memset(cMsg, 0, sizeof(cMsg));
+			sprintf(cMsg, "End of stream encountered\nName: %s\nTimecode: %s",
+				cName, cTime);
+
+		//	GetApplicationTraceFile()->Trace(TRACE_LEVEL_NOTE, "End of stream", cMsg);
+
+
 			info.active_source = info.audiosources[++info.iActiveSource];
 			if (IsSeamless()) {
 				info.active_source->SetBias(info.audiosources[info.iActiveSource-1]->GetCurrentTimecode());

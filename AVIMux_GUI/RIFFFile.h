@@ -9,13 +9,13 @@
 
 #include "..\basestreams.h"
 
-const DT_CHUNK = 0x01;
-const DT_LIST = 0x02;
-const DT_RIFF = 0x03;
+const int DT_CHUNK = 0x01;
+const int DT_LIST = 0x02;
+const int DT_RIFF = 0x03;
 
-const FA_READ = 0x01;
-const FA_WRITE = 0x02;
-const FA_DUMMY = 0x04;
+const int FA_READ = 0x01;
+const int FA_WRITE = 0x02;
+const int FA_DUMMY = 0x04;
 
 typedef struct CHUNKHEADER
 {
@@ -52,9 +52,9 @@ class RIFFFILE
 #define LISTELEMENT_CHUNK  0x01
 #define LISTELEMENT_LIST   0x02
 
-const LE_CHAIN			= 0x01;
-const LE_SINGLEELEMENT	= 0x02;
-const LE_USELASTSIZE	= 0x04;
+const int LE_CHAIN			= 0x01;
+const int LE_SINGLEELEMENT	= 0x02;
+const int LE_USELASTSIZE	= 0x04;
 
 class LISTELEMENT
 {

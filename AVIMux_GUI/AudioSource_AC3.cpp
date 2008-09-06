@@ -2,10 +2,12 @@
 #include "silence.h"
 #include "audiosource_ac3.h"
 
+#ifdef DEBUG_NEW
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
+#endif
 #endif
 
 	//////////////////////
@@ -20,10 +22,18 @@ typedef struct
 {
 	WORD	wSync;
 	WORD	wCRC;
-	BYTE	bFrszcode;
-	BYTE	bsi;
-	BYTE	AC3mod;
+	union {
+		struct {
+			BYTE	bFrszcode;
+			BYTE	bsi;
+			BYTE	AC3mod;
+			BYTE    moreStuff;
+		};
 
+		struct {
+			DWORD   dwMoreStuff;
+		};
+	};
 } AC3FRMHDR, *LPAC3FRMHDR;
 
 AC3SOURCE::AC3SOURCE()
@@ -63,6 +73,85 @@ int AC3SOURCE::GetStrippableHeaderBytes(void* pBuffer, int max)
 	return 2;
 }
 
+int AC3SOURCE::ParseFrameHeader(AC3INFO* ac3info)
+{
+	DWORD		dwFrequencies[4] = 
+		{ 48000, 44100, 32000, 0 };
+	
+	DWORD		dwBitrates[38]=
+		{ 32, 32, 40, 40, 48, 48, 56, 56, 64, 64,
+		  80, 80, 96, 96,112,112,128,128,160,160,
+		 192,192,224,224,256,256,320,320,384,384,
+		 448,448,512,512,576,576,640,640 };
+	
+	DWORD		dwFrameSizes[3][38]=
+		{
+			{  64,  64,  80,  80,  96,  96, 112, 112, 128, 128,
+			  160, 160, 192, 192, 224, 224, 256, 256, 320, 320,
+			  384, 384, 448, 448, 512, 512, 640, 640, 768, 768,
+			  896, 896,1024,1024,1152,1152,1280,1280 },
+			{  69,  70,  87,  88, 104, 105, 121, 122, 139, 140,
+			  174, 175, 208, 209, 243, 244, 278, 279, 348, 349,
+			  417, 418, 487, 488, 557, 558, 696, 697, 835, 836,
+			  975, 976,1114,1115,1253,1254,1393,1394 },
+			{  96,  96, 120, 120, 144, 144, 168, 168, 192, 192,
+			  240, 240, 288, 288, 336, 336, 384, 384, 480, 480,
+			  576, 576, 672, 672, 768, 768, 960, 960,1152,1152,
+			 1344,1344,1536,1536,1728,1728,1920,1920 }
+		};
+	DWORD		dwChannelIDs[8] = { 2, 1, 2, 3, 3, 4, 4, 5 };
+
+	AC3FRMHDR frameHdr;
+
+	__int64 streamPosition = GetSource()->GetPos();
+	
+
+	int bytesRead = GetSource()->Read(&frameHdr, sizeof(frameHdr));
+	GetSource()->Seek(streamPosition);
+
+	/* if not enough bytes were read to parse the frame header, fail */
+	if (bytesRead != sizeof(frameHdr))
+		return 0;	
+	
+	/* if the sync word is wrong, fail */
+	if (frameHdr.wSync != 0x770B)
+		return 0;
+
+	int freqIndex=frameHdr.bFrszcode >> 6;
+	int bitrateIndex=frameHdr.bFrszcode & 0x3F;
+	int channelIndex=frameHdr.AC3mod >> 5; 
+	
+	int shift = 19;
+	if ((channelIndex & 0x01) && (channelIndex != 0x01)) shift +=2;
+	if ((channelIndex & 0x04)) shift += 2;
+	if (channelIndex == 0x02) shift+=2;
+	int LFE = (frameHdr.dwMoreStuff >> shift) & 0x01;
+   	
+	if (freqIndex==3) 
+		return 0;
+
+	if (bitrateIndex>=38) 
+		return 0;
+
+	DWORD dwBitrate=dwBitrates[bitrateIndex];
+	DWORD dwFrameSize=2*dwFrameSizes[freqIndex][bitrateIndex];
+	DWORD dwChannels=dwChannelIDs[channelIndex] + LFE;
+	DWORD dwFrequency=dwFrequencies[freqIndex];
+
+	ac3info->dwBitrate = dwBitrate;
+	ac3info->dwChannels = dwChannels;
+	ac3info->dwLFE = LFE;
+	ac3info->dwFrameSize = dwFrameSize;
+	ac3info->dwFrequency = dwFrequency;
+	ac3info->iFrameDuration = (int)
+		((float)dwFrameSize / (float)dwBitrate / 125.f * 1000000000.f); 
+
+	return 1;
+}
+
+/* check if change after GetAccumulatedDelay() from 1000000 to 1000
+   breaks anything
+   */
 int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 						 __int64* lpqwNanoSecRead, bool bStoreAC3Info,bool bResync)
 {
@@ -94,6 +183,7 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 	DWORD		dwFreqIndex;
 	DWORD		dwBitrateIndex;
 	DWORD		dwBitrate;
+	DWORD		dwLFE;
 	DWORD		dwFrameSize;
 	DWORD		dwChannelIndex;
 	DWORD		dwMaxGap = GetResyncRange();
@@ -158,11 +248,11 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 	{
 		if (!bUseExternalSilence) {
 			memcpy(lpDest,lpbFirstFrame,ac3info.dwFrameSize);
-			memcpy(si,lpbFirstFrame,7);
+			memcpy(si,lpbFirstFrame,8);
 			dwRead=ac3info.dwFrameSize;
 			AddToAccumulatedDelay(-GetFrameDuration());
 			if (lpdwMicroSecRead)
-				*lpdwMicroSecRead = ac3info.iFrameDuration / 1000000;
+				*lpdwMicroSecRead = (DWORD)(ac3info.iFrameDuration / 1000);
 			if (lpqwNanoSecRead)
 				*lpqwNanoSecRead = ac3info.iFrameDuration;
 			return dwRead;
@@ -181,22 +271,29 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 	dwFreqIndex=si->bFrszcode >> 6;
 	dwBitrateIndex=si->bFrszcode & 0x3F;
 	dwChannelIndex=si->AC3mod >> 5; 
+	int shift = 19;
+	if ((dwChannelIndex & 0x01) && (dwChannelIndex != 0x01)) shift +=2;
+	if ((dwChannelIndex & 0x04)) shift += 2;
+	if (dwChannelIndex == 0x02) shift+=2;
+	dwLFE = (si->dwMoreStuff >> shift) & 0x01;
+
 	if (dwFreqIndex==3) { GetSource()->Seek(qwOldPos); return 0; }
 	if (dwBitrateIndex>=38) { GetSource()->Seek(qwOldPos); return 0; }
 
 	dwBitrate=dwBitrates[dwBitrateIndex];
 	dwFrameSize=2*dwFrameSizes[dwFreqIndex][dwBitrateIndex];
-	dwChannels=dwChannelIDs[dwChannelIndex];
+	dwChannels=dwChannelIDs[dwChannelIndex] + dwLFE;
 
 	if (bStoreAC3Info) {
 		ac3info.dwChannels=dwChannels;
 		ac3info.dwBitrate=dwBitrate;
 		ac3info.dwFrameSize=dwFrameSize;
 		ac3info.dwFrequency=dwFrequencies[dwFreqIndex];
+		ac3info.dwLFE = dwLFE;
 	}
 
 //	if (!dwReturnSilence) {
-		dwRead=GetSource()->Read(&(((BYTE*)lpDest)[7]),dwFrameSize-7)+7;
+		dwRead=GetSource()->Read(&(((BYTE*)lpDest)[sizeof(AC3FRMHDR)]),dwFrameSize-sizeof(AC3FRMHDR))+sizeof(AC3FRMHDR);
 //	}
 
 	if (dwRead!=dwFrameSize) {
@@ -209,7 +306,7 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 		dwRead=0;
 	}
 
-	double z=(dwRead/dwBitrate);
+	double z=((double)dwRead/dwBitrate);
 
 	if (lpqwNanoSecRead) 
 		*lpqwNanoSecRead=round(8000000*z);
@@ -222,10 +319,48 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 	return dwRead;
 }
 
+int AC3SOURCE::ReadFrame(MULTIMEDIA_DATA_PACKET** dataPacket)
+{
+	AC3INFO ac3info;
+
+	if (IsEndOfStream())
+		return -1;
+
+	if (!ParseFrameHeader(&ac3info))
+		return 0;
+
+	if (this->ac3info.dwChannels < 1)
+		memcpy(&this->ac3info, &ac3info, sizeof(ac3info));
+
+	char* pData = (char*)malloc(ac3info.dwFrameSize);
+	if (GetSource()->Read(pData, ac3info.dwFrameSize) != ac3info.dwFrameSize)
+	{
+		free(pData);
+		return -1;
+	}
+
+	createMultimediaDataPacket(dataPacket);
+	(*dataPacket)->compressionInfo.clear();
+	(*dataPacket)->timecode = GetCurrentTimecode() * GetTimecodeScale();
+	IncCurrentTimecode(ac3info.iFrameDuration);
+	(*dataPacket)->duration = ac3info.iFrameDuration;
+	(*dataPacket)->usageCounter = 1;
+	(*dataPacket)->totalDataSize = ac3info.dwFrameSize;
+	(*dataPacket)->frameSizes.push_back(ac3info.dwFrameSize);
+	(*dataPacket)->cData = pData;
+		
+	if (!IsEndOfStream())
+		(*dataPacket)->nextTimecode = GetCurrentTimecode();
+	else
+		(*dataPacket)->nextTimecode = TIMECODE_UNKNOWN;
+
+	return 1;
+}
+
 int AC3SOURCE::ConvertCrapDataToSilence(int size, int frameSize)
 {
 	double fraction = (double)size / (double)frameSize;
-	__int64 delay = fraction * GetFrameDuration();
+	__int64 delay = (__int64)(fraction * GetFrameDuration());
 	AddToAccumulatedDelay(delay);
 
 	return 1;
@@ -284,7 +419,7 @@ int AC3SOURCE::Open(STREAM* lpStream)
 //	dwReturnSilence=0;
 	lpbFirstFrame=NULL;
 	ZeroMemory(Buffer,sizeof(Buffer));
-	int	iRes=AUDIOSOURCEFROMBINARY::Open(lpStream);
+	int	iRes=CBinaryAudioSource::Open(lpStream);
 	GetSource()->SetOffset(0);
 	GetSource()->Seek(0);
 	if (iRes==AS_OK)
@@ -308,8 +443,8 @@ int AC3SOURCE::Open(STREAM* lpStream)
 
 	_silence=new SILENCE;
 
-	char dir[512];
-	GetModuleFileName(NULL, dir, 512);	
+	char dir[5120];
+	GetModuleFileName(NULL, dir, 5120);	
 	silence->Init(dir);
 	bUseExternalSilence=(silence->SetFormat(AUDIOTYPE_AC3,ac3info.dwChannels,ac3info.dwFrequency,
 		(float)ac3info.dwBitrate)==SSF_SUCCEEDED);
@@ -325,6 +460,14 @@ __int64 AC3SOURCE::GetFrameDuration()
 int AC3SOURCE::GetChannelCount()
 {
 	return ac3info.dwChannels;
+}
+
+char* AC3SOURCE::GetChannelString()
+{
+	char cTemp[8]; cTemp[0]=0;
+	
+	_snprintf(cTemp, 8, "%d.%d", GetChannelCount()-ac3info.dwLFE, ac3info.dwLFE);
+	return _strdup(cTemp);
 }
 
 int AC3SOURCE::GetBitrate()
@@ -351,6 +494,11 @@ int AC3SOURCE::doClose()
 {
 //	return CBRAUDIOSOURCE::doClose();
 
+	if (lpbFirstFrame) {
+		free (lpbFirstFrame);
+		lpbFirstFrame = NULL;
+	}
+
 	return 1;
 }
 
@@ -361,7 +509,6 @@ AC3SOURCE::~AC3SOURCE()
 		delete silence;
 		_silence = NULL;
 	}
-	if (lpbFirstFrame) free (lpbFirstFrame);
 }
 
 #pragma pack(pop)

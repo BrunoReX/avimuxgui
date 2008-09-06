@@ -14,7 +14,7 @@
 #include "global.h"
 #include "../UnicodeCalls.h"
 #include "../Filenames.h"
-#include "../Filestream.h"
+#include "../FileStream.h"
 
  HANDLE hGlobalMuxingStartedSemaphore;
  HANDLE hGlobalMuxSemaphore;
@@ -46,11 +46,11 @@ bool bWait = false;
 bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 {
 
-	FILESTREAM* fs = new FILESTREAM;
+	CFileStream* fs = new CFileStream;
 	fs->Open(lpcName,STREAM_READ);
-	CTEXTFILE* f = new CTEXTFILE;
+	CTextFile* f = new CTextFile;
 	f->Open(STREAM_READ,fs);
-	f->SelectOutputFormat(CM_UTF8);
+	f->SetOutputEncoding(CHARACTER_ENCODING_UTF8);
 		
 	char*	buffer = NULL;
 	char*   entire_line = NULL;
@@ -118,8 +118,12 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 			(*USetCurrentDirectory())(upath);
 			free(upath);
 
-			Filename2LongFilename(l, cText, 32768);
+			char* l2 = _strdup(l);
+			Filename2LongFilename(l2, cText, 32768);
+			free(l2);
+
 			(*USetCurrentDirectory())(curr_dir);		
+
 			ProcessMsgQueue(hwnd);
 			PostMessage(hwnd,message,IDM_DOADDFILE,(LPARAM)cText);
 		}

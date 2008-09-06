@@ -19,6 +19,7 @@ CHexViewListBox::CHexViewListBox()
 	data_begin = 0;
 	mode = HWLB_MODE_EBML;
 	bisrifflist = false;
+	red_begin = -17;
 }
 
 CHexViewListBox::~CHexViewListBox()

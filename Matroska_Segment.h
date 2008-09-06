@@ -16,9 +16,6 @@
 const int TN2I_INVALID = -0x01;
 const int TUID2TI_INVALID = -0x01;
 
-const __int64 TIMECODE_UNKNOWN = -1;
-const __int64 TIMECODE_UNINITIALIZED = -2;
-const __int64 DURATION_UNKNOWN = -1;
 
 const int SEEKMODE_NORMAL = 0x01;
 const int SEEKMODE_IDIOT  = 0x02;
@@ -138,39 +135,9 @@ typedef struct
 	CUE_POINT**		point;
 } TRACK_CUE_POINTS;
 
-class TRACK_COMPRESSION_DESCRIPTOR
-{
-public:
-	TRACK_COMPRESSION_DESCRIPTOR();
-	TRACK_COMPRESSION_DESCRIPTOR(const TRACK_COMPRESSION_DESCRIPTOR& other) {
-		compression = other.compression;
-		order = other.order;
-		compressed_elements = other.compressed_elements;
-
-		compression_private_size = other.compression_private_size;
-		if (compression_private_size) {
-			compression_private = malloc(compression_private_size);
-			memcpy(compression_private, other.compression_private,
-				compression_private_size);
-		} else
-			compression_private = NULL;
-	}
 
 
-	virtual ~TRACK_COMPRESSION_DESCRIPTOR();
-	TRACK_COMPRESSION_DESCRIPTOR& operator=(const TRACK_COMPRESSION_DESCRIPTOR &other);
-	bool operator==(const TRACK_COMPRESSION_DESCRIPTOR &other);
-	int			compression;
-	int			order;
-	void*		compression_private;
-	int			compression_private_size;
-	bool		is_decompressed;
-	int			compressed_elements;
-};
-typedef std::vector<TRACK_COMPRESSION_DESCRIPTOR> TRACK_COMPRESSION;
-
-
-class TRACK_INFO
+class TRACK_INFO : public CHasTitles
 {
 public:
 	TRACK_INFO();
@@ -190,7 +157,7 @@ public:
 	int			iMinCache;
 	int			iMaxCache;
 	double		fTimecodeScale;
-	CBuffer*	cName;
+//	CBuffer*	cName;
 	CBuffer*	cLanguage;
 	CBuffer*	cCodecID;
 	CBuffer*	cCodecName;
@@ -202,15 +169,8 @@ public:
 	// additional stuff
 	int			iSelected;
 	__int64	    iLastBlockEndTimecode;
-/*
-	int			iCompression;
-	
-	void*		compression_private;
-	int			compression_private_size;
-	bool		is_decompressed;
 
-	int			iCompressedElements;
-*/
+
 	TRACK_COMPRESSION track_compression;
 	TAG_INDEX_LIST pTags;
 };
@@ -291,7 +251,7 @@ public:
 const int PARSECUEPOINTS_INDEX = 0x01;
 const int PARSECUEPOINTS_TIME  = 0x02;
 
-class SEGMENT_INFO
+class SEGMENT_INFO : public CHasTitles
 {
 public:
 	SEGMENT_INFO();
@@ -310,7 +270,7 @@ public:
 	__int64				iTotalBlockCount;	// total number of blocks
 	__int64*			iOtherBlocksThan;	// blocks of tracks[j!=i] read since the last block of track i
 
-	CStringBuffer*		cTitle;
+//	CStringBuffer*		cTitle;
 	CBuffer*			cMuxingApp;
 	CBuffer*			cWritingApp;
 	
@@ -325,7 +285,6 @@ public:
 	CUES*				cues;
 	TAG_LIST*			pAllTags;
 	void**				queue;
-
 
 	TAG_INDEX_LIST		pGlobalTags;
 	ATTACHMENTS			attachments;
@@ -367,7 +326,7 @@ class EBMLM_Segment : public EBML_MatroskaElement {
 		int				NextCluster(EBMLM_Cluster** p);
 		int				TrackNumber2Index(int iNbr);
 		int		virtual CheckCRC();
-	public: 
+	public:
 		EBMLM_Segment(STREAM* s,EBMLElement* p);
 		virtual ~EBMLM_Segment();
 		CUES*			GetCues(__int64 time_start = 0, __int64 time_end = -1);

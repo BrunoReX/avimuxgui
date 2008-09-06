@@ -32,7 +32,7 @@ class WAVEFILE: public RIFFFILE, public STREAM
 		void				InitValues();
 	public:
 		WAVEFILE();
-		~WAVEFILE();
+		virtual ~WAVEFILE();
 		int			virtual	Close();
 		int			virtual GetAvgBytesPerSec();
 		int			virtual GetGranularity();

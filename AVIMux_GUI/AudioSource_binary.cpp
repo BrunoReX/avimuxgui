@@ -2,105 +2,36 @@
 #include "audiosource_binary.h"
 #include "debug.h"
 
+
+#ifdef DEBUG_NEW
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
 #endif
+#endif
 
-	//////////////////////
-	// audio cue points //
-	//////////////////////
-/*
-CUEPOINTS::CUEPOINTS()
-{
-	points = new CDynIntArray;
-}
-
-void CUEPOINTS::AddPoint(__int64 iTimecode, __int64 iPosition)
-{
-	AUDIO_CUEPOINT* p = new AUDIO_CUEPOINT;
-	p->iTimecode = iTimecode;
-	p->iStreamPosition = iPosition;
-
-	points->Insert((int)p);
-}
-
-int CUEPOINTS::FindClosestPoint(__int64 iTimecode, __int64* piTimecode, __int64* piPosition)
-{
-	AUDIO_CUEPOINT* p[3];
-	
-	if (!points->GetCount()) {
-		return -1;
-	}
-
-	if (!piTimecode && !piPosition) {
-		return -1;
-	}
-
-	p[2] = (AUDIO_CUEPOINT*)points->At(points->GetCount()-1);
-	if (p[2]->iTimecode<iTimecode) {
-		if (piTimecode) *piTimecode = p[2]->iTimecode;
-		if (piPosition) *piPosition = p[2]->iStreamPosition;
-		return 1;
-	}
-
-	p[0] = (AUDIO_CUEPOINT*)points->At(0);
-	if (p[0]->iTimecode>iTimecode) {
-		return -1;
-	}
-
-	int  iMin, iMax, iMid;
-	iMin = 0;
-	iMax = points->GetCount()-1;
-
-	while (iMax - iMin > 1) {
-		iMid = (iMin + iMax) >> 1;
-		p[1] = (AUDIO_CUEPOINT*)points->At(iMid);
-
-		if (p[0]->iTimecode > iTimecode && p[1]->iTimecode < iTimecode) {
-			p[2] = p[1];
-			iMax = iMid;
-		} else {
-			p[0] = p[1];
-			iMin = iMid;
-		}
-	}
-
-	if (piTimecode) *piTimecode = p[0]->iTimecode;
-	if (piPosition) *piPosition = p[0]->iStreamPosition;
-
-	return 0;
-}
-
-void CUEPOINTS::Delete()
-{
-	for (int i=points->GetCount()-1;i>=0;i--) {
-		delete ((AUDIO_CUEPOINT*)points->At(i));
-	}
-
-	points->DeleteAll();
-	delete points;
-}
-*/
 
 	///////////////////////////////////////////
 	// audio source from binary input stream //
 	///////////////////////////////////////////
 
 
-AUDIOSOURCEFROMBINARY::AUDIOSOURCEFROMBINARY()
+CBinaryAudioSource::CBinaryAudioSource()
 {
 	source=NULL; 
-	SetName(NULL); 
 	dwResync_Range = 131072; 
 	bEndReached = 0;
 	unstretched_duration = 0;
 	SetTimecodeScale(1000);
 }
 
+CBinaryAudioSource::~CBinaryAudioSource()
+{
+	Close();
+}
 
-void AUDIOSOURCEFROMBINARY::ReInit()
+void CBinaryAudioSource::ReInit()
 {
 	if (!GetSource())
 		return;
@@ -109,7 +40,12 @@ void AUDIOSOURCEFROMBINARY::ReInit()
 	Seek(0);
 }
 
-int AUDIOSOURCEFROMBINARY::Seek(__int64 qwPos)
+int CBinaryAudioSource::Close()
+{
+	return doClose();
+}
+
+int CBinaryAudioSource::Seek(__int64 qwPos)
 {
 	GetSource()->Seek(qwPos);
 	if (GetAvgBytesPerSec()) {
@@ -120,7 +56,7 @@ int AUDIOSOURCEFROMBINARY::Seek(__int64 qwPos)
 	return STREAM_OK;
 }
 
-int AUDIOSOURCEFROMBINARY::Open(STREAM* lpStream)
+int CBinaryAudioSource::Open(STREAM* lpStream)
 {
 	 char	lpcName[256];
 
@@ -128,15 +64,67 @@ int AUDIOSOURCEFROMBINARY::Open(STREAM* lpStream)
 	 if (lpStream)
 	 {
 		 lpStream->GetName(lpcName);
-		 SetName(lpcName);
+		 if (lpcName && lpcName[0])
+			 SetName(lpcName);
 	 }
 
 	 return (lpStream)?AS_OK:AS_ERR; 
 }
 
+int CBinaryAudioSource::doRead(MULTIMEDIA_DATA_PACKET** dataPacket)
+{
+	int pos = 0;
 
-int AUDIOSOURCEFROMBINARY::Read(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdwMicrosecRead,
-					  __int64* lpqwNanosecRead, __int64* lpiTimecode, ADVANCEDREAD_INFO* lpAARI)
+	if (GetFrameMode() == FRAMEMODE_SINGLEFRAMES)
+		return ReadFrame(dataPacket);
+
+	createMultimediaDataPacket(dataPacket);
+
+	int numberOfPackets = GetFrameMode();
+	MULTIMEDIA_DATA_PACKET** packets = new MULTIMEDIA_DATA_PACKET*[GetFrameMode()];
+	memset(packets, 0, numberOfPackets * sizeof(void*));
+	
+	for (int j=0; j<numberOfPackets; j++) {
+		if (ReadFrame(&packets[j]) < 0) {
+			/* error during reading ... */
+			numberOfPackets = j;
+		}
+	}
+
+	MULTIMEDIA_DATA_PACKET* firstPacket = packets[0];
+	MULTIMEDIA_DATA_PACKET* lastPacket = packets[numberOfPackets-1];
+
+	(*dataPacket)->timecode = firstPacket->timecode;
+	(*dataPacket)->duration = lastPacket->duration + 
+		(lastPacket->timecode - firstPacket->timecode);
+	(*dataPacket)->frameSizes.clear();
+
+	for (int j=0; j<numberOfPackets; j++) {
+		(*dataPacket)->totalDataSize += packets[j]->totalDataSize;
+		(*dataPacket)->frameSizes.push_back(packets[j]->totalDataSize);
+	}
+	
+	(*dataPacket)->cData = (char*)malloc((*dataPacket)->totalDataSize);
+	
+	for (int j=0; j<numberOfPackets; j++) {
+		memcpy((*dataPacket)->cData + pos, packets[j]->cData,
+			packets[j]->totalDataSize);
+		pos += packets[j]->totalDataSize;
+		freeMultimediaDataPacket(packets[j]);
+	}
+	delete[] packets;
+	
+	(*dataPacket)->flags = 0;
+	(*dataPacket)->compressionInfo.clear();
+
+	return 0;
+}
+
+int CBinaryAudioSource::Read(void* lpDest, DWORD dwMicroSecDesired,
+								DWORD* lpdwMicrosecRead,
+								__int64* lpqwNanosecRead, 
+								__int64* lpiTimecode, 
+								ADVANCEDREAD_INFO* lpAARI)
 {
 	__int64	iNanosecRead, iCTC;
 	
@@ -161,7 +149,12 @@ int AUDIOSOURCEFROMBINARY::Read(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdw
 	return iRead;
 }
 
-__int64 AUDIOSOURCEFROMBINARY::GetUnstretchedDuration()
+int CBinaryAudioSource::Read(MULTIMEDIA_DATA_PACKET** dataPacket)
+{
+	return doRead(dataPacket);
+}
+
+__int64 CBinaryAudioSource::GetUnstretchedDuration()
 {
 	if (GetMaxLength())
 		return GetMaxLength();
@@ -169,7 +162,7 @@ __int64 AUDIOSOURCEFROMBINARY::GetUnstretchedDuration()
 	return unstretched_duration;
 }
 
-int AUDIOSOURCEFROMBINARY::doClose()
+int CBinaryAudioSource::doClose()
 { 
 	source=NULL; 
 	if (lpcName) {
@@ -180,17 +173,17 @@ int AUDIOSOURCEFROMBINARY::doClose()
 	return AS_OK; 
 }
 
-__int64 AUDIOSOURCEFROMBINARY::GetExactSize()
+__int64 CBinaryAudioSource::GetExactSize()
 {
 	return GetSource()->GetSize();
 }
 
-bool AUDIOSOURCEFROMBINARY::IsEndOfStream()
+bool CBinaryAudioSource::IsEndOfStream()
 {
 	return (/*GetMaxLength() <= GetCurrentTimecode()-GetBias() || */bEndReached || source->IsEndOfStream()); 
 }
 
-int AUDIOSOURCEFROMBINARY::GetAvgBytesPerSec()
+int CBinaryAudioSource::GetAvgBytesPerSec()
 {
 	int i = source->GetAvgBytesPerSec();
 	if (i)
@@ -202,32 +195,32 @@ int AUDIOSOURCEFROMBINARY::GetAvgBytesPerSec()
 
 }
 
-int AUDIOSOURCEFROMBINARY::GetChannelCount()
+int CBinaryAudioSource::GetChannelCount()
 {
 	 return GetSource()->GetChannels();
 }
 
-int AUDIOSOURCEFROMBINARY::GetFrequency()
+int CBinaryAudioSource::GetFrequency()
 {
 	 return GetSource()->GetFrequency();
 }
 
-void AUDIOSOURCEFROMBINARY::SetResyncRange(DWORD dwRange)
+void CBinaryAudioSource::SetResyncRange(DWORD dwRange)
 {
 	dwResync_Range = dwRange;
 }
 
-int AUDIOSOURCEFROMBINARY::GetResyncRange()
+int CBinaryAudioSource::GetResyncRange()
 { 
 	return dwResync_Range; 
 }
 
-int AUDIOSOURCEFROMBINARY::GetOffset()
+int CBinaryAudioSource::GetOffset()
 {
 	return (GetSource())?GetSource()->GetOffset():0;
 }
 
-bool AUDIOSOURCEFROMBINARY::IsCBR()
+bool CBinaryAudioSource::IsCBR()
 {
 	return false;
 }

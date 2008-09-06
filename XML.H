@@ -17,21 +17,31 @@ typedef std::vector<XMLNODEATTRIBUTE> XMLNODEATTRIBUTES;
 
 class XMLNODE 
 {
+private:
+
 public:
 	XMLNODE();
-	char*	cNodeName;  // name of node
-	char*	cValue;     // value of node
+	std::string	cNodeName;  // name of node
+	std::string	cValue;     // value of node
+	
+	bool    bValuePresent;
 	void*	pNext;      // next sibiling node on the same level
 	void*   pChild;     // child node
 	bool    bIsEmpty;
 	XMLNODEATTRIBUTES	attributes;
+
+    bool    ValuePresent() const
+	{
+		return bValuePresent;
+	}
 };
 
 XMLNODE*	xmlAddChild(XMLNODE* pParent, char* cName, char* cValue, bool bIsEmpty = false);
 void		xmlAddAttribute(XMLNODE* pNode, char* cName, char* cValue);
 XMLNODE*	xmlAddSibling(XMLNODE** pNode, char* cName, char* cValue, bool bIsEmpty = false);
 XMLNODE*	xmlAddSibling(XMLNODE* pNode, char* cName, char* cValue, bool bIsEmpty = false);
-int			xmlTreeToString(XMLNODE* pNode, char* pDest, int iMaxLen);
+
+int			xmlTreeToString(XMLNODE* pNode, std::string& target);
 void		xmlDeleteNode(XMLNODE** ppNode);
 void		xmlDeleteSimpleNode(XMLNODE** ppNode);
 

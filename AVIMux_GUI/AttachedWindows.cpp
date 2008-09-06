@@ -7,9 +7,10 @@ void AttachWindow(HWND hWnd, HWND hWndAttachTo, int flags, float width_ratio, fl
 //	ASSERT((flags & ATTB_WIDTHHEIGHTRATIO) == flags);
 
 	std::vector<ATTACHED_WINDOW>::iterator iter = atws.begin();
-	std::vector<ATTACHED_WINDOW>::iterator _atw = NULL;
+	std::vector<ATTACHED_WINDOW>::iterator _atw = atws.end();
+		//(std::vector<ATTACHED_WINDOW>::iterator)NULL;
 
-	for (; _atw == NULL && iter != atws.end(); iter++)
+	for (; _atw == /*NULL*/ atws.end() && iter != atws.end(); iter++)
 		if (iter->hWnd == hWnd && ((iter->flags & ATTB_FINALIZE) == 0))
 			_atw = iter;
 		
@@ -17,7 +18,7 @@ void AttachWindow(HWND hWnd, HWND hWndAttachTo, int flags, float width_ratio, fl
 	   to something */
 //	ASSERT(_atw);
 
-	if (_atw != NULL) {
+	if (_atw != /*NULL*/ atws.end()) {
 		_atw->flags |= flags;
 		_atw->height_ratio = height_ratio;
 		_atw->width_ratio = width_ratio;
@@ -50,13 +51,13 @@ void AttachWindow(HWND hWnd, int border, HWND hWndAttachTo, int target_border, i
 	}
 
 	std::vector<ATTACHED_WINDOW>::iterator iter = atws.begin();
-	std::vector<ATTACHED_WINDOW>::iterator _atw = NULL;
+	std::vector<ATTACHED_WINDOW>::iterator _atw = /*NULL*/ atws.end();
 
-	for (; _atw == NULL && iter != atws.end(); iter++)
+	for (; _atw == /*NULL*/ atws.end() && iter != atws.end(); iter++)
 		if (iter->hWnd == hWnd)
 			_atw = iter;
 			
-	if (_atw != NULL) {
+	if (_atw != /*NULL*/ atws.end()) {
 		ATTACHED_BORDER atb;
 		atb.border = border;
 		atb.distance = distance;

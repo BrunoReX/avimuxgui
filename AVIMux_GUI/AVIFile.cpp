@@ -1307,7 +1307,7 @@ bool AVIFILEEX::ProcessHeader(void)
 
 	if (bDummyMode) return true;
 
-	abs_pos.dwHDRL=GetSource()->GetPos();//24;
+	abs_pos.dwHDRL=static_cast<DWORD>(GetSource()->GetPos());//24;
 	lpBuffer=(char*)malloc(lhListHdr.dwLength);
 	dwHDRLBufferStart=(DWORD)lpBuffer;
 	dwRead=GetSource()->Read(lpBuffer,lhListHdr.dwLength-4);
@@ -1604,11 +1604,11 @@ bool AVIFILEEX::ProcessBaseIndx(_aviindex_chunk* lpIndx, DWORD dwProcessMode,voi
 
 				GetSource()->Seek(lpSupIndx->aIndex[i].qwOffset);
 				dwRead=GetSource()->Read(&chChunkHdr,8);
-				ASSERT (dwRead == 8);
+//				ASSERT (dwRead == 8);
 				if (chChunkHdr.dwLength)
 				{
 					lpSubIndex=malloc(chChunkHdr.dwLength+8);
-					ASSERT(lpSubIndex);
+//					ASSERT(lpSubIndex);
 					GetSource()->Seek(lpSupIndx->aIndex[i].qwOffset);
 					dwRead=GetSource()->Read(lpSubIndex,chChunkHdr.dwLength+8);
 					if (lpRSIP)
@@ -2387,7 +2387,7 @@ bool AVIFILEEX::IsEndOfStream(DWORD dwStreamNbr)
 	{
 		return (siStreams[dwStreamNbr].dwPos>=siStreams[dwStreamNbr].dwChunkCount);
 	}
-	if (IsAudioStream(dwStreamNbr))
+	if (IsAudioStream(dwStreamNbr) || IsTextStream(dwStreamNbr))
 	{
 		if (siStreams[dwStreamNbr].dwPos>=siStreams[dwStreamNbr].dwChunkCount) return true;
 		return (GetByteStreamPos(dwStreamNbr)>=siStreams[dwStreamNbr].qwStreamLength);

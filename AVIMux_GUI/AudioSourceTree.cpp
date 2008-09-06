@@ -8,7 +8,7 @@
 #include "audiosource.h"
 #include "AVIMux_GUIDlg.h"
 #include "Muxing.h"
-#include "..\filestream.h"
+#include "..\FileStream.h"
 #include "..\utf-8.h"
 #include "UnicodeTreeCtrl.h"
 #include "FileDialogs.h"
@@ -31,6 +31,112 @@ CAudioSourceTree::CAudioSourceTree()
 
 CAudioSourceTree::~CAudioSourceTree()
 {
+}
+
+#define newTII(a,b) a=new TREE_ITEM_INFO; \
+	a->iID = b; \
+	a->pText = new char[256]; \
+	memset(a->pText, 0, 256);
+
+void CAudioSourceTree::AddTitleToStreamTree(HTREEITEM hParent, 
+										//  MULTIMEDIASOURCE_INFO* msi,
+										  char* cLng, char* cTitle)
+{
+	TREE_ITEM_INFO* tii;
+	HTREEITEM hItem1, hItem2;
+
+	/* first verify that the language hasn't been set so far */
+	hItem1 = this->GetChildItem(hParent);
+	while (hItem1) {
+		tii = GetItemInfo(hItem1);
+		if (tii->iID == TIIID_TITLE) {
+			hItem2 = FindID(hItem1, TIIID_TITLELNG, &tii);
+			if (hItem2 && tii && tii->pText) {
+				if (!strcmp(cLng, tii->pText)) {
+					hItem2 = FindID(hItem1, TIIID_STRNAME, &tii);
+					if (tii->pText)
+						delete tii->pText;
+
+					if (cTitle)
+					{
+						tii->pText = _strdup(cTitle);
+						tii = GetItemInfo(hParent);
+						tii->pMSI->mms->GetTitleSet()->SetTitleForLanguage(cLng, cTitle);
+					}
+					else
+					{
+						DeleteTitleFromStreamTree(hItem1);
+					}
+					return;
+				}
+			}
+		}
+		hItem1 = GetNextSiblingItem(hItem1);
+	}
+
+	newTII(tii, TIIID_TITLE);
+	SetItemData(
+		hItem1=Tree_InsertCheck(this,(char*)LPSTR_TEXTCALLBACK, hParent), 
+		(DWORD)tii);
+	ShowItemCheckBox(hItem1, false);
+
+	newTII(tii, TIIID_TITLELNG);
+	strcpy(tii->pText, cLng);
+	SetItemData(
+		hItem2=Tree_InsertCheck(this, (char*)LPSTR_TEXTCALLBACK, hItem1),
+		(DWORD)tii);
+	ShowItemCheckBox(hItem2, false);
+
+	newTII(tii, TIIID_STRNAME);
+	strcpy(tii->pText, cTitle);
+	SetItemData(
+		hItem2=Tree_InsertCheck(this, (char*)LPSTR_TEXTCALLBACK, hItem1),
+		(DWORD)tii);
+	ShowItemCheckBox(hItem2, false);
+}
+
+void CAudioSourceTree::DeleteTitleFromStreamTree(HTREEITEM hTitle)
+{
+	HTREEITEM hChild = GetChildItem(hTitle);
+	char* pLng;
+	char* pTitle;
+
+	while (hChild) {
+		TREE_ITEM_INFO* tii = GetItemInfo(hChild);
+
+		if (tii->iID == TIIID_TITLELNG)
+			pLng = _strdup(tii->pText);
+		if (tii->iID == TIIID_STRNAME)
+			pTitle = _strdup(tii->pText);
+		
+		delete tii->pText;
+		
+		hChild = GetNextSiblingItem(hChild);
+	}
+
+	HTREEITEM hParent = GetParentItem(hTitle);
+	DeleteItem(hTitle);
+	SelectItem(hParent);
+
+	TREE_ITEM_INFO* tii = GetItemInfo(hParent);
+	tii->pMSI->mms->GetTitleSet()->DeleteTitle(pLng);
+
+	free(pLng);
+	free(pTitle);
+}
+
+void CAudioSourceTree::DeleteAllTitlesFromStreamTree(HTREEITEM hParent)
+{
+	HTREEITEM hChild = GetChildItem(hParent);
+
+	while (hChild)
+	{
+		TREE_ITEM_INFO* tii = GetItemInfo(hChild);	
+		if (tii->iID == TIIID_TITLE)
+			DeleteTitleFromStreamTree(hChild);
+
+		hChild = GetNextSiblingItem(hChild);
+	}
 }
 
 void CAudioSourceTree::OnFinalRelease()
@@ -83,6 +189,7 @@ TREE_ITEM_INFO*	BuildTIIfromASI(AUDIO_STREAM_INFO* asi)
 {
 	TREE_ITEM_INFO* tii = new TREE_ITEM_INFO;
 
+	tii->iHideText = 0;
 	tii->iID = TIIID_ASI;
 	tii->pASI = asi;
 
@@ -93,6 +200,7 @@ TREE_ITEM_INFO*	BuildTIIfromSSI(SUBTITLE_STREAM_INFO* ssi)
 {
 	TREE_ITEM_INFO* tii = new TREE_ITEM_INFO;
 
+	tii->iHideText = 0;
 	tii->iID = TIIID_SSI;
 	tii->pSSI = ssi;
 
@@ -103,6 +211,7 @@ TREE_ITEM_INFO* BuildTIIfromVSI(VIDEO_STREAM_INFO* vsi)
 {
 	TREE_ITEM_INFO* tii = new TREE_ITEM_INFO;
 
+	tii->iHideText = 0;
 	tii->iID = TIIID_VSI;
 	tii->pVSI = vsi;
 
@@ -183,19 +292,23 @@ HTREEITEM CAudioSourceTree::FindID(HTREEITEM hItem,int iID, TREE_ITEM_INFO** tii
 	return 0;
 }
 
-CDynIntArray* CAudioSourceTree::GetItems(HTREEITEM hItem,int iID, int iCheck, CDynIntArray** indices)
+std::vector<HTREEITEM> CAudioSourceTree::GetItems(
+	HTREEITEM hItem,
+	int iID, 
+	int iCheck, 
+	std::vector<int>* indices)
 {
-	CDynIntArray* a = new CDynIntArray;
-	if (indices) *indices = new CDynIntArray;
+	std::vector<HTREEITEM> a;
+	
 	TREE_ITEM_INFO*	tii;
 	int i=0;
 
 	while (hItem) {
 		tii = (TREE_ITEM_INFO*)GetItemData(hItem);
 		if (tii->iID == iID && ++i && (iCheck == -1 || Tree_GetCheckState(this,hItem))) {
-			a->Insert((int)hItem);
+			a.push_back(hItem);
 			if (indices) 
-				(*indices)->Insert(i-1);
+				indices->push_back(i-1);
 		}
 
 		hItem = GetNextSiblingItem(hItem);
@@ -218,9 +331,10 @@ void CAudioSourceTree::OpenContextMenu(CPoint point)
 
 	if (hItem && !MuxingInProgress()) {
 		TREE_ITEM_INFO* tii = (TREE_ITEM_INFO*)GetItemData(hItem);
+		TREE_ITEM_INFO* ptii = GetItemInfo(GetTopMostParentItem(hItem));
 		bool bDefault = false;
 		
-		if (tii->iID == TIIID_ASI && tii->pASI->audiosource->IsDefault()) 
+/*		if (tii->iID == TIIID_ASI && tii->pASI->audiosource->IsDefault()) 
 			bDefault = true;
 		
 		if (tii->iID == TIIID_SSI && tii->pSSI->lpsubs->IsDefault()) 
@@ -228,7 +342,14 @@ void CAudioSourceTree::OpenContextMenu(CPoint point)
 
 		if (tii->iID == TIIID_VSI && tii->pVSI->videosource->IsDefault())
 			bDefault = true;
-		
+*/
+		if (tii->iID & TIIID_MSI)
+			bDefault = !!tii->pMSI->mms->IsDefault();
+		else if (ptii->iID & TIIID_MSI)
+			bDefault = !!ptii->pMSI->mms->IsDefault();
+		else
+			bDefault = false;
+
 		c->AppendMenu(MF_STRING | bDefault*MF_CHECKED, IDM_SETDEFAULTTRACK, 
 			LoadString(STR_MAIN_AS_DEFAULTTRACK));
 		
@@ -254,7 +375,7 @@ void CAudioSourceTree::OpenContextMenu(CPoint point)
 				c->AppendMenu(MF_STRING | (a->FormatSpecific(MMSGFS_AAC_ISSBR))?MF_CHECKED:MF_UNCHECKED,
 					IDM_CHANGESBR, "SBR");
 			}
-
+			
 		} else 
 		if (tii->iID == TIIID_SSI) {
 			SUBTITLE_STREAM_INFO* ssi = tii->pSSI;
@@ -271,6 +392,14 @@ void CAudioSourceTree::OpenContextMenu(CPoint point)
 				put_sep;
 				c->AppendMenu(MF_STRING, IDM_EXTRACT_BINARY, LoadString(STR_MAIN_A_EXTRBIN));
 			}
+		}
+
+		if (tii->iID & TIIID_MSI) {
+			c->AppendMenu(MF_STRING, IDM_NEWSTREAMLANGUAGE, "New stream title...");
+		}
+
+		if (tii->iID & TIIID_TITLE) {
+			c->AppendMenu(MF_STRING, IDM_DELETESTREAMLANGUAGE, "Delete stream title...");
 		}
 
 		ClientToScreen(&point);
@@ -293,7 +422,7 @@ void CAudioSourceTree::OnRButtonUp(UINT nFlags, CPoint point)
 */
 typedef struct 
 {
-	FILESTREAM* file;
+	CFileStream* file;
 	CAVIMux_GUIDlg* dlg;
 	int id;
 	union {
@@ -313,7 +442,7 @@ int ExtractThread(EXTRACT_THREAD_DATA*	lpETD)
 
 	AUDIOSOURCE* a = lpETD->a;
 	lpETD->m->Enable(1);
-	FILESTREAM* f = lpETD->file;
+	CFileStream* f = lpETD->file;
 	char cTime[20];
 	char* lpBuffer = new char[1<<20];
 	int iLastTime = GetTickCount();
@@ -362,7 +491,7 @@ int ExtractThread_ADTS(EXTRACT_THREAD_DATA*	lpETD)
 
 	AUDIOSOURCE* a = (AACSOURCE*)lpETD->a;
 	a->Enable(1);
-	FILESTREAM* f = lpETD->file;
+	CFileStream* f = lpETD->file;
 	char cTime[20];
 	char* lpBuffer_in  = new char[1<<18];
 	char* lpBuffer_out = new char[1<<18];
@@ -418,7 +547,7 @@ int ExtractThread_OGGVorbis(EXTRACT_THREAD_DATA*	lpETD)
 	a->FormatSpecific(MMSGFS_VORBIS_CONFIGPACKETS, arg);
 	a->ReInit();
 
-	FILESTREAM* f = lpETD->file;
+	CFileStream* f = lpETD->file;
 	OGGFILE* ogg = new OGGFILE;
 	ogg->Open(f, OGG_OPEN_WRITE);
 	ogg->SetMaxPageSize((int)j);
@@ -507,6 +636,17 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 
 	switch (LOWORD(wParam))
 	{
+		case IDM_NEWSTREAMLANGUAGE:
+			hItem = GetSelectedItem();
+			tii = GetItemInfo(hItem);
+			msi = tii->pMSI;
+			AddTitleToStreamTree(hItem, "<new>", "<new>");
+			break;
+		case IDM_DELETESTREAMLANGUAGE:
+			hItem = GetSelectedItem();
+			DeleteTitleFromStreamTree(hItem);
+			break;
+
 		case IDM_CHANGESBR:
 			hItem = GetSelectedItem();
 			tii = (TREE_ITEM_INFO*)GetItemData(hItem);
@@ -571,7 +711,7 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 			
 			if (open) {
 				EXTRACT_THREAD_DATA* lpETD = new EXTRACT_THREAD_DATA;
-				lpETD->file = new FILESTREAM;
+				lpETD->file = new CFileStream;
 				if (lpETD->file->Open(o.lpstrFile,STREAM_WRITE)!=STREAM_ERR) {
 					lpETD->dlg = cMainDlg;
 					lpETD->id = tii->iID;
@@ -606,7 +746,7 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 			
 			if (open) {
 				EXTRACT_THREAD_DATA* lpETD = new EXTRACT_THREAD_DATA;
-				lpETD->file = new FILESTREAM;
+				lpETD->file = new CFileStream;
 				if (lpETD->file->Open(o.lpstrFile,STREAM_WRITE)!=STREAM_ERR) {
 					lpETD->dlg = cMainDlg;
 					lpETD->a = a;
@@ -634,7 +774,7 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 			
 			if (open) {
 				EXTRACT_THREAD_DATA* lpETD = new EXTRACT_THREAD_DATA;
-				lpETD->file = new FILESTREAM;
+				lpETD->file = new CFileStream;
 				if (lpETD->file->Open(o.lpstrFile,STREAM_WRITE)!=STREAM_ERR) {
 					lpETD->dlg = cMainDlg;
 					lpETD->a = a;
@@ -676,7 +816,7 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 			open = GetOpenSaveFileNameUTF8(&o, 0);
 
 			if (open) {
-				FILESTREAM* f = new FILESTREAM;
+				CFileStream* f = new CFileStream;
 				if (f->Open(o.lpstrFile,STREAM_WRITE)!=STREAM_ERR) {
 					char* lpBuffer = new char[2<<23];
 					f->Write(lpBuffer,s->Render2Text(lpBuffer));
@@ -694,16 +834,23 @@ BOOL CAudioSourceTree::OnCommand(WPARAM wParam, LPARAM lParam)
 		case IDM_SETDEFAULTTRACK:
 			hItem = GetSelectedItem();
 			tii = (TREE_ITEM_INFO*)GetItemData(hItem);
-			if (tii->iID == TIIID_ASI) 
-				tii->pASI->audiosource->SetDefault(!tii->pASI->audiosource->IsDefault());
-			
-			if (tii->iID == TIIID_SSI)
-				tii->pSSI->lpsubs->SetDefault(!tii->pSSI->lpsubs->IsDefault());
-			
-			if (tii->iID == TIIID_VSI)
-				tii->pVSI->videosource->SetDefault(!tii->pVSI->videosource->IsDefault());
+			if (!(tii->iID & TIIID_MSI))
+				tii = GetItemInfo(GetTopMostParentItem(hItem));
+			tii->ResetFont();
 
-			InvalidateRect(NULL);
+			if (tii) {
+				if (tii->iID == TIIID_ASI) 
+					tii->pASI->audiosource->SetDefault(!tii->pASI->audiosource->IsDefault());
+				
+				if (tii->iID == TIIID_SSI)
+					tii->pSSI->lpsubs->SetDefault(!tii->pSSI->lpsubs->IsDefault());
+				
+				if (tii->iID == TIIID_VSI)
+					tii->pVSI->videosource->SetDefault(!tii->pVSI->videosource->IsDefault());
+
+				InvalidateRect(NULL);
+			}
+
 			break;
 	}
 	
@@ -720,6 +867,9 @@ LRESULT CAudioSourceTree::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			mouse_x = LOWORD(lParam);
 			mouse_y = HIWORD(lParam);
 			break;
+/*		case TVM_HITTEST:
+			LRESULT t = CUnicodeTreeCtrl::WindowProc(message, wParam, lParam);
+			break; */
 	}
 	
 	return CUnicodeTreeCtrl::WindowProc(message, wParam, lParam);
@@ -813,6 +963,28 @@ int CAudioSourceTree::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	return 0;
 }
 
+void CAudioSourceTree::GetAllInfo(HTREEITEM hParent, std::vector<TREE_ITEM_INFO*>& result)
+{
+	HTREEITEM hItem;
+
+	if (hParent)
+	{
+		hItem = GetChildItem(hParent);
+	}
+	else
+	{
+		hItem = GetRootItem();
+	}
+
+	while (hItem)
+	{
+		TREE_ITEM_INFO* item_info = GetItemInfo(hItem);
+		result.push_back(item_info);
+		GetAllInfo(hItem, result);
+		hItem = GetNextSiblingItem(hItem);
+	}
+}
+
 void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 {
 	LPNMTVDISPINFO pTVDispInfo = reinterpret_cast<LPNMTVDISPINFO>(pNMHDR);
@@ -845,14 +1017,20 @@ void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 	
 	tii = GetItemInfo(hItem);
 
+	if (tii && tii->iHideText == 1)
+	{
+		*pResult = 0;
+		return;
+	}
+
 	if (!0) { //bEditInProgess) {
-		if (tii && tii->iID == TIIID_ASI) {
+		if (tii && ((tii->iID & TIIID_ASI) == TIIID_ASI)) {
 			*d = 0;
 			
-			if (tii->pASI->audiosource->IsDefault()) {
+		/*	if (tii->pASI->audiosource->IsDefault()) {
 				strcat(d,"(default) ");
 			}
-			strcat(d,"audio: ");
+		*/	strcat(d,"audio: ");
 			if (tii) asi = tii->pASI;
 			if (asi && asi->bNameFromFormatTag) {
 				int idatarate = (asi->audiosource->GetAvgBytesPerSec() + 62) /125;
@@ -861,7 +1039,12 @@ void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 				else 
 					strcpy(bitrate, "unknown bitrate");
 
-				sprintf(channels, "%d Ch", asi->audiosource->GetChannelCount());
+				char* szChannels = asi->audiosource->GetChannelString();
+				strcpy(channels, szChannels);
+				strcat(channels, " Ch");
+				free(szChannels);
+
+//				sprintf(channels, "%d Ch", asi->audiosource->GetChannelCount());
 				
 				int isr = (int)(0.49+asi->audiosource->GetOutputFrequency());
 				if ((isr % 1000) == 0) {
@@ -936,6 +1119,11 @@ void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 						break;				
 						*/
 				}
+			} else {
+//			if (asi && !asi->bNameFromFormatTag) {
+				sprintf(c,asi->audiosource->GetCodecID());
+				strcat(d,c);
+//			}
 			}
 
 			strcat(d,c);
@@ -952,10 +1140,6 @@ void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 				}
 			}
 
-			if (asi && !asi->bNameFromFormatTag) {
-				sprintf(c,asi->audiosource->GetCodecID());
-				strcat(d,c);
-			}
 
 			if (!bBracket) {
 				strcat(d," (");
@@ -971,31 +1155,38 @@ void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 				bAddComma = true;
 			}
 
-			if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED) && 
-				  FindID(hItem,TIIID_LNGCODE,&tii) && tii->pText && strlen(tii->pText)) {
-				if (bAddComma) strcat(d,", ");
-				bAddComma = true;
-				sprintf(c,"%s",tii->pText);
-				strcat(d,c);
+			if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED))
+			{
+				char lngcode[16];
+				memset(lngcode, 0, sizeof(lngcode));
+				
+				asi->audiosource->GetLanguageCode(lngcode);
+				if (lngcode[0])
+				{
+					if (bAddComma) strcat(d,", ");
+					strcat(d, lngcode);
+				}
 			}
 
-			if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED) && 
-				  FindID(hItem,TIIID_STRNAME,&tii) && tii->pText && strlen(tii->pText)) {
-				if (bAddComma) strcat(d,", ");
-				bAddComma = false;
-				sprintf(c,"%s",tii->pText);
-				strcat(d,c);
+			if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED))
+			{ 
+				char* title;
+				asi->audiosource->GetPreferredTitle(&title);
+				
+				if (title && title[0])
+				{
+					if (bAddComma) strcat(d,", ");
+					strcat(d, title);
+				}			
 			}
-
+			
 			if (bBracket) strcat(d,")");
-
-		} else
-		if (tii && tii->iID == TIIID_SSI) {
+		} else if (tii && ((tii->iID & TIIID_SSI) == TIIID_SSI)) {
 			*d = 0;
-			if (tii->pSSI->lpsubs->IsDefault()) {
+		/*	if (tii->pSSI->lpsubs->IsDefault()) {
 				strcat(d,"(default) ");
 			}
-
+*/
 			SUBTITLESOURCE* subs = tii->pSSI->lpsubs;
 
 			strcat(d,"subtitle: ");
@@ -1015,7 +1206,30 @@ void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 				bAddComma = false;
 				bBracket = true;
 				
-				if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED) && 
+				if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED))
+				{
+					char lngcode[16]; memset(lngcode, 0, sizeof(lngcode));
+					subs->GetLanguageCode(lngcode);
+
+					if (lngcode[0])
+					{
+						sprintf(c," (%s", lngcode);
+						strcat(d,c);
+						bAddComma = true;
+						bBracket = false;
+					}
+
+					char* title;
+					subs->GetPreferredTitle(&title);
+					if (title && title[0])
+					{
+						if (bAddComma) strcat(d,", ");
+						if (bBracket) strcat(d," (");
+						bAddComma = true;
+						bBracket = false;
+						strcat(d, title); 
+					}
+					/*&& 
 					  FindID(hItem,TIIID_LNGCODE,&tii) && tii->pText && strlen(tii->pText)) {
 					sprintf(c," (%s",tii->pText);
 					strcat(d,c);
@@ -1029,7 +1243,7 @@ void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 					bAddComma = true;
 					bBracket = false;
 					sprintf(c,"%s",tii->pText);
-					strcat(d,c);
+					strcat(d,c); */
 				}
 				int _i; 
 				if ((_i = subs->GetCompressionAlgo()) != COMPRESSION_NONE) {
@@ -1045,14 +1259,14 @@ void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 			}
 
 		} else
-		if (tii && tii->iID == TIIID_VSI) {
+		if (tii && ((tii->iID & TIIID_VSI) == TIIID_VSI)) {
 			*d = 0;
 			VIDEOSOURCE* v = tii->pVSI->videosource;
 			char* codecid = v->GetCodecID();
 			bool bracket = true;
 			
-			if (v->IsDefault()) 
-				strcat(d,"(default) ");
+			/*if (v->IsDefault()) 
+				strcat(d,"(default) ");*/
 			strcat(d, "video: ");
 			
 			if (codecid) {
@@ -1115,10 +1329,11 @@ void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 					strcat(d, c);
 					bAddComma = true;
 				}
-				v->GetName(c);
-				if (c[0]) {
+				char* title;
+				v->GetPreferredTitle(&title);
+				if (title && title[0]) {
 					if (bAddComma) strcat(d, ", ");
-					strcat(d, c);
+					strcat(d, title);
 					bAddComma = true;
 				}
 				strcat(d, ")");
@@ -1129,8 +1344,38 @@ void CAudioSourceTree::OnTvnGetdispinfo(NMHDR *pNMHDR, LRESULT *pResult)
 			sprintf(d,"language code: %s", tii->pText);
 		} else
 
+		if (tii && tii->iID == TIIID_TITLELNG) {
+			sprintf(d,"language code: %s", tii->pText);
+		} else
+
 		if (tii && tii->iID == TIIID_STRNAME) {
 			sprintf(d,"stream name: %s", tii->pText);
+		} else
+
+		if (tii && tii->iID == TIIID_TITLE) {
+			sprintf(d, "Title: ");
+
+			if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED) && 
+				  FindID(hItem,TIIID_LNGCODE,&tii) && tii->pText && strlen(tii->pText)) {
+				if (bAddComma) strcat(d,", ");
+				bAddComma = true;
+				sprintf(c,"%s",tii->pText);
+				strcat(d,c);
+			}
+
+			if (!(GetItemState(hItem,TVIS_EXPANDED) & TVIS_EXPANDED) && 
+				  FindID(hItem,TIIID_STRNAME,&tii) && tii->pText && strlen(tii->pText)) {
+				if (bAddComma) strcat(d,", ");
+				bAddComma = false;
+				sprintf(c,"%s",tii->pText);
+				strcat(d,c);
+			}
+		} else
+
+		{
+			sprintf(d, "Internal error: tii->iID = %d", tii?tii->iID:-17);
+			strcat(c, d);
+
 		}
 	}
 
@@ -1158,12 +1403,13 @@ void CAudioSourceTree::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			tii->iCurrPos+=3;
 			Sort();
 			return;
-		} else
-		if (nChar == VK_PRIOR) {
+		} else if (nChar == VK_PRIOR) {
 			tii->iCurrPos-=3;
 			Sort();
 			return;
-		} else
+		} else if (nChar == VK_INSERT) {
+
+		}
 			return CUnicodeTreeCtrl::OnKeyDown(nChar, nRepCnt, nFlags);
 	}
 

@@ -525,7 +525,7 @@ int OGGFILE::WritePreparedPageToDisc()
 	if (write_state.pPageBuffer[write_state.iPageBuffer_index]) {
 		DWORD* pdwSize = (DWORD*)write_state.pPageBuffer[write_state.iPageBuffer_index];
 		GetDest()->Write(pdwSize+1, *pdwSize);
-		delete pdwSize;
+		delete[] pdwSize;
 
 	}
 	return 0;

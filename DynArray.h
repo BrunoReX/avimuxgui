@@ -1,5 +1,9 @@
+/* Very old code that needs to be done using STL */
+
 #ifndef I_DYNARRAY
 #define I_DYNARRAY
+
+#include <vector>
 
 class CDynArray
 {
@@ -29,20 +33,16 @@ class CDynIntArray: public CDynArray
 		void	Set(int iIndex, int iItem);
 		int		Find(int iItem);
 		CDynIntArray* Duplicate(int count = -2);
+		std::vector<int> GetVector()
+		{
+			std::vector<int> result;
+			for (int j=0; j<GetCount(); j++)
+			{
+				result.push_back(pData[j]);
+			}
+			return result;
+		}
 };
-
-class CHashIntArray: public CDynIntArray
-{
-	protected:
-		CDynIntArray**	pData;
-
-	public:
-		CHashIntArray();
-		void	SetSize(int iSize);
-		void	DeleteAll(void);
-};
-
-
 
 
 

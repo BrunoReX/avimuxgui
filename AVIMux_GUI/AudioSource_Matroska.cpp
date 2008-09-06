@@ -61,7 +61,8 @@ int AUDIOSOURCEFROMMATROSKA::Open(MATROSKA* matroska, int iStream)
 		info.mpeg.iValid = 1;
 		info.mpeg.iCodecIDLayer = c_codecid[8] - '0';
 		MP3FRAMEHEADER* mp3f = new MP3FRAMEHEADER;
-		char b[10240]; Read(b, 1, NULL, NULL, NULL);
+		char b[10240]; 
+		Read(b, 1, NULL, NULL, NULL);
 		mp3f->SetFrameHeader(*((DWORD*)&b[0]));
 		info.mpeg.iRealLayer = mp3f->GetLayerVersion();
 		info.mpeg.iMPEGVersion = mp3f->GetMPEGVersion();
@@ -174,6 +175,7 @@ int AUDIOSOURCEFROMMATROSKA::Open(MATROSKA* matroska, int iStream)
 	}
 
 	UpdateDuration(info.m->GetMasterTrackDuration());
+	GetTitleSet()->Import(info.m->GetTrackTitleSet(info.iStream));
 
 	AllowAVIOutput(false);
 	return AS_OK;

@@ -9,7 +9,8 @@
 #include "OSVersion.h"
 #include "../Filenames.h"
 #include "Version.h"
-#include "..\Filestream.h"
+#include "..\FileStream.h"
+#include "TraceFile.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -25,6 +26,8 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	char*	dir;
 	char*	lf;
 	char	cwinver[64];
+
+	//GetApplicationTraceFile()->SetTraceLevel(TRACE_LEVEL_NONE);
 
 	srand(GetTickCount());
 	settings = NULL;
@@ -100,7 +103,7 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	}
 
 	char* udir = NULL;
-	strcpy(appdir, dir);
+	appdir = dir;
 	fromUTF8(dir, &udir);
 	(*USetCurrentDirectory())(udir);
 	free(udir);
@@ -109,26 +112,32 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	Filename2LongFilename(dir, odir, sizeof(odir));
 	strcpy(dir, odir);
 
-	strcpy(cfgfile,dir);
-	strcat(cfgfile,"\\config.ini");
+	cfgfile = dir;
+	cfgfile.append("\\config.ini");
+
 	strcpy(lastjobfile,dir);
 	strcat(lastjobfile,"\\last-job.amg");
 
-	strcpy(guifile, dir);
-	strcat(guifile, "\\gui.amg.xml");
+	guifile = dir;
+	guifile.append("\\gui.amg.xml");
+	
+//	strcpy(guifile, dir);
+//	strcat(guifile, "\\gui.amg.xml");
 
 	strcpy(lf,dir);
 	strcat(lf,"\\languages.amg");
 	Filename2LongFilename(lf, odir, sizeof(odir));
 	strcpy(lf, odir);
 
-	strcpy(lngcodefile, dir);
-	strcat(lngcodefile, "\\language_codes.txt");
-	Filename2LongFilename(lngcodefile, odir, sizeof(odir));
-	strcpy(lngcodefile, odir);
+	lngcodefile = dir;
+	lngcodefile.append("\\language_codes.txt");
+	char* temp = _strdup(lngcodefile.c_str());
+	Filename2LongFilename(temp, odir, sizeof(odir));
+	lngcodefile = odir;
+	free(temp);
 
-	FILESTREAM* F = new FILESTREAM();
-	CTEXTFILE* textfile = new CTEXTFILE();
+	CFileStream* F = new CFileStream();
+	CTextFile* textfile = new CTextFile();
 
 	if (F->Open(lf, STREAM_READ) != STREAM_OK || textfile->Open(STREAM_READ, F) != STREAM_OK) {
 		MessageBox("Couldn't open file\n\nlanguages.amg\n\nPossible reasons are either that you have tried to run AVI-Mux GUI directly from a zip archive or that you deleted or removed this file.","Fatal error",MB_OK | MB_ICONERROR);
@@ -136,7 +145,7 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 		return 0;
 	}
 
-	textfile->SelectOutputFormat(CM_UTF8);
+	textfile->SetOutputEncoding(CHARACTER_ENCODING_UTF8);
 	textfile->ReadLine(Buffer);
 	int equalsignpos = strcspn(Buffer, "=");
 	if (equalsignpos == strlen(Buffer)) {
@@ -205,7 +214,7 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	
 // Einstellungen aus config.ini laden -- VERALTET!
 	ofOptions.dwFlags=0;
-	GetPrivateProfileString("config","format","$Name ($Nbr)",Buffer,200,cfgfile);
+	GetPrivateProfileString("config","format","$Name ($Nbr)",Buffer,200,(char*)cfgfile.c_str());
 
 	if (strstr(Buffer, "%%d") || strstr(Buffer, "%%s"))
 		strcpy(Buffer, "$Name ($Nbr)");
@@ -213,46 +222,46 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	sfOptions.lpcNumbering=new char[1+lstrlen(Buffer)];
 	lstrcpy(sfOptions.lpcNumbering,Buffer);
 	
-	GetPrivateProfileString("config","maxframes","0",Buffer,200,cfgfile);
+	GetPrivateProfileString("config","maxframes","0",Buffer,200,(char*)cfgfile.c_str());
 	sfOptions.dwFrames=atoi(Buffer);
-	GetPrivateProfileString("config","maxchunksize","0",Buffer,200,cfgfile);
+	GetPrivateProfileString("config","maxchunksize","0",Buffer,200,(char*)cfgfile.c_str());
 	ofOptions.dwIgnoreSize=atoi(Buffer);
-	GetPrivateProfileString("config","maxfiles","2",Buffer,200,cfgfile);
+	GetPrivateProfileString("config","maxfiles","2",Buffer,200,(char*)cfgfile.c_str());
 	sfOptions.dwMaxFiles=atoi(Buffer);
-	GetPrivateProfileString("config","usemaxfiles","0",Buffer,200,cfgfile);
+	GetPrivateProfileString("config","usemaxfiles","0",Buffer,200,(char*)cfgfile.c_str());
 	sfOptions.dwUseMaxFiles=atoi(Buffer);
-	GetPrivateProfileString("config","mp3cbrframemode","1",Buffer,200,cfgfile);
-	i=GetPrivateProfileInt("config","avoidseekops",1,cfgfile);
+	GetPrivateProfileString("config","mp3cbrframemode","1",Buffer,200,(char*)cfgfile.c_str());
+	i=GetPrivateProfileInt("config","avoidseekops",1,(char*)cfgfile.c_str());
 
 //	sfOptions.bDispDoneDlg=true;
 	sfOptions.bExitAfterwards=false;
 
-	i=GetPrivateProfileInt("config","noaudio",0,cfgfile);
+	i=GetPrivateProfileInt("config","noaudio",0,(char*)cfgfile.c_str());
 	CheckDlgButton(IDC_NO_AUDIO,(i==1)?BST_CHECKED:BST_UNCHECKED);
 	if (!i)
 	{
-		i=GetPrivateProfileInt("config","allaudio",1,cfgfile);
+		i=GetPrivateProfileInt("config","allaudio",1,(char*)cfgfile.c_str());
 		CheckDlgButton(IDC_ALL_AUDIO,(i==1)?BST_CHECKED:BST_UNCHECKED);
 		if (!i)
 		{
-			i=GetPrivateProfileInt("config","defaudio",1,cfgfile);
+			i=GetPrivateProfileInt("config","defaudio",1,(char*)cfgfile.c_str());
 			CheckDlgButton(IDC_DEFAULT_AUDIO,(i==1)?BST_CHECKED:BST_UNCHECKED);
 		}
 	}
-	GetPrivateProfileString("config","defaudionbr","0",Buffer,200,cfgfile);
+	GetPrivateProfileString("config","defaudionbr","0",Buffer,200,(char*)cfgfile.c_str());
 	SendDlgItemMessage(IDC_DEFAULT_AUDIO_NUMBER,WM_SETTEXT,0,(LPARAM)Buffer);
 
-	i=GetPrivateProfileInt("config","nosubtitles",0,cfgfile);
+	i=GetPrivateProfileInt("config","nosubtitles",0,(char*)cfgfile.c_str());
 	CheckDlgButton(IDC_NO_SUBTITLES,(i==1)?BST_CHECKED:BST_UNCHECKED);
 	if (!i)
 	{
-		i=GetPrivateProfileInt("config","allsubtitles",1,cfgfile);
+		i=GetPrivateProfileInt("config","allsubtitles",1,(char*)cfgfile.c_str());
 		CheckDlgButton(IDC_ALL_SUBTITLES,(i==1)?BST_CHECKED:BST_UNCHECKED);
 	}
 
 
 	i=GetPrivateProfileInt("config","openfileoptionsflags",
-		SOFO_MP3_CHECKCBRASK,cfgfile);
+		SOFO_MP3_CHECKCBRASK,(char*)cfgfile.c_str());
 	ofOptions.dwFlags|=i;
 	
 	sfOptions.dwUseManualSplitPoints=0;
@@ -317,6 +326,8 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
 
+	
+
 	CMenu* pSysMenu = GetSystemMenu(FALSE);
 	if (pSysMenu != NULL)
 	{
@@ -330,13 +341,13 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	}
 
 	char*	ncfgfn;
-	newz(char, 10+strlen(cfgfile), ncfgfn);
-	strcpy(ncfgfn,cfgfile);
+	newz(char, 10+strlen(cfgfile.c_str()), ncfgfn);
+	strcpy(ncfgfn,cfgfile.c_str());
 	strcat(ncfgfn,".amg");
 	PostMessage(GetUserMessageID(), IDM_DOADDFILE, (LPARAM)ncfgfn);
 
-	newz(char, 10+strlen(cfgfile), ncfgfn);
-	strcpy(ncfgfn,guifile);
+	newz(char, 10+strlen(cfgfile.c_str()), ncfgfn);
+	strcpy(ncfgfn,guifile.c_str());
 	PostMessage(GetUserMessageID(),IDM_DOADDFILE,(LPARAM)ncfgfn);
 
 	sfOptions.bB0rk = false;
@@ -454,15 +465,29 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	settings->SetInt("output/avi/inject/size", 32);
 
 	settings->Add("gui/chapter_editor", 0, ATTRTYPE_ATTRIBS, NULL); 
+	settings->SetInt("gui/chapter_editor/window_size/width", 800);
+	settings->SetInt("gui/chapter_editor/window_size/height", 600);	
+	
 	settings->Add("gui/file_information", 0, ATTRTYPE_ATTRIBS, NULL);
+	settings->SetInt("gui/file_information/window_size/width", 800);
+	settings->SetInt("gui/file_information/window_size/height", 600);	
+	
 	settings->Add("gui/ebml_tree", 0, ATTRTYPE_ATTRIBS, NULL);
+	settings->SetInt("gui/ebml_tree/window_size/width", 800);
+	settings->SetInt("gui/ebml_tree/window_size/height", 600);	
+	
 	settings->Add("gui/main_window", 0, ATTRTYPE_ATTRIBS, NULL);
 	settings->SetInt("gui/main_window/window_size/width", 800);
 	settings->SetInt("gui/main_window/window_size/height", 600);
+	settings->SetInt("gui/main_window/font/quality", 0);
+
 	settings->Add("gui/settings_window", 0, ATTRTYPE_ATTRIBS, NULL);
 	settings->SetInt("gui/settings_window/window_size/width", 420);
 	settings->SetInt("gui/settings_window/window_size/height", 507);
+	
 	settings->Add("gui/riff_tree", 0, ATTRTYPE_ATTRIBS, NULL);
+	settings->SetInt("gui/riff_tree/window_size/width", 800);
+	settings->SetInt("gui/riff_tree/window_size/height", 600);
 
 	settings->SetInt("gui/main_window/source_files/highlight", 1);
 	settings->SetInt("gui/main_window/source_files/lowlight", 1);
@@ -474,6 +499,8 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	settings->SetInt("gui/general/finished_muxing_dialog", 1);
 	settings->SetInt("gui/general/overwritedlg", 1);
 	settings->SetInt("gui/general/finished_muxing_dialog", 1);
+	settings->SetInt("gui/main_window/streams/highlight/no_avi_output", 1);
+	settings->SetInt("gui/main_window/streams/highlight/default", 1);
 
 	settings->SetInt("gui/output/default_file_name_source", FILENAME_NOTHING);
 
@@ -515,17 +542,17 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 
 /* load language codes from file */
 	LANGUAGE_CODES* lngcd = GetLanguageCodesObject();
-	F = new FILESTREAM;
-	textfile = new CTEXTFILE;
-	if (F->Open(lngcodefile, STREAM_READ) == STREAM_OK) {
+	F = new CFileStream;
+	textfile = new CTextFile;
+	if (F->Open((char*)lngcodefile.c_str(), STREAM_READ) == STREAM_OK) {
 		textfile->Open(STREAM_READ, F);
-		textfile->SelectOutputFormat(CM_UTF8);
+		textfile->SetOutputEncoding(CHARACTER_ENCODING_UTF8);
 		int j = 0;
 		char* buf = new char[j=1+(size_t)textfile->GetSize()];
 		textfile->Read(buf, j-1);
 		buf[j-1]=0;
 		if ((j=lngcd->LoadFromString(buf))<1) {
-			char c[65536];
+			char c[256];
 			sprintf(c, "Could not load language_codes.txt: Error parsing line %d", -j);
 			MessageBox(c, "Fatal Error",
 				MB_OK | MB_ICONERROR);
@@ -555,9 +582,9 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	if (__argc>1) {
 		for (i=1;i<__argc;i++)
 		{
-			if (!stricmp(__argv[i],"-b0rk")) {
+			if (!_stricmp(__argv[i],"-b0rk")) {
 				sfOptions.bB0rk = true;
-			} else if (!stricmp(__argv[i], "-stdin")) {
+			} else if (!_stricmp(__argv[i], "-stdin")) {
 				char* f2load = new char[128];
 				strcpy(f2load, "*stdin*");
 				PostMessage(GetUserMessageID(),IDM_DOADDFILE,(LPARAM)f2load);

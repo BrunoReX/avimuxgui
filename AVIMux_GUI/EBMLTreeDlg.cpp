@@ -292,7 +292,11 @@ void AddChildren(CEBMLTree* tree, HTREEITEM hParent, EBMLElement* eParent,
 
 DWORD WINAPI AddChildren_Thread(void* pData)
 {
+	bool wasEmpty;
+
 	ADD_CHILDREN_DATA* acd = (ADD_CHILDREN_DATA*)pData;
+
+	wasEmpty = acd->tree->GetRootItem() == NULL;
 
 	if (acd->eParent->GetLength()) {
 
@@ -301,6 +305,14 @@ DWORD WINAPI AddChildren_Thread(void* pData)
 
 	}
 	acd->iFlag = 1;
+
+	if (wasEmpty)
+	{
+		acd->tree->SelectItem(NULL);
+		acd->tree->SelectItem(acd->tree->GetRootItem());
+
+	}
+
 	delete acd;
 	return 1;
 }
@@ -359,6 +371,8 @@ BOOL CEBMLTreeDlg::OnInitDialog()
 	
 	m_EBMLTree.InitUnicode();
 	
+	CResizeableDialog::OnInitDialog();
+
 	source->Seek(0);
 	fThreadsafe = source->IsEnabled(CACHE_THREADSAFE);
 	source->Enable(CACHE_THREADSAFE);
@@ -439,7 +453,6 @@ BOOL CEBMLTreeDlg::OnInitDialog()
 
 	m_HexEdit.SetRange(16*256);
 	m_HexEdit.SetDataSource(source);
-	m_HexEdit.SetNewStartPos(0);	
 
 	GetDlgItem(IDC_FULLEXPAND)->SetWindowText(LoadString(STR_EBMLDLG_FULL));
 

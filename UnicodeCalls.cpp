@@ -195,15 +195,15 @@ int toUTF8(void* s, char** d)
 	return 1;
 }
 
-FILE* fopenutf8(char* filename, char* access, int unicode)
+FILE* fopenutf8(const char* filename, char* access, int unicode)
 {
 	FILE* file;
 	if (unicode) {
 		char* c = NULL;
-		UTF82WStr(filename,&c);
+		UTF82WStr((char*)filename,&c);
 		char mode[8]; mode[0]=0;
 		UTF82WStr(access, mode, 8);
-		file=_wfopen((const unsigned short*)c,(const unsigned short*)mode);
+		file=_wfopen((const wchar_t*)c,(const wchar_t*)mode);
 		free(c);
 	} else {
 		file = fopen(filename, access);

@@ -6,6 +6,7 @@
 #include "dynarray.h"
 #include "XML.h"
 #include "Tags.h"
+#include "TitleSet.h"
 #include <vector>
 
 const int CHAP_LAST			= -0x23;
@@ -51,7 +52,7 @@ const int CHIPE_COUNT = sizeof(CHI_PHYSICAL_EQUIVALENTS) / sizeof(CHI_PHYSICAL_E
 
 char* physicalequiv2string(int index);
 
-class CHAPTER_INFO
+class CHAPTER_INFO : CHasTitles
 {
 public:
 	CHAPTER_INFO();
@@ -106,7 +107,6 @@ const int CHAP_GCT_RETURN_NULL  = 0x00;
 const int CHAP_GCT_RETURN_FIRST = 0x01;
 const int CHAP_GCT_ALLOW_UND    = 0x02;
 
-
 const int CHAP_IMPXML_SEVERAL_DEFAULT_EDITIONS = -0x01;
 const int CHAP_IMPXML_NONUNIQUE_UID            = -0x02;
 const int CHAP_IMPXML_COULD_NOT_PARSE_EDITION  = -0x03;
@@ -158,6 +158,7 @@ class CChapters: public MULTIMEDIASOURCE
 		int			GetChapter(int iIndex, SINGLE_CHAPTER_DATA* lpSCD);
 		int			GetChapter(CDynIntArray* aIndex, SINGLE_CHAPTER_DATA* lpSCD);
 		CChapters*	GetChapter(CDynIntArray* aIndex, int* iIndex);
+		CChapters*  GetChapter(const std::vector<int>& index, int* lastIndex);
 		int			GetChapterCount();
 		int			GetChapterDisplayCount(int iIndex);
 		char*		GetChapterText(int iIndex, int iIndex2 = 0);
@@ -173,10 +174,10 @@ class CChapters: public MULTIMEDIASOURCE
 
 		int			HideChapter(int iIndex, bool bHidden);
 		CChapters*	FindUID(__int64 UID, int bEdition, int* pIndex);
-		int			FindChapterDisplayLanguageIndex(int iIndex, char* cLng, int allow_und = 1);
+		int			FindChapterDisplayLanguageIndex(int iIndex, const char* cLng, int allow_und = 1);
 		int			SetChapterBegin(int iIndex, __int64 iBegin);
-		int			SetChapterText(int iIndex, char* cText, int iIndex2 = 0);
-		int			SetChapterLng(int iIndex, char* cText, int iIndex2 = 0);
+		int			SetChapterText(int iIndex, const char* cText, int iIndex2 = 0);
+		int			SetChapterLng(int iIndex, const char* cText, int iIndex2 = 0);
 		int			SetChapterEnd(int iIndex, __int64 iEnd);
 		int			SetChapterDisplayCount(int iIndex, int iNewCount);
 		int			SetChapterPhysicalEquiv(int iIndex, int iPhysicalEquiv);

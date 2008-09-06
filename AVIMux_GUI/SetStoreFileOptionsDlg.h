@@ -60,6 +60,7 @@ const int CONTROL_CHECKBOX = 0x01;
 const int CONTROL_INTEGER  = 0x02;
 const int CONTROL_COMBOBOX = 0x03;
 const int CONTROL_RADIOBUTTON = 0x04;
+const int CONTROL_MAPPEDCHECKBOX = 0x05;
 
 typedef struct
 {
@@ -69,6 +70,7 @@ typedef struct
 	union {
 		char**		string_list;
 		int			value;
+		int*        value_list;
 	};
 } CONTROL_DESCRIPTOR;
 
@@ -110,7 +112,6 @@ private:
 	OPENFILEOPTIONS     ofoData;
 	CAttribs*			settings;
 	CAttribs*			copy_of_settings;
-//	CDynIntArray*		pages[10];
 
 	PAGES				_pages;
 
@@ -386,6 +387,11 @@ public:
 	CStatic m_Output_DFN_Label;
 	CButton m_Output_Thread;
 	afx_msg void OnBnClickedOutputThreaded();
+	CButton m_GUI_Highlight_Default_Streams;
+	CButton m_GUI_Highlight_NoAVI_Streams;
+	CButton m_GUI_UseCleartypeFonts;
+	afx_msg void OnBnClickedGui1UseCleartypeFont();
+	afx_msg void OnBnClickedRadioOutputGeneral();
 };
 
 //{{AFX_INSERT_LOCATION}}

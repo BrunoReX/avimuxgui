@@ -802,7 +802,7 @@ int EBMLElement::SearchMulti(std::vector<std::vector<EBMLElement*> > &dest, SEAR
 						memcpy(*((char**)search.dests[i]), dest[i][0]->GetData(), dest[i][0]->GetLength());
 						*((char**)search.dests[i])[strlen((char*)*((char**)search.dests[i]))] = 0;
 					} else {
-						*((char**)search.dests[i]) = strdup(dest[i][0]->AsString());
+						*((char**)search.dests[i]) = _strdup(dest[i][0]->AsString());
 					}
 				}
 					
@@ -972,6 +972,56 @@ int EBMLElement::CheckCRC()
 int EBMLElement::Verify()
 {
 	return (CheckCRC() == EBML_CRC_OK || (GetParent() && GetParent()->Verify()));
+}
+#define newz(a,b,c) c=new a[b]; ZeroMemory(c,b*sizeof(a))
+// pointer to list and element description
+int EBMLElement::InsertElement(void** _e, EBMLElement* seg, char* ID, EBMLElement* pos)
+{
+	EBMLELEMENTLIST** e = (EBMLELEMENTLIST**)_e;
+	char* created_id;
+	created_id = new char[5];
+	ZeroMemory(created_id,sizeof(created_id));
+
+	if (!*e) {
+		newz(EBMLELEMENTLIST, 1, *e);
+	}
+	seg->SeekStream(pos->AsInt());
+	(*e)->pElement = (EBMLElement**)realloc((*e)->pElement,
+		((*e)->iCount+1)*sizeof(EBMLElement));
+
+	seg->Create(&(*e)->pElement[(*e)->iCount++], (char**)&created_id);
+
+	if (pos->CompIDs(ID, (char*)created_id)) {
+		delete created_id;
+		return 1;
+	} else {
+		delete created_id;
+		(*e)->iCount--;
+		return -1;
+	}
+}
+
+// pointer to list and element description
+int EBMLElement::InsertElement(EBMLElementVector& e, EBMLElement* seg, char* ID, EBMLElement* pos)
+{
+	char* created_id;
+	created_id = new char[5];
+	ZeroMemory(created_id,sizeof(created_id));
+
+	seg->SeekStream(pos->AsInt());
+
+	EBMLElement* element;
+
+	seg->Create(&element, (char**)&created_id);
+
+	if (pos->CompIDs(ID, (char*)created_id)) {
+		delete created_id;
+		e.push_back(element);
+		return 1;
+	} else {
+		delete created_id;
+		return -1;
+	}
 }
 
 ////////////////

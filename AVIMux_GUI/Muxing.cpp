@@ -11,11 +11,11 @@
 #include "version.h"
 #include "..\UnicodeCalls.h"
 #include "..\integers.h"
-#include "..\generateuids.h"
+#include "..\UID.h"
 #include "..\UnicodeCalls.h"
 #include "UTF8Windows.h"
 #include "OSVersion.h"
-#include "..\Filestream.h"
+#include "..\FileStream.h"
 
 #define INT64_MAX 0x7FFFFFFFFFFFFFFF
 
@@ -369,7 +369,7 @@ const int CHECKEXISTENCE_OVERWRITE    = 0x05;
 
 int	CheckExistence(char* cFilename, int ask, __int64* filesize)
 {
-	FILESTREAM* f = new FILESTREAM;
+	CFileStream* f = new CFileStream;
 	if (f->Open(cFilename, STREAM_READ) != STREAM_OK) {
 		delete f;
 		return CHECKEXISTENCE_DOESNOTEXIST;
@@ -647,7 +647,7 @@ bool IsNTFS(char* cFileName, wchar_t** file_system, wchar_t** root)
 	WStr2Str((char*)wcFileSystem, &cFileSystem);
 
 	bool result;
-	result = (!stricmp(cFileSystem, "NTFS"));
+	result = (!_stricmp(cFileSystem, "NTFS"));
 
 	delete wcPath;
 	delete cFileSystem;
@@ -674,7 +674,7 @@ bool VerifySuitableFileSystem(char* cFilename, __int64 max_size)
 		wchar_t* wmsg = NULL;
 		UTF82WStr(msg, (char**)&wmsg);
 		wchar_t m[32768];
-		swprintf(m, wmsg, root_dir, file_system);
+		_swprintf(m, wmsg, root_dir, file_system);
 
 		wchar_t* title = NULL;
 		UTF82WStr(LoadString(STR_GEN_ERROR, LOADSTRING_UTF8), (char**)&title);
@@ -753,7 +753,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	WaitForMuxing(lpDAI);
 	CAttribs*       s = lpDAI->settings;
 	AVIFILEEX*		AVIOut, *NextAVIOut;
-	FILESTREAM*		DestFile, *NextDestFile;
+	CFileStream*		DestFile, *NextDestFile;
 	char*			cBuffer;
 	char			RawFilename[32768];
 	DWORD			i,j;
@@ -1189,7 +1189,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	lpDAI->dlg->SetDlgItemText(IDC_DESTFILE,cFilename);
 
 	DeleteFileUTF8(cFilename);
-	DestFile=new FILESTREAM;
+	DestFile=new CFileStream;
 	if (DestFile->Open(cFilename, STREAM_READ | 
 			(bUnbufferedOutput?STREAM_UNBUFFERED_WRITE:STREAM_WRITE) | 
 			(bThreaded?STREAM_THREADED:0) |
@@ -1270,6 +1270,8 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	{
 		AVIOut->SetStreamHeader(i+1+lpDAI->dwNbrOfAudioStreams,lpDAI->ssi[i]->lpash);
 		AVIOut->SetStreamFormat(i+1+lpDAI->dwNbrOfAudioStreams,NULL);
+		lpDAI->ssi[i]->lpsubs->GetName(Buffer);
+		AVIOut->SetStreamName(i+1+lpDAI->dwNbrOfAudioStreams, Buffer);
 		lpDAI->ssi[i]->lpsubs->SetBias(0,BIAS_ABSOLUTE | BIAS_UNSCALED);
 		lpDAI->ssi[i]->lpsubs->ReInit();
 		AVIOut->SetStreamDefault(i+1+lpDAI->dwNbrOfAudioStreams, !!lpDAI->ssi[i]->lpsubs->IsDefault());
@@ -1716,7 +1718,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 				
 					strcpy(cBuffer,cFilename);				
 					DeleteFileUTF8(cFilename);
-					NextDestFile=new FILESTREAM;
+					NextDestFile=new CFileStream;
 					if (NextDestFile->Open(cBuffer, STREAM_READ |
 						(bUnbufferedOutput?STREAM_UNBUFFERED_WRITE:STREAM_WRITE) | 
 						(bThreaded?STREAM_THREADED:0) |
@@ -1770,7 +1772,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 					}
 					if (v) {
 						v->GetName(Buffer);
-						NextAVIOut->SetStreamName(0, Buffer);
+						AVIOut->SetStreamName(0, Buffer);
 					}
 					for (i=0;i<lpDAI->dwNbrOfAudioStreams;i++)
 					{
@@ -1918,8 +1920,8 @@ finish:
 			{
 				if (lpDAI->lpAC3_logs[i]->bBroken)
 				{
-					MSG_LIST_2_Msg(lpDAI->lpAC3_logs[i]->lpMessages,stream_report);
-					MSG_LIST_append(msglist,stream_report);
+//					MSG_LIST_2_Msg(lpDAI->lpAC3_logs[i]->lpMessages,stream_report);
+//					MSG_LIST_append(msglist,stream_report);
 				}
 			}
 			MSG_LIST_append(msglist,"");
@@ -1965,7 +1967,7 @@ finish:
 
 		if (lpDAI->lpAC3_logs[i]) 
 		{
-			if (lpDAI->lpAC3_logs[i]->lpMessages) delete lpDAI->lpAC3_logs[i]->lpMessages;
+//			if (lpDAI->lpAC3_logs[i]->lpMessages) delete lpDAI->lpAC3_logs[i]->lpMessages;
 			delete lpDAI->lpAC3_logs[i];
 		}
 	}
@@ -2047,12 +2049,12 @@ int FormatOutputFileName(char* cDest, char* cFormat, char* cRawFileName,
 		
 		while (*cFormat && *cFormat != '$') *cDest++ = *cFormat++;
 		if (*cFormat == '$') {
-			if (!strnicmp(cFormat+1,"Name",4)) {
+			if (!_strnicmp(cFormat+1,"Name",4)) {
 				cFormat+=5;
 				strcat(cDest, cRawFileName);
 				cDest+=strlen(cDest);
 			} else
-			if (!strnicmp(cFormat+1,"Nbr",3)) {
+			if (!_strnicmp(cFormat+1,"Nbr",3)) {
 				cFormat+=4;
 				int nbr_len = 1;
 				if (*cFormat == '{') {
@@ -2072,7 +2074,7 @@ int FormatOutputFileName(char* cDest, char* cFormat, char* cRawFileName,
 				sprintf(cDest, cTempF, iCurrentFile);
 				cDest+=strlen(cDest);
 			} else
-			if (!strnicmp(cFormat+1,"Chn",3)) {
+			if (!_strnicmp(cFormat+1,"Chn",3)) {
 				chn_name = 1;
 				char cDesiredLng[16]; memset(cDesiredLng,0,sizeof(cDesiredLng));
 				cFormat += 4;
@@ -2189,7 +2191,7 @@ int FirstFilenameCheck(DEST_AVI_INFO* lpDAI, char* RawFilename, int format,
 			}
 
 			qsort(ppAll, file_count, sizeof(char*), string_comp);
-			for (j=0;j<file_count-1;j++) {
+			for (int j=0;j<file_count-1;j++) {
 				if (!strcmp(ppAll[j], ppAll[j+1])) {
 					double_count++;
 					memmove(ppAll[j], ppAll[j+1], (sizeof(char*) * (file_count-j-1)));
@@ -2197,8 +2199,8 @@ int FirstFilenameCheck(DEST_AVI_INFO* lpDAI, char* RawFilename, int format,
 				}
 			}
 
-			for (j=0;j<file_count;j++) {
-				FILESTREAM* f = new FILESTREAM;
+			for (int j=0;j<file_count;j++) {
+				CFileStream* f = new CFileStream;
 				if (f->Open(ppAll[j], STREAM_READ) == STREAM_OK) {
 					overwritable_size += f->GetSize();
 					f->Close();
@@ -2317,7 +2319,7 @@ public:
 	int virtual Open(MATROSKA* m, int t, MULTIMEDIASOURCE* a);
 };
 
-MATROSKA_TRACK_SOURCE_HDRSTIP::Open(MATROSKA* m, int t, MULTIMEDIASOURCE* a)
+int MATROSKA_TRACK_SOURCE_HDRSTIP::Open(MATROSKA* m, int t, MULTIMEDIASOURCE* a)
 {
 	MATROSKA_TRACK_SOURCE::Open(m, t, a);
 	byte_count = a->GetStrippableHeaderBytes(bytes, 64);
@@ -2377,7 +2379,7 @@ int MuxThread_MKV(DEST_AVI_INFO* lpDAI)
 	CAttribs*   s = lpDAI->settings;
 	MATROSKA*	m;
 	MUX_STATE*	lpmsState;
-	FILESTREAM* DestFile;
+	CFileStream* DestFile;
 	VIDEOSOURCE* v = lpDAI->videosource;
 	AUDIOSOURCE* a;
 	SPLIT_POINT_DESCRIPTOR pSPD;
@@ -2751,10 +2753,6 @@ int MuxThread_MKV(DEST_AVI_INFO* lpDAI)
 	}
 
 	audio_lace_config = new LACE_DESCRIPTOR[lpDAI->dwNbrOfAudioStreams];
-	
-	for (i=0;i<lpDAI->dwNbrOfAudioStreams;i++)
-		audio_lace_config[i].iLength = 0;
-
 	for (i=0;i<100;i++) bDoLace[i] = !!(int)s->GetInt("output/mkv/lacing/style");
 
 	// set filename to mka if audio-only
@@ -2837,7 +2835,7 @@ start:
 
 		// delete output file if it already exists
 		DeleteFileUTF8(cBuffer);
-		DestFile=new FILESTREAM;
+		DestFile=new CFileStream;
 		if (DestFile->Open(cBuffer, STREAM_READ | 
 			(bUnbufferedOutput?STREAM_UNBUFFERED_WRITE:STREAM_WRITE) | 
 			(bOverlapped?STREAM_OVERLAPPED:0) |
@@ -2885,8 +2883,14 @@ start:
 
 		m->SetMaxClusterSize((int)s->GetInt("output/mkv/clusters/size"));
 		m->SetMaxClusterTime((int)s->GetInt("output/mkv/clusters/time"), (int)s->GetInt("output/mkv/clusters/limit first"));//lpDAI->mkv.iLimit1stCluster);
-		m->EnableClusterPosition((int)s->GetInt("output/mkv/clusters/position"));
-		m->EnablePrevClusterSize((int)s->GetInt("output/mkv/clusters/prevclustersize"));
+		
+//		m->EnableClusterPosition((int)s->GetInt("output/mkv/clusters/position"));
+		m->Enable(MF_WRITE_CLUSTER_POSITION, 0,
+			s->GetInt("output/mkv/clusters/position")?MFA_ENABLE:MFA_DISABLE);
+
+		//m->EnablePrevClusterSize((int)s->GetInt("output/mkv/clusters/prevclustersize"));
+		m->Enable(MF_WRITE_PREV_CLUSTER_SIZE, 0,
+			s->GetInt("output/mkv/clusters/prevclustersize")?MFA_ENABLE:MFA_DISABLE);
 
 		m->SetTrackCount(iTrackCount=lpDAI->dwNbrOfAudioStreams+lpDAI->dwNbrOfVideoStreams+lpDAI->dwNbrOfSubs);
 		m->SetSegmentDuration((float)iMaxDuration / m->GetTimecodeScale());
@@ -2900,7 +2904,9 @@ start:
 	
 		// set cue creation scheme
 		m->EnableCues(CUE_VIDEO | CUE_AUDIO, 0);
-		m->EnableCueBlockNumber(bCuesWriteBlockNumber);
+//		m->EnableCueBlockNumber(bCuesWriteBlockNumber);
+		m->Enable(MF_WRITE_CUE_BLOCK_NUMBER, 0,
+			bCuesWriteBlockNumber?MFA_ENABLE:MFA_DISABLE);
 
 		if (bCues) {
 			if (bCuesV) 
@@ -2920,12 +2926,16 @@ start:
 		lpDAI->dlg->AddProtocolLine(Message_index(MSG_CUEVIDEO, m->IsCuesEnabled(CUE_VIDEO)), 4);
 		lpDAI->dlg->AddProtocolLine(Message_index(MSG_CUEAUDIO, m->IsCuesEnabled(CUE_AUDIO)), 4);
 		lpDAI->dlg->AddProtocolLine(Message_index(MSG_CUESUBS, m->IsCuesEnabled(CUE_SUBS)), 4);
-		lpDAI->dlg->AddProtocolLine(Message_index(MSG_WRITECUEBLKNBR, m->IsCueBlockNumberEnabled()), 4);
+		lpDAI->dlg->AddProtocolLine(Message_index(MSG_WRITECUEBLKNBR, 
+			/*m->IsCueBlockNumberEnabled()*/
+			m->Enable(MF_WRITE_CUE_BLOCK_NUMBER, 0, MFA_RETRIEVE_ONLY)), 4);
 		int hdr_size;
 
 		if (hdr_size_set) {
 			hdr_size = hdr_size_set<<10; 
-			m->EnableClusterIndex((int)s->GetInt("output/mkv/clusters/index/on"));
+			//m->EnableClusterIndex((int)s->GetInt("output/mkv/clusters/index/on"));
+			m->Enable(MF_WRITE_CLUSTER_INDEX, 0,
+				(int)s->GetInt("output/mkv/clusters/index/on")?MFA_ENABLE:MFA_DISABLE);
 		}
 		else {
 
@@ -2947,7 +2957,9 @@ start:
 				else
 					duration = 3600000000000;
 
-			m->EnableClusterIndex(0);
+			//m->EnableClusterIndex(0);
+			m->Enable(MF_WRITE_CLUSTER_INDEX, 0, MFA_DISABLE);
+
 			double hours = 0.;
 
 			hours = (double)duration / 1000000000. / 3600.;
@@ -2957,7 +2969,9 @@ start:
 			hdr_size = (int)(2048 + 512 * i_mms_count + lpDAI->chapters->GetSize(0) +
 				(float)cue_ratio * (double)((double)streams * hours));
 		}
-		lpDAI->dlg->AddProtocolLine(Message_index(MSG_CLUSTERINDEX, m->IsClusterIndexEnabled()), 4);
+		lpDAI->dlg->AddProtocolLine(Message_index(MSG_CLUSTERINDEX, 
+			/*m->IsClusterIndexEnabled()*/
+			m->Enable(MF_WRITE_CLUSTER_INDEX, 0, MFA_RETRIEVE_ONLY)), 4);
 
 		total_codecprivate_size = 0;
 		// set video attributes
@@ -2987,7 +3001,8 @@ start:
 		//	m->SetTrackLanguageCode(0,"und");
 			char cName[512]; memset(cName, 0, sizeof(cName));
 			v->GetName(cName);
-			m->SetTrackName(0, cName);
+			//m->SetTrackName(0, cName);
+			m->GetTrackTitleSet()->Import(v->GetTitleSet());
 			v->GetLanguageCode(cName);
 			m->SetTrackLanguageCode(0, cName);
 		}
@@ -3018,11 +3033,12 @@ start:
 			m->SetBitDepth(i,as->GetBitDepth());
 			m->SetSamplingFrequency(i,(float)as->GetFrequency(),(float)as->GetOutputFrequency());
 			m->SetChannelCount(i,as->GetChannelCount());
-			char cName[500];
+			char cName[500]; cName[0]=0;
 			char cLangCode[10];
-			lpDAI->asi[j]->audiosource->GetName(cName);
+			//lpDAI->asi[j]->audiosource->GetName(cName);
 			lpDAI->asi[j]->audiosource->GetLanguageCode(cLangCode);
-			m->SetTrackName(i,cName);
+			//m->SetTrackName(i,cName);
+			m->GetTrackTitleSet(i)->Import(lpDAI->asi[j]->audiosource->GetTitleSet());
 			
 			switch (lpDAI->asi[j]->audiosource->GetFormatTag()) {
 				case 0x2000:
@@ -3045,11 +3061,11 @@ start:
 					case 0x0055: 
 						m->SetDefaultDuration(i,lpDAI->asi[j]->audiosource->GetFrameDuration());
 						switch (lpDAI->asi[j]->audiosource->FormatSpecific(MMSGFS_MPEG_LAYERVERSION)) {
-							case 1: m->SetCodecID(i,"A_MPEG/L1"); break;
-							case 2: m->SetCodecID(i,"A_MPEG/L2"); break;
-							case 3: m->SetCodecID(i,"A_MPEG/L3"); break;
+							case 1: m->SetCodecID(i, "A_MPEG/L1"); break;
+							case 2: m->SetCodecID(i, "A_MPEG/L2"); break;
+							case 3: m->SetCodecID(i, "A_MPEG/L3"); break;
 						} 
-						audio_lace_config[j].iLength = GetLaceSetting("mp3",s);						
+						audio_lace_config[j].iLength = GetLaceSetting("mp3", s);						
 						break;
 					case 0x00FF: 
 						cCodecID = new char[128];
@@ -3178,9 +3194,9 @@ start:
 			m->SetTrackNumber(j,j+1);
 			m->SetTrackType(j,MSTRT_SUBT);
 
-			char cName[500];
+			char cName[500]; cName[0]=0;
 			char cLangCode[10];
-			subs->GetName(cName);
+		//	subs->GetName(cName);
 			subs->GetLanguageCode(cLangCode);
 			if (cName[0] || cLangCode[0]) {
 				wsprintf(cBuffer,LoadString(STR_MUXLOG_STREAM),i+1);
@@ -3196,7 +3212,8 @@ start:
 				}
 
 			}
-			m->SetTrackName(j,cName);
+			//m->SetTrackName(j,cName);
+			m->GetTrackTitleSet(j)->Import(subs->GetTitleSet());
 
 			subs->GetLanguageCode(cBuffer);
 			m->SetTrackLanguageCode(j,cBuffer);
@@ -3490,7 +3507,7 @@ start:
 
 							mts[GetStreamNumber(lpDAI, STREAMTYPE_AUDIO, i)]->Put(&a);
 
-//							m->Write(&a);
+							m->Write(&a);
 							DecBufferRefCount(&a.cData);
 							if (a.iFrameSizes) delete[] a.iFrameSizes;
 							AddAudioSize(qwStats,iRead,ADS_NOTEVEN);

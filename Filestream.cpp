@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "Filestream.h"
+#include "FileStream.h"
 #include "Filenames.h"
 #include "UTF-8.h"
 #include "UnicodeCalls.h"
@@ -8,7 +8,7 @@
 #ifndef _DEBUG
 #define _ASSERT(a);
 #else
-#define _ASSERT(a) { if (!a) printf("B0rked in line %d\n", __LINE__); }
+#define _ASSERT(a) { if (!(a)) printf("B0rked in line %d\n", __LINE__); }
 #endif
 #endif
 
@@ -153,7 +153,7 @@ DWORD WINAPI DataTransfer_Thread(void* pData)
 	return 0;
 }
 
-FILESTREAM::FILESTREAM(void)
+CFileStream::CFileStream(void)
 {
 	hFile=NULL;
 	iCurrentSize = 0;
@@ -165,7 +165,7 @@ FILESTREAM::FILESTREAM(void)
 	cFilename = NULL;
 }
 
-FILESTREAM::~FILESTREAM(void)
+CFileStream::~CFileStream(void)
 {
 	if (hFile) 
 		Close();
@@ -175,7 +175,7 @@ FILESTREAM::~FILESTREAM(void)
 
 const int iOutCacheSize = 1<<21;
 
-int FILESTREAM::Open(char* _lpFilename,DWORD _dwMode)
+int CFileStream::Open(char* _lpFilename,DWORD _dwMode)
 {
 	int open_mode = 0;
 	bCanRead = false;
@@ -282,7 +282,7 @@ int FILESTREAM::Open(char* _lpFilename,DWORD _dwMode)
 	return ((hFile!=INVALID_HANDLE_VALUE)?STREAM_OK:STREAM_ERR);
 }
 
-int FILESTREAM::Open(wchar_t* lpFileName, DWORD _dwMode)
+int CFileStream::Open(wchar_t* lpFileName, DWORD _dwMode)
 {
 	char* utf8 = NULL;
 	WStr2UTF8((char*)lpFileName, &utf8);
@@ -291,7 +291,7 @@ int FILESTREAM::Open(wchar_t* lpFileName, DWORD _dwMode)
 	return res;
 }
 
-int FILESTREAM::Close(void)
+int CFileStream::Close(void)
 {
 	if (bThreaded) {
 		ReleaseSemaphore(dttd->hTerminateRequest, 1, NULL);
@@ -310,7 +310,7 @@ int FILESTREAM::Close(void)
 	return STREAM_OK;
 }
 
-int FILESTREAM::Seek(__int64 qwPos)
+int CFileStream::Seek(__int64 qwPos)
 {
 	_ASSERT(qwPos >= 0);
 
@@ -334,12 +334,12 @@ int FILESTREAM::Seek(__int64 qwPos)
 	return STREAM_OK;
 }
 
-__int64 FILESTREAM::GetPos(void)
+__int64 CFileStream::GetPos(void)
 {
 	return iCurrPos - GetOffset();
 }
 
-__int64 FILESTREAM::GetSize(void)
+__int64 CFileStream::GetSize(void)
 {
 	__int64	qwRes;
 	
@@ -358,7 +358,7 @@ int ispowof2(DWORD x)
 	return !!(x==1);
 }
 
-int FILESTREAM::ReadAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped)
+int CFileStream::ReadAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped)
 {
 	__int64 j = GetPos(); DWORD* dwPos = (DWORD*)&j;
 	overlapped->Offset = dwPos[0];
@@ -394,7 +394,7 @@ VOID CALLBACK FileIOCompletionRoutine(
 
 
 
-int FILESTREAM::WriteAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped)
+int CFileStream::WriteAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped)
 {
 	__int64 j = GetPos(); DWORD* dwPos = (DWORD*)&j;
 
@@ -421,14 +421,14 @@ int FILESTREAM::WriteAsync(void* pDest, DWORD dwBytes, OVERLAPPED* overlapped)
 //	}
 
 	if (res) {
-//		return FILESTREAM_ASYNCH_IO_INITIATED;
+//		return CFileStream_ASYNCH_IO_INITIATED;
 		return FILESTREAM_ASYNCH_IO_FINISHED;
 	}
 
 	return FILESTREAM_ASYNCH_IO_FAILED;
 }
 
-int FILESTREAM::WaitForAsyncIOCompletion(OVERLAPPED* overlapped, DWORD* pdwBytesTransferred)
+int CFileStream::WaitForAsyncIOCompletion(OVERLAPPED* overlapped, DWORD* pdwBytesTransferred)
 {
 	DWORD r;
 
@@ -440,7 +440,7 @@ int FILESTREAM::WaitForAsyncIOCompletion(OVERLAPPED* overlapped, DWORD* pdwBytes
 	return b;
 }
 
-int FILESTREAM::IsOverlappedIOComplete(OVERLAPPED* overlapped)
+int CFileStream::IsOverlappedIOComplete(OVERLAPPED* overlapped)
 {
 	DWORD r;
 	BOOL b = (S_OK == GetOverlappedResult(hFile, overlapped, &r, false));
@@ -459,7 +459,7 @@ void CleanSuccessfulJobQueue(DATA_TRANSFER_THREAD_DATA* dttd)
 		LeaveCriticalSection(&dttd->critical);
 }
 
-int FILESTREAM::Read(void* lpDest,DWORD dwBytes)
+int CFileStream::Read(void* lpDest,DWORD dwBytes)
 {
 	DWORD	dwRead;
 	BYTE*	lpbDest=(BYTE*)lpDest;
@@ -515,12 +515,12 @@ int FILESTREAM::Read(void* lpDest,DWORD dwBytes)
 	return dwRead;
 }
 
-void FILESTREAM::Flush()
+void CFileStream::Flush()
 {
 
 }
 
-int FILESTREAM::Write(void* lpSource, DWORD dwBytes)
+int CFileStream::Write(void* lpSource, DWORD dwBytes)
 {
 	DWORD	dwWritten;
 
@@ -596,19 +596,19 @@ int FILESTREAM::Write(void* lpSource, DWORD dwBytes)
 	return dwBytes;
 }
 
-bool FILESTREAM::IsEndOfStream(void)
+bool CFileStream::IsEndOfStream(void)
 {
 	return (GetSize()<=GetPos());
 }
-
-int FILESTREAM::SethFile(HANDLE _hFile)
+/*
+int CFileStream::SethFile(HANDLE _hFile)
 {
 	hFile=_hFile;
 	return STREAM_OK;
 }
-
+*/
 /* only to be called by CACHE class before closing file definitely */
-int FILESTREAM::TruncateAt(__int64 iPosition)
+int CFileStream::TruncateAt(__int64 iPosition)
 {
 	if (bBuffered) {
 		if (!bThreaded) {

@@ -36,7 +36,8 @@ int VIDEOSOURCELIST::Append(VIDEOSOURCE *pNext)
 			SetOutputResolution(&r);
 			char c[1024]; c[0]=0;
 			pNext->GetName(c);
-			SetName(c);
+			GetTitleSet()->Import(pNext->GetTitleSet());
+//			SetName(c);
 			pNext->GetLanguageCode(c);
 			SetLanguageCode(c);
 			SetDefault(pNext->IsDefault());

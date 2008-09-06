@@ -27,9 +27,12 @@
 #include "ResizeableDialog.h"
 #include "afxwin.h"
 #include <vector>
+#include <string>
 
 int Thread_OnStart(void* pData);
 
+DWORD DetectFileType(STREAM* lpSource, void** pReturn = NULL);
+void SetDelay(AUDIO_STREAM_INFO* asi, int iDelay);
 __int64	GetLaceSetting(char* cName, CAttribs* settings, int iFlags = 0);
 void name_without_ext(char* lpcName, char* cNoExt);
 
@@ -62,10 +65,10 @@ private:
 	CAttribs*		settings;
 	
 	char			lastjobfile[65536];
-	char			cfgfile[65536];
-	char			guifile[65536];
-	char			lngcodefile[65535];
-	char			appdir[65536];
+	std::string		cfgfile;
+	std::string		guifile;
+	std::string		lngcodefile;
+	std::string		appdir;
 
 	int				current_language_index;
 	int				auto_apply_file_title;
@@ -113,11 +116,12 @@ public:
 	CString			cstrError;
 	CString			cstrConfirmation;
 	OPENFILEOPTIONS	ofOptions;
-	void			ButtonState_STOP(void);
-	void			ButtonState_START(void);
-	void			UpdateAudioName(void);
-	void			UpdateLanguage(void);
-	void			UpdateAudiodelay(void);
+	void			ButtonState_STOP();
+	void			ButtonState_START();
+	void			UpdateAudioName();
+	void			CopyFontQualitySettingFromMainWindow();
+	void			UpdateLanguage();
+	void			UpdateAudiodelay();
 	void			OnAddFile();
 	void			doAddFile(char* lpcName, int iFormat = FILETYPE_UNKNOWN, 
 		int delete_file = 0, HANDLE hSemaphore = NULL);
@@ -129,6 +133,7 @@ public:
 	void			AddAudioStream(AUDIO_STREAM_INFO* asi);
 	void			AddSubtitleStream(SUBTITLE_STREAM_INFO* ssi);
 	void			AddVideoStream(VIDEO_STREAM_INFO* vsi);
+	void			InvalidateStreamTreeFontBuffer();
 
 	void			BuildFileAndStreamDependency(DWORD file_to_remove,
 		std::vector<HTREEITEM>& hitems, 
@@ -250,6 +255,8 @@ public:
 	afx_msg void OnBnClickedLeave();
 	afx_msg void OnBnClickedCancel();
 	afx_msg void OnLbnDblclkSourcefilelist();
+	afx_msg void OnTvnSelchangedAudiotree(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnNMCustomdrawAudiotree(NMHDR *pNMHDR, LRESULT *pResult);
 };
 
 //{{AFX_INSERT_LOCATION}}

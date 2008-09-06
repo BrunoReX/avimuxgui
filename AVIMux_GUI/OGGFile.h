@@ -1,8 +1,8 @@
 /*
 
-    As libogg contains artifical limits with the only purpose
-	to annoy people (like the limit of 4 kB per OGG page), I
-	can't use it.
+    As libogg contains artifical limits that lack a real
+	purpose (like the limit of 4 kB per OGG page), I
+	don't want to use it.
 
     Also, the code in OGGFile.c returns packets, not segments
 

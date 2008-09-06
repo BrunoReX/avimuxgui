@@ -1,7 +1,7 @@
 #ifndef I_SILENCE
 #define I_SILENCE
 
-#include "AudioSource.h"
+#include "AudioSource_generic.h"
 
 
 typedef struct

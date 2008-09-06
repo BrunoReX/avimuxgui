@@ -136,16 +136,17 @@ void CChapterDlgTree::OnDropFiles(HDROP hDropInfo)
 		(*UDragQueryFile())((uint32)hDropInfo,i,u,size);
 		toUTF8(u, &lpcName);
 
-		FILESTREAM* file = new FILESTREAM;
+		CFileStream* file = new CFileStream;
 		file->Open(lpcName,STREAM_READ);
-		CTEXTFILE*	textfile = new CTEXTFILE(STREAM_READ,file,CM_UTF8);
+		CTextFile*	textfile = new CTextFile(STREAM_READ, file, CHARACTER_ENCODING_UTF8);
 
 		XMLNODE* xml = NULL;
 		CChapters* c = NULL;
 
 		if (FileIsXML(textfile)) {
-			char* text = (char*)calloc((size_t)file->GetSize() + 1024, 1);
-			Textfile2String(textfile, text);
+			//char* text = (char*)calloc((size_t)file->GetSize() + 1024, 1);
+			//Textfile2String(textfile, text);
+			char* text = Textfile2String(textfile);
 			if (xmlBuildTree(&xml, text) == XMLERR_OK) {
 				c = new CChapters;
 				int xml_result = c->ImportFromXML(xml);
@@ -167,14 +168,14 @@ void CChapterDlgTree::OnDropFiles(HDROP hDropInfo)
 		textfile->Seek(0);
 		// dvd maestro chapter text file
 		char t[1000];
-		textfile->ReadLine(t);
+		textfile->ReadLine(t, sizeof(t));
 		if (!strcmp("$Spruce_IFrame_List",t)) {
 			CChapters* chapters = ((CChapterDlg*)GetParent())->GetChapters();
 			CChapters* edition;
 			chapters->AddEmptyEdition();
 			edition = chapters;
 			chapters = chapters->GetSubChapters(chapters->GetChapterCount()-1);
-			while (textfile->ReadLine(t)>-1) {
+			while (textfile->ReadLine(t, sizeof(t))>-1) {
 				__int64 iTime = SONChapStr2Millisec(t)*1000000;
 				if (iTime>=0) {
 					char cName[20];
@@ -233,7 +234,7 @@ void CChapterDlgTree::OnDropFiles(HDROP hDropInfo)
 					import_struct.chapters = c->GetSubChapters(0);
 					sub->Import(import_struct);
 
-					if (m->GetTrackCount())	for (int i=import_struct.index_start;i<sub->GetChapterCount();i++) 
+					if (matroska && m->GetTrackCount())	for (int i=import_struct.index_start;i<sub->GetChapterCount();i++) 
 						if (!sub->IsSegmentUIDValid(i))
 							sub->SetSegmentUID(i, 1, m->GetSegmentUID());
 					
@@ -275,7 +276,7 @@ void CChapterDlgTree::OnDropFiles(HDROP hDropInfo)
 					import_struct.chapters = c;
 					import_struct.can_merge = false;
 					chapters->Import(import_struct);
-					if (m->GetTrackCount())
+					if (matroska && m->GetTrackCount())
 						FillChapterSegmentUIDs(chapters, start, CHAP_LAST, m->GetSegmentUID());
 					AddChaptersToTree(this, NULL, chapters, start, CHAP_LAST);
 					InvalidateRect(NULL);

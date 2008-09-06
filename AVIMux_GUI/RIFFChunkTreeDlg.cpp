@@ -585,18 +585,17 @@ DWORD WINAPI MainThread(void* pData)
 BOOL CRIFFChunkTreeDlg::OnInitDialog() 
 {
 //	InitializeCriticalSection(&critical_section);
+	CResizeableDialog::OnInitDialog();
+
 	InitializeCriticalSection(&cs);
 	bChunkTree_stop = false;
 //	__int64		qwPos;
 //	LISTHEADER		lh;
 	
-	CResizeableDialog::OnInitDialog();
-	
 	SendDlgItemMessage(IDOK,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_GEN_OK));
 	SendDlgItemMessage(IDCANCEL,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_GEN_CANCEL));
 	SendDlgItemMessage(IDC_WAIT_FOR_COMPLETE_TREE, WM_SETTEXT, NULL,
 		(LPARAM)LoadString(STR_RIFFDLG_FULL));
-
 
 	DWORD dwID;
 	MAIN_THREAD_DATA_STRUCT* mtds = new MAIN_THREAD_DATA_STRUCT;
@@ -630,6 +629,11 @@ BOOL CRIFFChunkTreeDlg::OnInitDialog()
 	m_HexView.SetDataSource(source);
 	m_HexView.SetNewStartPos(0);
 	m_HexView.SetMode(HWLB_MODE_RIFF);
+
+/*	RECT r;
+	GetWindowRect(&r);
+	PostMessage(WM_SIZE, 0, (r.right-r.left) | ((r.bottom-r.top)<<16));
+*/
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX-Eigenschaftenseiten sollten FALSE zurückgeben

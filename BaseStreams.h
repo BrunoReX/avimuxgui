@@ -1,7 +1,7 @@
 /*
 
 STREAM:		abstract  
-FILESTREAM  file
+CFileStream  file
 BITSTREAM   access to a stream bit by bit  
 	
 */

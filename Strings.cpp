@@ -30,7 +30,7 @@ char* getword(char** s)
 }
 
 // check if string is a number
-bool isint(char* s)
+bool isint(const char* s)
 {
 	if (!s || !*s) return false;
 	if (*s != '-' && (*s<'0' || *s>'9')) return false;
@@ -61,14 +61,14 @@ void splitpathname(char* p, char** f, char** e, char** path)
 	if (!f) f = &t2;
 	*e = NULL; *f = NULL;
 
-	for (int i=strlen(p);i>=0 && (!*e || !*f);i--) {
+	for (int i=(int)strlen(p);i>=0 && (!*e || !*f);i--) {
 		if (*(p+i)=='.' && !*e) *e = p+i+1;
 		if (*(p+i)=='\\' && !*f) *f = p+i+1;
 	}
 
 	if (path) {
 		strcpy(*path,p);
-		i=strlen(p)-1;
+		int i=(int)strlen(p)-1;
 		while (*(p+i) != '\\' && i) i--;
 		(*path)[i]=0;
 	}
@@ -80,7 +80,7 @@ int split_string(char* in, char* separator, std::vector<char*>& dest)
 	char* c = (char*)calloc(sizeof(char), 1+strlen(in));
 	char* d = c;
 	char* e;
-	int sep_len = strlen(separator);
+	int sep_len = (int)strlen(separator);
 	strcpy(c, in);
 
 	int i = 0;
@@ -90,7 +90,7 @@ int split_string(char* in, char* separator, std::vector<char*>& dest)
 		if (e) for (int j=0;j<sep_len;j++)
 			*e++ = 0;
 
-		dest.push_back(strdup(c));
+		dest.push_back(_strdup(c));
 		c = e;
 //		in = c;
 		i++;
@@ -105,4 +105,23 @@ void DeleteStringVector(std::vector<char*>& v)
 {
 	std::vector<char*>::iterator iter = v.begin();
 	for (; iter != v.end(); delete (*iter++));
+}
+
+CASCIIString::CASCIIString(char* source)
+{
+	SetData(source);
+}
+
+CASCIIString::CASCIIString(const CUTF8String& source)
+{
+	char temp[16384];
+	UTF82Str((char*)source.Data().c_str(), temp, sizeof(temp));
+	SetData(temp);
+}
+
+CUTF8String::CUTF8String(const CASCIIString& source)
+{
+	char temp[16384];
+	Str2UTF8((char*)source.Data().c_str(), temp, sizeof(temp));
+	m_data = temp;
 }

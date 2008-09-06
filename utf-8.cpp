@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "stdlib.h"
 #include "stdio.h"
+#include "assert.h"
 
 #ifdef DEBUG_NEW
 #ifdef _DEBUG
@@ -12,6 +13,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 #endif
+
 
 
 int utf8_unicode_possible = 1;
@@ -44,8 +46,8 @@ int _stdcall WStr2UTF8(char* source, char** dest)
 	if (source) 
 		len = WStr2UTF8(source, NULL, 0);
 
-	if (*dest) 
-		free(*dest);
+/*	if (*dest) 
+		free(*dest);*/
 	
 	*dest = (char*)calloc(1, len);
 
@@ -102,9 +104,9 @@ int  _stdcall WStr2Str(char* source, char** dest)
 	if (source)
 		len = _WideCharToMultiByte(CP_THREAD_ACP,0,(LPCWSTR)source,-1,NULL,0,0,0);
 
-	if (*dest) {
+/*	if (*dest) {
 		free(*dest);
-	}
+	}*/
 	*dest = (char*)calloc(1, len);
 
 	return _WideCharToMultiByte(CP_THREAD_ACP,0,(LPCWSTR)source,-1,*dest,len,0,0);
@@ -119,7 +121,7 @@ int _stdcall UTF82WStr(char* source, char** dest)
 		dest_len = 2 * MultiByteToWideChar(CP_UTF8,0,source,-1,0,0);
 
 	if (dest) {
-		if (*dest) free(*dest);
+		/*if (*dest) free(*dest); */
 		*dest = (char*)calloc(1, dest_len);
 		return 2*MultiByteToWideChar(CP_UTF8,0,source,-1,(LPWSTR)*dest,dest_len / 2);
 	} else {
@@ -160,9 +162,9 @@ int _stdcall Str2WStr(char* source, char** dest)
 		return 2;
 	}
 
-	if (*dest) 
+/*	if (*dest) 
 		free(*dest);
-	
+*/	
 	int dest_len = Str2WStr(source, NULL, 0);
 
 	*dest = (char*)calloc(1, dest_len);
@@ -200,9 +202,9 @@ int _stdcall UTF82Str(char* source, char** dest)
 		return -1;
 	}
 
-	if (*dest)
+/*	if (*dest)
 		free(*dest);
-
+*/
 	if (!source) {
 		*dest = (char*)calloc(1, 1);	
 		return 1;
@@ -278,7 +280,7 @@ int _stdcall Str2UTF8(char* source, char* dest, int max_len)
 	if (utf8_unicode_possible) {
 		temp_size = Str2WStr(source, (char*)NULL);
 	} else {
-		temp_size = 1+strlen(source);
+		temp_size = 1+(int)strlen(source);
 	}
 	int i;
 	
@@ -318,9 +320,9 @@ int _stdcall Str2UTF8(char* source, char** dest)
 	if (!dest)
 		return -1;
 
-	if (*dest)
+/*	if (*dest)
 		free(*dest);
-
+*/
 	if (!source) {
 		*dest = (char*)calloc(1, 1);
 		return 1;
@@ -339,3 +341,135 @@ int _stdcall Str2UTF8(char* source, char** dest)
 	}
 }
 
+int StringConvert(const char* source, int source_format, int max_source_len,
+						   char** dest, int dest_format)
+{
+	__ASSERT(source_format == CHARACTER_ENCODING_ANSI ||
+		source_format == CHARACTER_ENCODING_UTF16_LE ||
+		source_format == CHARACTER_ENCODING_UTF8,
+		"bad source_format");
+
+//	printf(__FILE__);
+
+	__ASSERT(dest_format == CHARACTER_ENCODING_ANSI ||
+		dest_format == CHARACTER_ENCODING_UTF16_LE ||
+		dest_format == CHARACTER_ENCODING_UTF8,
+		"bad dest_format");
+
+	char* _source = (char*)malloc(2*max_source_len+2);
+
+	if (source_format == CHARACTER_ENCODING_UTF16_LE)
+		wcsncpy((wchar_t*)_source, (wchar_t*)source, max_source_len);
+	else
+		strncpy(_source, source, max_source_len);
+
+	switch (source_format)
+	{
+		case CHARACTER_ENCODING_ANSI:
+			switch (dest_format) {
+				case CHARACTER_ENCODING_ANSI: *dest = _strdup(_source); break;
+				case CHARACTER_ENCODING_UTF8: Str2UTF8(_source, dest); break;
+				case CHARACTER_ENCODING_UTF16_LE: Str2WStr(_source, dest); break;
+			}
+			break;
+		case CHARACTER_ENCODING_UTF8:
+			switch (dest_format) {
+				case CHARACTER_ENCODING_ANSI: UTF82Str(_source, dest); break;
+				case CHARACTER_ENCODING_UTF8: *dest = _strdup(_source); break;
+				case CHARACTER_ENCODING_UTF16_LE: UTF82WStr(_source, dest); break;
+			}
+			break;
+		case CHARACTER_ENCODING_UTF16_LE:
+//		case CHARACTER_ENCODING_UTF16_BE:
+			switch (dest_format) {
+				case CHARACTER_ENCODING_ANSI: 
+					WStr2Str(_source, dest); 
+					break;
+				case CHARACTER_ENCODING_UTF8: 
+					WStr2UTF8(_source, dest); 
+					break;
+				case CHARACTER_ENCODING_UTF16_LE: 
+					*dest = (char*)_wcsdup((wchar_t*)_source); 
+					break;
+			}
+			break;
+	}
+	free(_source);
+
+	return 1;
+}
+
+int FromUTF8(char* source, wchar_t** dest)
+{
+	return StringConvert(source, CHARACTER_ENCODING_UTF8,
+		1+strlen(source), (char**)dest, CHARACTER_ENCODING_UTF16_LE);
+}
+
+int FromUTF8(char* source, char** dest)
+{
+	return StringConvert(source, CHARACTER_ENCODING_UTF8,
+		1+strlen(source), (char**)dest, CHARACTER_ENCODING_ANSI);
+}
+
+int IsUTF8(const char* src, size_t max_source_len)
+{
+	if (max_source_len < 0)
+		return 0;
+
+	if (max_source_len == 0)
+		return 1;
+
+	while (*src && max_source_len--)
+	{
+		/* get number of bytes for next character */
+		int bytes = UTF8CharLen(*src++);
+
+		/* if the 1st character is not a valid 1st character for UTF-8 */
+		if (bytes < 0)
+			return 0;
+	
+		/* if there are fewer bytes left than this character requires in
+		   UTF-8, it cannot be UTF-8 */
+		if (static_cast<int>(max_source_len) < --bytes)
+			return 0;
+
+		/* the next $bytes bytes must be 10xx xxxx */
+		while (bytes--) {
+			if ((*src++ & 0xC0) != 0x80)
+				return 0;
+		}
+	}
+
+	return 1;
+}
+
+int UTF8CharLen(char in)
+{
+	unsigned char uin = (unsigned char)in;
+
+	if (uin < 128)
+		return 1;
+
+	if (uin < 192)
+		return -1;
+
+	if (uin < 0xE0)
+		return 2;
+
+	if (uin < 0xF0)
+		return 3;
+
+	if (uin < 0xF8)
+		return 4;
+
+	if (uin < 0xFC)
+		return 5;
+
+	if (uin < 0xFE)
+		return 6;
+
+	if (uin < 0xFF)
+		return 7;
+
+	return 8;
+}

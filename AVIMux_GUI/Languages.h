@@ -249,6 +249,9 @@ const int STR_SGUI_HIGHLIGHT        =  1001;
 const int STR_SGUI_LOWLIGHT         =  1002;
 const int STR_SGUI_OVERWRITECONFIRMATION = 1003;
 const int STR_SGUI_DONEDLG          =  1004;
+const int STR_SGUI_HIGHLIGHT_DEFAULT = 1005;
+const int STR_SGUI_HIGHLIGHT_NOAVI = 1006;
+const int STR_SGUI_CLEARTYPE = 1007;
 
 // set AVI header flags dialog
 

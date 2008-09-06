@@ -224,6 +224,9 @@ void CSetStoreFileOptionsDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_DFN_SEGMENT_TITLE, m_Output_DFN_Segment_title);
 	DDX_Control(pDX, IDC_DEFFILENAME_LABEL, m_Output_DFN_Label);
 	DDX_Control(pDX, IDC_OUTPUT_THREADED, m_Output_Thread);
+	DDX_Control(pDX, IDC_GUI1_HIGHLIGHT_DEFAULT_STREAMS, m_GUI_Highlight_Default_Streams);
+	DDX_Control(pDX, IDC_GUI1_HIGHLIGHT_NOAVI_STREAMS, m_GUI_Highlight_NoAVI_Streams);
+	DDX_Control(pDX, IDC_GUI1_USE_CLEARTYPE_FONT, m_GUI_UseCleartypeFonts);
 }
 
 BEGIN_MESSAGE_MAP(CSetStoreFileOptionsDlg, CResizeableDialog)
@@ -276,6 +279,8 @@ BEGIN_MESSAGE_MAP(CSetStoreFileOptionsDlg, CResizeableDialog)
 	//}}AFX_MSG_MAP
 	ON_BN_CLICKED(IDC_RADIO_GUI_GENERAL, OnBnClickedGuiGeneral)
 	ON_BN_CLICKED(IDC_OUTPUT_THREADED, OnBnClickedOutputThreaded)
+	ON_BN_CLICKED(IDC_GUI1_USE_CLEARTYPE_FONT, &CSetStoreFileOptionsDlg::OnBnClickedGui1UseCleartypeFont)
+	ON_BN_CLICKED(IDC_RADIO_OUTPUT_GENERAL, &CSetStoreFileOptionsDlg::OnBnClickedRadioOutputGeneral)
 END_MESSAGE_MAP()
 
 BEGIN_DISPATCH_MAP(CSetStoreFileOptionsDlg, CResizeableDialog)
@@ -335,13 +340,32 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 	CString s;
 	std::vector<CONTROL_DESCRIPTOR>::iterator cd;
 
-	for (cd = control_descriptors.begin(); cd!=control_descriptors.end(); cd++) {
+	for  (cd = control_descriptors.begin(); cd!=control_descriptors.end(); cd++) 
+	{
 		if (cd->type == CONTROL_CHECKBOX)
 			((CButton*)cd->control)->SetCheck(!!settings->GetInt(cd->attrib));
+
+		if (cd->type == CONTROL_MAPPEDCHECKBOX)
+		{
+			CButton* ctrl = ((CButton*)cd->control);
+			int attrValue = settings->GetInt(cd->attrib);
+			int mapLen = cd->value_list[0];
+			int* map = cd->value_list+1;
+
+			for (int j=0; j<mapLen; j++)
+			{
+				if (map[2*j+1] == attrValue)
+				{
+					ctrl->SetCheck(map[2*j]);
+				}
+			}
+		}
+
 		if (cd->type == CONTROL_INTEGER) {
-			itoa((int)settings->GetInt(cd->attrib), buffer, 10);
+			_itoa((int)settings->GetInt(cd->attrib), buffer, 10);
 			((CEdit*)cd->control)->SetWindowText(buffer);
 		}
+		
 		if (cd->type == CONTROL_COMBOBOX) {
 			CComboBox* box = (CComboBox*)cd->control;
 			int j = 0;
@@ -350,6 +374,7 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 			
 			box->SetCurSel((int)settings->GetInt(cd->attrib));
 		}
+		
 		if (cd->type == CONTROL_RADIOBUTTON) {
 			if (settings->GetInt(cd->attrib) == cd->value)
 				CheckDlgButton((int)cd->control, 1);
@@ -359,16 +384,16 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 	m_UseMaxFiles.SetCheck(!!sfoData.dwUseMaxFiles);
 	CheckDlgButton(IDC_USESPLITPOINTLIST,(sfoData.dwUseManualSplitPoints)?BST_CHECKED:BST_UNCHECKED);
 
-	itoa(sfoData.dwFrames,buffer,10);
+	_itoa(sfoData.dwFrames,buffer,10);
 	SendDlgItemMessage(IDC_MAXFRAMES,WM_SETTEXT,0,(LPARAM)buffer);
 	
-	itoa(sfoData.dwMaxFiles,buffer,10);
+	_itoa(sfoData.dwMaxFiles,buffer,10);
 	SendDlgItemMessage(IDC_MAXFILES,WM_SETTEXT,0,(LPARAM)buffer);
 	
-	itoa(sfoData.i1stTimecode,buffer,10);
+	_itoa(sfoData.i1stTimecode,buffer,10);
 	m_1stTimestamp.SetWindowText(buffer);
 	
-	itoa((int)settings->GetInt("output/avi/ac3/frames per chunk"),buffer,10);
+	_itoa((int)settings->GetInt("output/avi/ac3/frames per chunk"),buffer,10);
 	m_AC3FrameCount.SetWindowText(buffer);
 	m_AC3FrameCount_spin.SetPos((int)settings->GetInt("output/avi/ac3/frames per chunk"));
 
@@ -389,7 +414,7 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 	m_IMP3_Ask.SetCheck((ofoData.dwFlags&SOFO_MP3_MASK)==SOFO_MP3_CHECKCBRASK);
 	m_IMP3_DispResult.SetCheck((ofoData.dwFlags&SOFO_MP3_RESULTDLG)==SOFO_MP3_RESULTDLG);
 
-	itoa(ofoData.dwIgnoreSize,buffer,10);
+	_itoa(ofoData.dwIgnoreSize,buffer,10);
 	m_IAVI_IgnoreSize.SetWindowText(buffer);
 	m_chapters_from_filenames.SetCheck((ofoData.dwFlags&SOFO_CH_FROMFILENAMES)==SOFO_CH_FROMFILENAMES);
 	m_IMKV_chImport.SetCheck((ofoData.dwFlags&SOFO_CH_IMPORT)==SOFO_CH_IMPORT);
@@ -417,6 +442,36 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 	OnChangeMkvHeadersize();
 	OnOpendml();
 	OnInputOverlapped();
+
+	/* Increase the window size so that the bottom and the righ
+	   end of the Cancel button are visible... */
+	RECT m_CancelRect;
+	m_Cancel.GetWindowRect(&m_CancelRect);
+	ScreenToClient(&m_CancelRect);
+
+	RECT m_DlgRect;
+	GetClientRect(&m_DlgRect);
+	RECT m_DlgWndRect;
+	GetWindowRect(&m_DlgWndRect);
+
+	int borderHeight = m_DlgWndRect.bottom - m_DlgWndRect.top +
+		-(m_DlgRect.bottom - m_DlgRect.top);
+	int borderWidth = m_DlgWndRect.right - m_DlgWndRect.left +
+		-(m_DlgRect.right - m_DlgRect.left);
+
+	if (m_CancelRect.bottom > m_DlgRect.bottom - m_DlgRect.top ||
+		m_CancelRect.right > m_DlgRect.right - m_DlgRect.left)
+	{
+		/* window-too-small-issue */
+		
+		m_DlgRect.bottom = m_DlgRect.top + m_CancelRect.bottom + 
+			+ 30 + borderHeight;
+		m_DlgRect.right = m_DlgRect.left + m_CancelRect.right +
+			+ 30 + borderWidth;
+
+		MoveWindow(&m_DlgRect, 1);
+	}
+
 }
 
 void CSetStoreFileOptionsDlg::UpdateData()
@@ -431,14 +486,36 @@ void CSetStoreFileOptionsDlg::UpdateData()
 			settings->SetInt(cd->attrib, !!((CButton*)cd->control)->GetCheck());
 			((CButton*)cd->control)->SetCheck(!!settings->GetInt(cd->attrib));
 		}
+
+		if (cd->type == CONTROL_MAPPEDCHECKBOX) {
+			int mapLen = cd->value_list[0];
+			int* map = cd->value_list+1;
+			int checkState = ((CButton*)cd->control)->GetCheck();
+
+			for (int j=0; j<mapLen; j++)
+			{
+				int attrValue;
+
+				if (map[2*j] == checkState)
+				{
+					attrValue = map[1+2*j];
+	 				settings->SetInt(cd->attrib, attrValue);
+				}
+
+//			((CButton*)cd->control)->SetCheck(!!settings->GetInt(cd->attrib));
+			}
+		}
+
 		if (cd->type == CONTROL_INTEGER) {
 			CString s;
 			((CEdit*)cd->control)->GetWindowText(s);
 			settings->SetInt(cd->attrib, atoi(s));
 		}
+
 		if (cd->type == CONTROL_COMBOBOX) {
 			settings->SetInt(cd->attrib, ((CComboBox*)cd->control)->GetCurSel());
 		}
+
 		if (cd->type == CONTROL_RADIOBUTTON) {
 			if (IsDlgButtonChecked((int)cd->control)) {
 				settings->SetInt(cd->attrib, cd->value);
@@ -540,7 +617,7 @@ void CSetStoreFileOptionsDlg::UpdateLaceLength()
 void CSetStoreFileOptionsDlg::UpdateAC3FrameCount()
 {
 	CString c;
-	itoa((int)settings->GetInt("output/avi/ac3/frames per chunk"),c.GetBuffer(10),10);
+	_itoa((int)settings->GetInt("output/avi/ac3/frames per chunk"),c.GetBuffer(10),10);
 	m_AC3FrameCount.SetAC3FrameCount((int)settings->GetInt("output/avi/ac3/frames per chunk"));
 	m_AC3FrameCount.SetWindowText(c);
 }
@@ -565,7 +642,7 @@ void CSetStoreFileOptionsDlg::UpdateVideoLaceSetting()
 	}
 
 	if (m_LaceVideo.GetCheck()) {
-		itoa((int)settings->GetInt("output/mkv/lacing/video/frames"),c.GetBuffer(10),10);
+		_itoa((int)settings->GetInt("output/mkv/lacing/video/frames"),c.GetBuffer(10),10);
 		m_LaceVideo_Count.SetWindowText(c);
 		m_LaceVideo_Count.EnableWindow();
 		m_LaceVideo_Spin.EnableWindow();
@@ -580,10 +657,9 @@ void CSetStoreFileOptionsDlg::UpdateVideoLaceSetting()
 void CSetStoreFileOptionsDlg::UpdateMKVAC3FrameCount()
 {
 	CString c;
-	itoa((int)settings->GetInt("output/mkv/ac3/frames per block"),c.GetBuffer(10),10);
+	_itoa((int)settings->GetInt("output/mkv/ac3/frames per block"),c.GetBuffer(10),10);
 	m_MKVAC3FrameCount.SetFrameCount((int)settings->GetInt("output/mkv/ac3/frames per block"));//sfoData.mkv.iAC3FrameCount);
 	m_MKVAC3FrameCount.SetWindowText(c);
-
 }
 
 void CSetStoreFileOptionsDlg::UpdateNumbering()
@@ -697,7 +773,7 @@ typedef struct
 
 char* std_outout_format_strings[] = { "AVI", "MKV", "" };
 
-
+int clearTypeCheckboxMap[] = { 3, BST_UNCHECKED, 3, BST_INDETERMINATE, 0, BST_CHECKED, 5 };
 
 BOOL CSetStoreFileOptionsDlg::OnInitDialog() 
 {
@@ -825,11 +901,15 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		{ &m_GUI_highlight_used_files, STR_SGUI_LOWLIGHT },
 		{ &m_GUI_highlight_stream_source_files, STR_SGUI_HIGHLIGHT },
 		{ &m_GUI_enable_overwrite_confirmation, STR_SGUI_OVERWRITECONFIRMATION },
-		{ &m_GUI_DoneDlg, STR_SGUI_DONEDLG }
+		{ &m_GUI_DoneDlg, STR_SGUI_DONEDLG },
+		{ &m_GUI_Highlight_Default_Streams, STR_SGUI_HIGHLIGHT_DEFAULT },
+		{ &m_GUI_Highlight_NoAVI_Streams, STR_SGUI_HIGHLIGHT_NOAVI },
+		{ &m_GUI_UseCleartypeFonts, STR_SGUI_CLEARTYPE }
 		
 	};
 
 	#define CHECKBOX(a, b) { &a, CONTROL_CHECKBOX, b, NULL }
+	#define MAPPEDCHECKBOX(a, b, c) { &a, CONTROL_MAPPEDCHECKBOX, b, (char**)c }
 	#define INTEGERBOX(a, b) { &a, CONTROL_INTEGER, b, NULL }
 	#define COMBOBOX(a, b, c) { &a, CONTROL_COMBOBOX, b, c }
 	#define RADIOBUTTON(a, b, c) { (void*)a, CONTROL_RADIOBUTTON, b, (char**)c }
@@ -918,13 +998,17 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 		CHECKBOX(m_GUI_highlight_used_files, "gui/main_window/source_files/lowlight"),
 		CHECKBOX(m_GUI_highlight_stream_source_files, "gui/main_window/source_files/highlight"),
 		CHECKBOX(m_GUI_enable_overwrite_confirmation, "gui/general/overwritedlg"),
-		CHECKBOX(m_GUI_DoneDlg, "gui/general/finished_muxing_dialog")
+		CHECKBOX(m_GUI_DoneDlg, "gui/general/finished_muxing_dialog"),
+		CHECKBOX(m_GUI_Highlight_NoAVI_Streams, "gui/main_window/streams/highlight/no_avi_output"),
+		CHECKBOX(m_GUI_Highlight_Default_Streams, "gui/main_window/streams/highlight/default"),
+		MAPPEDCHECKBOX(m_GUI_UseCleartypeFonts, "gui/main_window/font/quality", &clearTypeCheckboxMap)
 
 	};
 	#undef CHECKBOX
 	#undef INTEGERBOX
 	#undef COMBOBOX
 	#undef RADIOBUTTON
+	#undef MAPPEDCHECKBOX
 
 	CResizeableDialog::OnInitDialog();
 
@@ -1064,7 +1148,8 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 	CWnd* pages_GUI1 [] = {
 		&m_GUI_highlight_used_files, &m_GUI_highlight_stream_source_files,
 		&m_GUI_General_Label, &m_GUI_enable_overwrite_confirmation,
-		&m_GUI_DoneDlg
+		&m_GUI_DoneDlg, &m_GUI_Highlight_Default_Streams, 
+		&m_GUI_Highlight_NoAVI_Streams, &m_GUI_UseCleartypeFonts
 	};
 	InsertToPage(pg, pages_GUI1, sizeof(pages_GUI1)/sizeof(CWnd*));
 	_pages.push_back(pg);
@@ -1088,7 +1173,7 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 						&m_GUI_General_Label };
 
 	RECT r1,r2;
-	for (i=0;i<sizeof(windows)/sizeof(windows[0]);i++) {
+	for (int i=0;i<sizeof(windows)/sizeof(windows[0]);i++) {
 		windows[i]->GetWindowRect(&r1);
 		m_Options.GetWindowRect(&r2);
 		ScreenToClient(&r1);
@@ -1111,7 +1196,7 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 	r1.right+=80 + r2.right-r2.left;
 	r1.bottom+=75;
 
-	j = GetSystemMetrics(SM_CXSCREEN)/2;
+	int j = GetSystemMetrics(SM_CXSCREEN)/2;
 	int k = (r1.right-r1.left)/2;
 	r1.left=(j-k);
 	r1.right=(j+k);
@@ -1139,13 +1224,14 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 
 	OnBnClickedOutputThreaded();
 
-	switch (sfoData.iActiveButton & 0x7) {
+	switch (sfoData.iActiveButton & 0xF) {
 		case 0: m_Radio_Output_General.SetCheck(1); OnRadioGeneral(); break;
 		case 1: m_Radio_AVI.SetCheck(1); OnRadioAvi(); break;
 		case 2: m_Radio_MKV.SetCheck(1); OnRadioMkv(); break;
 		case 3: m_Radio_Input_AVIMP3.SetCheck(1); OnRadioInputAvimp3(); break;
 		case 4: m_Radio_Input_MKV.SetCheck(1); OnRadioInputMkv(); break;
 		case 6: m_Radio_Input_General.SetCheck(1); OnRadioInputGeneral(); break;
+		case 9: m_Radio_GUI_General.SetCheck(1); OnBnClickedGuiGeneral(); break;
 	}
 
 	m_AC3FrameCount.SetTextAlign(TA_CENTER);
@@ -1612,11 +1698,18 @@ BOOL CSetStoreFileOptionsDlg::OnInitDialog()
 	HWND gui1_hwnd[] = { *GetDlgItem(IDC_GUI1_HIGHLIGH_USED_FILES),
 		*GetDlgItem(IDC_GUI1_HIGHLIGH_STREAM_SOURCE_FILES),
 		*GetDlgItem(IDC_GUI1_ENABLEOVERWRITEWARNING), 
-		*GetDlgItem(IDC_GUI1_DONEDLG), NULL };
+		*GetDlgItem(IDC_GUI1_DONEDLG), 
+		*GetDlgItem(IDC_GUI1_HIGHLIGHT_DEFAULT_STREAMS),
+		*GetDlgItem(IDC_GUI1_HIGHLIGHT_NOAVI_STREAMS),
+		*GetDlgItem(IDC_GUI1_USE_CLEARTYPE_FONT),
+		NULL
+	};
 	AttachRow(gui1_hwnd, checkbox_distance, ATTB_LEFTRIGHT);
 	
 
 	ReinitPosition();
+	int redo = 0;
+	ReorderWindows(redo);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX-Eigenschaftenseiten sollten FALSE zurückgeben
@@ -1827,14 +1920,14 @@ void CSetStoreFileOptionsDlg::OnRadioGeneral()
 {
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
 	ShowPage(0);
-	sfoData.iActiveButton &=~7;
+	sfoData.iActiveButton &=~15;
 }
 
 void CSetStoreFileOptionsDlg::OnRadioAvi() 
 {
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
 	ShowPage(1);
-	sfoData.iActiveButton &=~7;
+	sfoData.iActiveButton &=~15;
 	sfoData.iActiveButton |= 1;
 
 	switch (sfoData.active_avi_page)
@@ -1848,7 +1941,7 @@ void CSetStoreFileOptionsDlg::OnRadioMkv()
 {
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
 	ShowPage(2);
-	sfoData.iActiveButton &=~7;
+	sfoData.iActiveButton &=~15;
 	sfoData.iActiveButton |= 2;
 
 	switch (sfoData.active_mkv_page)
@@ -1863,7 +1956,7 @@ void CSetStoreFileOptionsDlg::OnRadioInputAvimp3()
 {
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
 	ShowPage(3);
-	sfoData.iActiveButton &=~7;
+	sfoData.iActiveButton &=~15;
 	sfoData.iActiveButton |= 3;
 	
 }
@@ -1872,7 +1965,7 @@ void CSetStoreFileOptionsDlg::OnRadioInputMkv()
 {
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
 	ShowPage(4);
-	sfoData.iActiveButton &=~7;
+	sfoData.iActiveButton &=~15;
 	sfoData.iActiveButton |= 4;
 	
 }
@@ -2110,7 +2203,7 @@ void CSetStoreFileOptionsDlg::OnMkvPage1()
 	ShowPage(2);
 	m_MKV_Page2.SetCheck(0);
 	m_MKV_Page3.SetCheck(0);
-	sfoData.iActiveButton &=~0x08;
+	sfoData.iActiveButton &=~0x0F;
 	sfoData.iActiveButton |= 2;   // button 2
 	sfoData.active_mkv_page = 1;   // subbutton 1
 }
@@ -2151,7 +2244,7 @@ void CSetStoreFileOptionsDlg::OnRadioInputGeneral()
 {
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
 	ShowPage(6);
-	sfoData.iActiveButton &=~7;
+	sfoData.iActiveButton &=~15;
 	sfoData.iActiveButton |= 6;
 
 }
@@ -2176,7 +2269,7 @@ void CSetStoreFileOptionsDlg::OnAviPage1()
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
 	ShowPage(1);	
 	m_MKV_Page2.SetCheck(0);
-	sfoData.iActiveButton &=~0x17;
+	sfoData.iActiveButton &=~0x0F;
 	sfoData.iActiveButton |= 1;    // button 1
 	sfoData.active_avi_page = 1;    // subbutton 1
 }
@@ -2185,7 +2278,7 @@ void CSetStoreFileOptionsDlg::OnAviPage2()
 {
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
 	ShowPage(7);	
-	sfoData.iActiveButton &=~0x17;
+	sfoData.iActiveButton &=~0x0F;
 	sfoData.iActiveButton |= 0x01; // button 1
 	sfoData.active_avi_page = 2; // subbutton 2
 
@@ -2285,6 +2378,9 @@ void CSetStoreFileOptionsDlg::OnBnClickedGuiGeneral()
 	// TODO: Fügen Sie hier Ihren Kontrollbehandlungscode für die Benachrichtigung ein.
 
 	ShowPage(9);
+
+	sfoData.iActiveButton &=~0x0F;
+	sfoData.iActiveButton |= 9;    
 }
 
 void CSetStoreFileOptionsDlg::OnBnClickedOutputThreaded()
@@ -2295,4 +2391,14 @@ void CSetStoreFileOptionsDlg::OnBnClickedOutputThreaded()
 		m_Overlapped.SetCheck(0);
 
 	m_Overlapped.EnableWindow(!m_Output_Thread.GetCheck());
+}
+
+void CSetStoreFileOptionsDlg::OnBnClickedGui1UseCleartypeFont()
+{
+	// TODO: Add your control notification handler code here
+}
+
+void CSetStoreFileOptionsDlg::OnBnClickedRadioOutputGeneral()
+{
+	// TODO: Add your control notification handler code here
 }

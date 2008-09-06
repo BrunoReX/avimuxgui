@@ -34,7 +34,7 @@ class MEMORYSTREAM : public STREAM
 	public:
 		MEMORYSTREAM(void);
 		~MEMORYSTREAM(void);
-		int					Open(FILESTREAM* lpSource, DWORD dwMode);
+		int					Open(CFileStream* lpSource, DWORD dwMode);
 		int			virtual Close(void);
 		int			virtual Seek(__int64 qwPos);
 		__int64		virtual GetPos(void);

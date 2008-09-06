@@ -1,9 +1,10 @@
 #ifndef I_TREES
 #define I_TREES
 
-#include "../DynArray.h"
+#include <vector>
 
-template <class T> HTREEITEM Tree_Insert(T* CTree,char* cBuffer,HTREEITEM hParent = NULL, HTREEITEM hAfter = TVI_LAST)
+template <class T> 
+HTREEITEM Tree_Insert(T* CTree,char* cBuffer,HTREEITEM hParent = NULL, HTREEITEM hAfter = TVI_LAST)
 {
 	TVINSERTSTRUCT	tvi;
 
@@ -18,7 +19,8 @@ template <class T> HTREEITEM Tree_Insert(T* CTree,char* cBuffer,HTREEITEM hParen
 	return CTree->InsertItem(&tvi);
 }
 
-template <class T> HTREEITEM Tree_InsertCheck(T* CTree,char* cBuffer,HTREEITEM hParent = NULL, HTREEITEM hAfter = TVI_LAST)
+template <class T> 
+HTREEITEM Tree_InsertCheck(T* CTree,char* cBuffer,HTREEITEM hParent = NULL, HTREEITEM hAfter = TVI_LAST)
 {
 	TVINSERTSTRUCT	tvi;
 
@@ -35,7 +37,8 @@ template <class T> HTREEITEM Tree_InsertCheck(T* CTree,char* cBuffer,HTREEITEM h
 }
 
 
-template <class T> BOOL Tree_SetCheckState(T* CTree, HTREEITEM hItem, BOOL fCheck)
+template <class T> 
+BOOL Tree_SetCheckState(T* CTree, HTREEITEM hItem, BOOL fCheck)
 {
     TVITEM tvItem;
 
@@ -53,7 +56,8 @@ template <class T> BOOL Tree_SetCheckState(T* CTree, HTREEITEM hItem, BOOL fChec
 	return true;
 }
 
-template <class T> BOOL Tree_GetCheckState(T* CTree, HTREEITEM hItem)
+template <class T> 
+BOOL Tree_GetCheckState(T* CTree, HTREEITEM hItem)
 {
     TVITEM tvItem;
 
@@ -71,19 +75,26 @@ template <class T> BOOL Tree_GetCheckState(T* CTree, HTREEITEM hItem)
 
 
 
-template <class T> CDynIntArray* Tree_GetChecked(T* CTree, HTREEITEM hItem, CDynIntArray** indices = NULL)
+template <class T> 
+std::vector<HTREEITEM> Tree_GetChecked(T* CTree, HTREEITEM hItem, std::vector<int>* indices = NULL)
 {
 	int	j;
 
-	CDynIntArray* a = new CDynIntArray;
-	if (indices) *indices = new CDynIntArray;
+	//CDynIntArray* a = new CDynIntArray;
+	std::vector<HTREEITEM> result;
+
+//	if (indices) *indices = new CDynIntArray;
 
 	j=0;
 	while (hItem)
 	{
 		if (Tree_GetCheckState(CTree,hItem)) {
-			a->Insert((int)hItem);
-			if (indices) (*indices)->Insert(j++);
+	//		a->Insert((int)hItem);
+			result.push_back(hItem);
+
+			if (indices) 
+				indices->push_back(j++); 
+			//(*indices)->Insert(j++);
 		}
 
 		hItem = CTree->GetNextSiblingItem(hItem);
@@ -92,20 +103,26 @@ template <class T> CDynIntArray* Tree_GetChecked(T* CTree, HTREEITEM hItem, CDyn
 	return a;
 }
 
-template <class T> CDynIntArray* Tree_GetAllRootElements(T* CTree, HTREEITEM hItem)
+template <class T> 
+std::vector<HTREEITEM> Tree_GetAllRootElements(T* CTree, HTREEITEM hItem)
 {
-	CDynIntArray* a = new CDynIntArray;
+	std::vector<HTREEITEM> result;
+//	CDynIntArray* a = new CDynIntArray;
 
 	while (hItem)
 	{
-		a->Insert((int)hItem);
+//		a->Insert((int)hItem);
+		result.push_back(hItem);
+
 		hItem = CTree->GetNextSiblingItem(hItem);
 	}
 
-	return a;
+	//return a;
+	return result;
 }
 
-template <class T> HTREEITEM Tree_Index2Item(T* CTree, int iIndex, int iID = -1, int* d = NULL)
+template <class T> 
+HTREEITEM Tree_Index2Item(T* CTree, int iIndex, int iID = -1, int* d = NULL)
 {
 	int counter = 0;
 

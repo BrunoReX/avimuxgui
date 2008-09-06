@@ -39,11 +39,4 @@ void DeleteTagList(TAG_LIST** tag_list);
 
 typedef std::vector<int> TAG_INDEX_LIST;
 
-/*typedef struct
-{
-	int		iCount;
-	int*	pIndex;
-} TAG_INDEX_LIST;
-*/
-
 #endif

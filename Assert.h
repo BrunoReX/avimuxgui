@@ -1,0 +1,1 @@
+#define __ASSERT(a, b) if(!(a)) printf("file", __FILE__, "line", __LINE__, " :", b);

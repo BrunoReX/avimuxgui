@@ -103,7 +103,7 @@ typedef struct
 	int				locked;
 } CACHE_LINE;
 
-operator <(CACHE_LINE& one, CACHE_LINE& other);
+bool operator <(CACHE_LINE& one, CACHE_LINE& other);
 
 typedef struct {
 	int				iLastAccessedCacheLineIndexRead;

@@ -170,7 +170,7 @@ int DecomposeEntry(char* b, __int64* iBegin, __int64* iEnd, char** pcText)
 	while (*b && *b==' ') *b++;
 	*pcText = b;
 
-	if (!stricmp(cTill,"end")) {
+	if (!_stricmp(cTill,"end")) {
 		if (!keep)
 			*iEnd = -1;
 		else 
@@ -376,6 +376,8 @@ BOOL CChapterDlg::OnInitDialog()
 	TABHandler_install(m_Chapters.m_hWnd, m_ChapterDisplay.m_hWnd, false);
 	TABHandler_install(m_ChapterDisplay, cbi.hwndItem, false);
 
+//	ReinitPosition();
+
 	return false;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX-Eigenschaftenseiten sollten FALSE zurückgeben
 }
@@ -486,7 +488,7 @@ void CChapterDlg::OnMakesubchapter()
 	m_Chapters.EditLabel(hNew);
 }
 
-int RenderChapters2File(FILESTREAM* f, CChapters* c)
+int RenderChapters2File(CFileStream* f, CChapters* c)
 {
 	for (int i=0;i<c->GetChapterCount();i++) {
 		char cTime[30];
@@ -554,8 +556,6 @@ int RenderChapters2File(FILE* f, CChapters* c)
 
 void CChapterDlg::OnSaveas() 
 {
-	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
-
 	XMLNODE* xml = NULL;
 	XMLNODE* xmlChapters = NULL;
 	XMLNODE* xmlTags = NULL;
@@ -564,30 +564,42 @@ void CChapterDlg::OnSaveas()
 	char* t;
 
 	c->CreateXMLTree(&xml, &xmlChapters, &xmlTags);
-	char* txt_all = (char*)malloc(1<<20);
-	char* txt_chp = (char*)malloc(1<<20);
-	char* txt_tag = (char*)malloc(1<<20);
+	
+	const char* txt_all = NULL; 
+	const char* txt_chp = NULL; 
+	const char* txt_tag = NULL; 
 
-	ZeroMemory(txt_all, 1<<20);
-	ZeroMemory(txt_chp, 1<<20);
-	ZeroMemory(txt_tag, 1<<20);
+	char buf[1024]; 
 
-	sprintf(txt_all,"%c%c%c%s%c%c%s%c%c",0xEF,0xBB,0xBF,"<?xml version=\"1.0\" encoding=\"utf-8\"?>",13,10,
+	buf[0]=0;
+	sprintf(buf,"%c%c%c%s%c%c%s%c%c",0xEF,0xBB,0xBF,"<?xml version=\"1.0\" encoding=\"utf-8\"?>",13,10,
 		"<!DOCTYPE Segment SYSTEM \"matroskasegment.dtd\">", 13, 10);
-	sprintf(txt_chp,"%c%c%c%s%c%c%s%c%c",0xEF,0xBB,0xBF,"<?xml version=\"1.0\" encoding=\"utf-8\"?>",13,10,
-		"<!DOCTYPE Chapters SYSTEM \"matroskachapters.dtd\">", 13, 10);
-	sprintf(txt_tag,"%c%c%c%s%c%c%s%c%c",0xEF,0xBB,0xBF,"<?xml version=\"1.0\" encoding=\"utf-8\"?>",13,10,
-		"<!DOCTYPE Tags SYSTEM \"matroskatags.dtd\">", 13, 10);
+	std::string st_all = buf;
 
-	xmlTreeToString((XMLNODE*)xml, txt_all+strlen(txt_all), 1048000);
-	xmlTreeToString((XMLNODE*)xmlChapters, txt_chp+strlen(txt_chp), 1048000);
-	xmlTreeToString((XMLNODE*)xmlTags, txt_tag+strlen(txt_tag), 1048000);
+	buf[0]=0;
+	sprintf(buf,"%c%c%c%s%c%c%s%c%c",0xEF,0xBB,0xBF,"<?xml version=\"1.0\" encoding=\"utf-8\"?>",13,10,
+		"<!DOCTYPE Chapters SYSTEM \"matroskachapters.dtd\">", 13, 10);
+	std::string st_chp = buf;
+
+	buf[0]=0;
+	sprintf(buf,"%c%c%c%s%c%c%s%c%c",0xEF,0xBB,0xBF,"<?xml version=\"1.0\" encoding=\"utf-8\"?>",13,10,
+		"<!DOCTYPE Tags SYSTEM \"matroskatags.dtd\">", 13, 10);
+	std::string st_tag = buf;
+
+	xmlTreeToString((XMLNODE*)xml, st_all);
+	txt_all = st_all.c_str();
+
+	xmlTreeToString((XMLNODE*)xmlChapters, st_chp);
+	txt_chp = st_chp.c_str();
+
+	xmlTreeToString((XMLNODE*)xmlTags, st_tag);
+	txt_tag = st_tag.c_str();
 
 	if (m_Chapters.GetCount()) {
 
 		char* def_ext; GetAttribs()->GetStr("default_save_extension", &def_ext);
 
-		if (stricmp(def_ext, "xml") && stricmp(def_ext, "mkc")) {
+		if (_stricmp(def_ext, "xml") && _stricmp(def_ext, "mkc")) {
 			MessageBox("Weird default extension defined!", "Internal Error",
 				MB_OK | MB_ICONERROR);
 		}
@@ -599,7 +611,7 @@ void CChapterDlg::OnSaveas()
 			"All file types (*.xml, *.mkc)|*.xml;*.mkc"
 		};
 
-		if (!stricmp(def_ext, "xml")) {
+		if (!_stricmp(def_ext, "xml")) {
 			strcat(file_types, possible_file_types[0]);
 			strcat(file_types, "|");
 			strcat(file_types, possible_file_types[1]);
@@ -628,19 +640,19 @@ void CChapterDlg::OnSaveas()
 			t = o.lpstrFile;
 			splitpathname(t, (char**)&f, (char**)&e, NULL);
 
-			FILESTREAM* f = new FILESTREAM;
+			CFileStream* f = new CFileStream;
 			if (f->Open(t, STREAM_WRITE) != STREAM_OK) {
 				MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE), LoadString(IDS_ERROR), MB_OK);
 			} else {
-				if (!stricmp(e, "amg")) {
+				if (!_stricmp(e, "amg")) {
 					f->WriteString("SET OUTPUT OPTIONS\n");
 					f->WriteString("WITH SET OPTION CHAPTERS\n");
 					RenderChapters2File(f,c);
 					f->WriteString("END WITH\n");
 					f->Close();
 				} else 
-				if (!stricmp(e, "xml") || !stricmp(e, "txt")) {
-					f->WriteString(txt_all);
+				if (!_stricmp(e, "xml") || !_stricmp(e, "txt")) {
+					f->WriteString((void*)txt_all);
 					f->Close();
 
 					char c[4096]; c[0]=0;
@@ -650,7 +662,7 @@ void CChapterDlg::OnSaveas()
 					if (f->Open(c, STREAM_WRITE) != STREAM_OK) {
 						MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE), LoadString(IDS_ERROR), MB_OK);
 					} else {
-						f->WriteString(txt_chp);
+						f->WriteString((void*)txt_chp);
 						f->Close();
 					}
 
@@ -659,12 +671,12 @@ void CChapterDlg::OnSaveas()
 					if (f->Open(c, STREAM_WRITE) != STREAM_OK) {
 						MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE), LoadString(IDS_ERROR), MB_OK);
 					} else {
-						f->WriteString(txt_tag);
+						f->WriteString((void*)txt_tag);
 						f->Close();
 					}
 					delete f;
 				} else
-				if (!strnicmp(e, "mk", 2)) {
+				if (!_strnicmp(e, "mk", 2)) {
 					char u[4096]; u[0]=0;
 					MATROSKA* m = new MATROSKA;
 					m->Open(f, MMODE_WRITE);
@@ -687,11 +699,6 @@ void CChapterDlg::OnSaveas()
 	xmlDeleteNode(&xml);
 	xmlDeleteNode(&xmlChapters);
 	xmlDeleteNode(&xmlTags);
-
-	free(txt_all);
-	free(txt_chp);
-	free(txt_tag);
-	
 }
 
 void CChapterDlg::OnBeginlabeleditTree1(NMHDR* pNMHDR, LRESULT* pResult) 
@@ -860,7 +867,7 @@ void CChapterDlg::OnSelchangedChaptertree(NMHDR* pNMHDR, LRESULT* pResult)
 			UpdateChapterDisplayLngEdit(0);
 		}
 
-		for (i=j-1; i>=disp_count+1; i--) {
+		for (int i=j-1; i>=disp_count+1; i--) {
 			m_ChapterDisplay.DeleteItem(i);
 		}
 

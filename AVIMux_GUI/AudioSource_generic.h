@@ -1,6 +1,8 @@
 #ifndef I_AUDIOSOURCE_GENERIC
 #define I_AUDIOSOURCE_GENERIC
 
+#include "windows.h"
+
 const int MMSGFS_MPEG_LAYERVERSION	= 0x0000000000000001;
 const int MMSGFS_MPEG_VERSION		= 0x0000000000000020;
 const int MMSGFS_AAC_PROFILE		= 0x0000000000000010;
@@ -17,7 +19,7 @@ const int MMSGFS_IS_VORBIS			= 0x0000000000000019;
 const int MMSGFS_IS_AC3				= 0x000000000000001A;
 const int MMSGFS_IS_DTS				= 0x000000000000001B;
 
-typedef int (_stdcall *RESYNCCALLBACK)(__int64,DWORD,DWORD);
+typedef int (_stdcall *RESYNCCALLBACK)(__int64, DWORD, DWORD);
 
 #include "../multimedia_source.h"
 
@@ -58,29 +60,78 @@ class AUDIOSOURCE: public MULTIMEDIASOURCE
 	public:
 		AUDIOSOURCE();
 		~AUDIOSOURCE();
+
+		/* return an estimation of the average number of bytes per second,
+		   this value might be a good (or not really good) estimation, e.g.
+		   it's hard to estimate a vorbis data rate without actually parsing
+		   the file */
 		int		virtual GetAvgBytesPerSec();
+
+		/* sample bit depth, e.g. 16 bit */
 		int		virtual GetBitDepth();
+
+		/* number of channels; this does not make a difference between real
+		   channels and the AC3 low frequency effects channel */
 		int		virtual GetChannelCount();
+
+		/* returns the channels like "2" or "2.0" or "5.1" */
+		char	virtual *GetChannelString();
+
+		/* the format tag that would be used when storing this stream in
+		   an AVI file */
 		int		virtual GetFormatTag(void);
+
 		__int64 virtual GetFeature(int iFeature);
 		void	virtual *GetFormat();
+		
+		/* defines the number of frames that should be returned at once */
 		int		virtual GetFrameMode(void);
+
+		/* returns the sample rate */
 		int		virtual GetFrequency();
+
+		/* returns the smallest number of bytes that can be returned at once */
 		int		virtual GetGranularity();
+
+		/* returns the sample rate after decoding; this differs from 
+		   GetFrequency() in the case of AAC SBR */
 		int		virtual GetOutputFrequency();
+
+		/* returns the real duration of the stream */
 		__int64	virtual GetUnstretchedDuration();
+
+		/* returns the CodecID that is used for this stream in a matroska
+		   file; this does not return the ID that would be used if the
+		   stream was stored in a matroska file! */
 		char	virtual *GetCodecID();
+
+		/* the number of bytes at the beginning of the stream that should
+		   be ignored; this is used to skip garbage at the beginning */
 		int		virtual GetOffset();
 		int		virtual GetType();
 		bool	virtual IsCBR();
+
+		/* checks if the audio source could be joined with another given
+		   audio source */
 		int		virtual IsCompatible(AUDIOSOURCE* a);
+
+
 		int		virtual JoinSeamless(bool bSeamless);
 		int		virtual Read(void* lpDest,DWORD dwMicrosecDesired,DWORD* lpdwMicrosecRead,
 							__int64* lpqwNanosecRead,__int64* lpiTimeocde = NULL,
 							ADVANCEDREAD_INFO* lpAARI = NULL);
+	
+		/* Seek to the given position; this takes GetOffset() into account */
 		int		virtual Seek(__int64 iPos);
+
+		/* Select the number of frames to read at once */
 		int		virtual	SetFrameMode(DWORD dwMode);
+
+		/* Assume the stream to be CBR */
 		void	virtual AssumeCBR(void) {};
+
+		/* Assume the stream to be VBR; this makes sense e.g. to create an MP3
+		   stream in an AVI file that is CBR but that uses VBR headers */
 		void	virtual AssumeVBR(void) {};
 };
 

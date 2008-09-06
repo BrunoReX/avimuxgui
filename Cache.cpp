@@ -1,6 +1,6 @@
 /* The CACHE class implements a transparent thread safe cache system
    that features asnychronous read ahead, asynchronous writeback and
-   unbuffered I/O with an underlying FILESTREAM class. However, note
+   unbuffered I/O with an underlying CCCFileStream class. However, note
    that thread-safety and asnychronous read-ahead are mutually exclusive.
 
    I had to do this a second time from scratch because the first attempt
@@ -19,7 +19,7 @@
 #include "windows.h"
 #include "crtdbg.h"
 #include "limits.h"
-#include "Filestream.h"
+#include "FileStream.h"
 
 #ifdef DEBUG_NEW
 #ifdef _DEBUG
@@ -134,7 +134,7 @@ BYTE* LINEARCACHE::GetData(void)
 
 #include <algorithm>
 
-operator <(CACHE_LINE& one, CACHE_LINE& other)
+bool operator <(CACHE_LINE& one, CACHE_LINE& other)
 {
 	if (one.iSourceOffset < other.iSourceOffset) return true;
 	return false;
@@ -464,7 +464,7 @@ bool CACHE::InitCache(int iBuffers, int iBytesPerBuffer, bool bPermanentGrow)
 	}
 
 	if (existing_cache_lines > iBuffers) {
-		for (i = existing_cache_lines-1; i>=iBuffers; i--) {
+		for (int i = existing_cache_lines-1; i>=iBuffers; i--) {
 			free(cache_lines[i]->pAllocated);
 			cache_lines[i]->pAllocated = 0;
 			cache_lines[i]->iSize = 0;
@@ -1059,7 +1059,7 @@ int CACHE::FindCacheLineIndexToOverwrite()
 		DWORD*  cli = (DWORD*)malloc(sizeof(DWORD)*iNumberOfCacheLines);
 		int handle_count = 0;
 
-		for (j=0; j<iNumberOfCacheLines; j++) if (cache_lines[j]->bBeingWritten) {
+		for (int j=0; j<iNumberOfCacheLines; j++) if (cache_lines[j]->bBeingWritten) {
 			h[handle_count] = cache_lines[j]->overlapped.hEvent;
 			cli[handle_count++] = j;
 		}
@@ -1068,7 +1068,7 @@ int CACHE::FindCacheLineIndexToOverwrite()
 		   to complete */
 		if (handle_count > 0) {
 			int idx = -1;
-			while (idx < WAIT_OBJECT_0 || idx > WAIT_OBJECT_0 + handle_count - 1)
+			while ((idx < WAIT_OBJECT_0) || (idx > WAIT_OBJECT_0 + handle_count - 1))
 				idx = WaitForMultipleObjectsEx(handle_count, h, false, INFINITE, true);
 
 			idx -= WAIT_OBJECT_0;
@@ -1374,7 +1374,7 @@ int CACHE::Write(void* pSrc, DWORD dwBytes)
 		if (GetBytesLeftInCurrentCacheLine(false) >= (int)dwBytes) {
 
 			/* if this assertion fails, the CACHE class is broken somewhere */
-			_ASSERT(GetCacheLineCurrentWritePos(cl) + dwBytes <= iCacheLineSize);
+			_ASSERT(GetCacheLineCurrentWritePos(cl) + (int)dwBytes <= iCacheLineSize);
 
 			memcpy(cl->pData + GetCacheLineCurrentWritePos(cl), pSrc, dwBytes);
 			SetAccessPosition(false, dwBytes, true);

@@ -4,8 +4,8 @@
 #include "..\xml.h"
 #include "textfiles.h"
 
-int FileIsXML(CTEXTFILE* t);
-int Textfile2String(CTEXTFILE* t, char* c);
-
+int FileIsXML(CTextFile* t);
+int Textfile2String(CTextFile* t, char* c);
+char* Textfile2String(CTextFile* t);
 
 #endif

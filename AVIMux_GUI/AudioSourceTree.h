@@ -53,11 +53,47 @@ typedef struct
 const int ASIF_ALLOCATED =	0x01;
 const int ASIF_AVISOURCE =	0x02;
 
-typedef struct {
+class TREE_ITEM_INFO
+{
+private:
+	CFont* lastUsedFont;
+
+public:
+	TREE_ITEM_INFO()
+	{
+		iID = 0;
+		iOrgPos = 0;
+		iCurrPos = 0;
+		iHideText = 0;
+		iTextWidth = 0;
+		pData = NULL;
+		lastUsedFont = 0;
+	}
+
+	CFont* LastUsedFont() const {
+		return lastUsedFont;
+	}
+
+	void SetFont(CFont* newFont) 
+	{
+		lastUsedFont = newFont;
+	}
+
+	void ResetFont()
+	{
+		if (lastUsedFont)
+		{
+			lastUsedFont->DeleteObject();
+			delete lastUsedFont;
+		}
+		lastUsedFont = NULL;
+	}
+
 	int		iID;
 	int		iOrgPos;
 	int		iCurrPos;
-
+	int     iHideText;
+	int     iTextWidth;
 	union
 	{
 		void*                  pData;
@@ -67,8 +103,7 @@ typedef struct {
 		MULTIMEDIA_STREAM_INFO* pMSI;
 		char*                  pText;
 	};
-
-} TREE_ITEM_INFO;
+};
 
 const int TIIID_MSI     = 0x08;
 const int TIIID_ASI		= 0x01 | TIIID_MSI;
@@ -76,7 +111,9 @@ const int TIIID_SSI		= 0x02 | TIIID_MSI;
 const int TIIID_VSI     = 0x04 | TIIID_MSI;
 
 const int TIIID_LNGCODE = 0x10;
-const int TIIID_STRNAME = 0x11;
+const int TIIID_STRNAME = 0x20;
+const int TIIID_TITLE   = 0x40;
+const int TIIID_TITLELNG= 0x80;
 
 TREE_ITEM_INFO*	BuildTIIfromASI(AUDIO_STREAM_INFO* asi);
 TREE_ITEM_INFO*	BuildTIIfromSSI(SUBTITLE_STREAM_INFO* ssi);
@@ -100,14 +137,22 @@ public:
 
 // Attribute
 public:
-
+	void			AddTitleToStreamTree(HTREEITEM hParent, char* cLng, char* cTitle);
+	void			DeleteTitleFromStreamTree(HTREEITEM hTitle);
+	void			DeleteAllTitlesFromStreamTree(HTREEITEM hParent);
 // Operationen
 public:
 	HTREEITEM	FindID(HTREEITEM hItem, int iID, TREE_ITEM_INFO** tii = NULL);
-	CDynIntArray* GetItems(HTREEITEM hItem, int iID, int iCheck, CDynIntArray** indices = NULL);
+	
+	std::vector<HTREEITEM> GetItems(
+		HTREEITEM hItem, 
+		int iID, 
+		int iCheck, 
+		std::vector<int>* indices = NULL);
+	
 	TREE_ITEM_INFO* GetItemInfo(HTREEITEM hItem);
 	TREE_ITEM_INFO*	FindItemOriginalPosition(int original_position);
-
+	void GetAllInfo(HTREEITEM hParent, std::vector<TREE_ITEM_INFO*>& result);
 // Überschreibungen
 	// Vom Klassen-Assistenten generierte virtuelle Funktionsüberschreibungen
 	//{{AFX_VIRTUAL(CAudioSourceTree)

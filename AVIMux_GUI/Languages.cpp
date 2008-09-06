@@ -4,7 +4,7 @@
 #include "stdio.h"
 #include "textfiles.h"
 #include "global.h"
-#include "../Filestream.h"
+#include "../FileStream.h"
 
 
 
@@ -67,7 +67,7 @@ char*	LoadString(DWORD dwID, int charset)
 
 LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 {
-	char	cBuffer[1024];
+	char* cBuffer = NULL;
 
 	DWORD*	lpdwIndices,i,dwLen;
 	char**	lplpStrings;
@@ -76,18 +76,16 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 
 	LANGUAGE_DESCRIPTOR*		lpLD;
 	
-	FILESTREAM* s = new FILESTREAM;
-	s->Open(lpcName,STREAM_READ);
-	CTEXTFILE* f = new CTEXTFILE;
-	f->Open(STREAM_READ,s);
-	f->SelectOutputFormat(CM_UTF8);
+	CFileStream* s = new CFileStream;
+	s->Open(lpcName, STREAM_READ);
+	CTextFile* f = new CTextFile;
+	f->Open(STREAM_READ, s);
+	f->SetOutputEncoding(CHARACTER_ENCODING_UTF8);
 	
-	ZeroMemory(cBuffer,sizeof(cBuffer));
-	
-	f->ReadLine(cBuffer);
+	f->ReadLine(&cBuffer);
 
-	if (lstrcmp("[AVI-Mux GUI Language File]",cBuffer))
-	{
+	if (strcmp("[AVI-Mux GUI Language File]", cBuffer)) {
+		free(cBuffer);
 		f->Close();
 		delete f;
 		s->Close();
@@ -95,36 +93,39 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 		return NULL;
 	}
 
+	free(cBuffer);
 	lpLD = new LANGUAGE_DESCRIPTOR;
 	ZeroMemory(lpLD,sizeof(LANGUAGE_DESCRIPTOR));
 
-	f->ReadLine(cBuffer);
-	f->ReadLine(cBuffer);
-	if (lstrcmp("NAME",cBuffer))
-	{
+	f->ReadLine(&cBuffer);
+	free(cBuffer);
+	f->ReadLine(&cBuffer);
+	if (lstrcmp("NAME", cBuffer)) {
+		free(cBuffer);
 		f->Close();
 		delete f;
 		s->Close();
 		delete s;
 		return NULL;
 	}
-		
-	f->ReadLine(cBuffer);
+	free(cBuffer);
+	f->ReadLine(&cBuffer);
 
 	newz(char,1+strlen(cBuffer), lpLD->lpcName);
 
 	UTF82Str(cBuffer, lpLD->lpcName);
-	
-	f->ReadLine(cBuffer);
+	free(cBuffer);
+	f->ReadLine(&cBuffer);
 
 	newz(DWORD, 4096, lpdwIndices);
 	newz(char*, 4096, lplpStrings);
 	newz(char*, 4096, lplpStringsUTF8);
 
-	while (f->ReadLine(cBuffer)>-1)
+	while (f->ReadLine(&cBuffer)>-1)
 	{
 		lpdwIndices[lpLD->dwEntries]=atoi(cBuffer);
-		f->ReadLine(cBuffer);
+		free(cBuffer);
+		f->ReadLine(&cBuffer);
 
 		bBackslash=false;
 		if (lstrlen(cBuffer)>=2)
@@ -136,20 +137,14 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 			{
 				if (!bBackslash)
 				{
-					if (cBuffer[i]==92)
-					{
+					if (cBuffer[i]==92) {
 						bBackslash=true;
-					}
-					else
-					{
+					} else {
 						lplpStringsUTF8[lpLD->dwEntries][i]=cBuffer[i];
 						bBackslash=false;
 					}
-				}
-				else
-				{
-					if (cBuffer[i]='n') 
-					{
+				} else {
+					if (cBuffer[i]='n') {
 						lplpStringsUTF8[lpLD->dwEntries][i-1]=13;
 						lplpStringsUTF8[lpLD->dwEntries][i]=10;
 					}
@@ -160,9 +155,12 @@ LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName)
 			UTF82Str(lplpStringsUTF8[lpLD->dwEntries], &lplpStrings[lpLD->dwEntries]);
 
 			lpLD->dwEntries++;
-			f->ReadLine(cBuffer);
+			free(cBuffer);
+			f->ReadLine(&cBuffer);
 		}
+		free(cBuffer);
 	}
+	free(cBuffer);
 
 	newz(DWORD, lpLD->dwEntries, lpLD->lpdwIndices);
 	memcpy(lpLD->lpdwIndices,lpdwIndices,4*lpLD->dwEntries);

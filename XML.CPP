@@ -23,8 +23,9 @@ void xmlInitTree(XMLNODE** pNode)
 
 XMLNODE::XMLNODE()
 {
-	cNodeName = NULL;
-	cValue = NULL;
+	cNodeName = "";
+	bValuePresent = false;
+	cValue = "";
 	pNext = NULL;
 	pChild = NULL;
 	bIsEmpty = true;
@@ -36,10 +37,14 @@ XMLNODE* xmlSetNode(XMLNODE** pNode, char* cName, char* cValue, bool bIsEmpty = 
 	XMLNODE** ppTemp = pNode;
 	
 	xmlInitTree(ppTemp);
-	(*ppTemp)->cNodeName = new char[1+strlen(cName)];
-	strcpy((*ppTemp)->cNodeName, cName);
-	(*ppTemp)->cValue = new char[1+strlen(cValue)];
-	strcpy((*ppTemp)->cValue, cValue);
+	(*ppTemp)->cNodeName = cName; // new char[1+strlen(cName)];
+//	strcpy((*ppTemp)->cNodeName, cName);
+	(*ppTemp)->cValue = cValue; // new char[1+strlen(cValue)];
+	if (cValue && cValue[0])
+	{
+		(*ppTemp)->bValuePresent = true;
+	}
+//	strcpy((*ppTemp)->cValue, cValue);
 	(*ppTemp)->bIsEmpty = bIsEmpty;
 
 	return (*ppTemp);
@@ -98,52 +103,68 @@ XMLNODE* xmlAddSibling(XMLNODE** pNode, char* cName, char* cValue, bool bIsEmpty
 	return (*ppCurrent);
 }
 
-// store name of node to char*
-int xmlTreeToString_putname(XMLNODE* pNode, char** pDest, int iMaxLen, int open)
-{
-	char* c = pNode->cNodeName;
-	
-	*(*pDest)++ = '<';
-	if (!open) *(*pDest)++ = '/';
 
-	while (*c) *(*pDest)++ = *c++;
+// store name of node to char*
+int xmlTreeToString_putname(XMLNODE* pNode, std::string& pDest, int open)
+{
+	char* c = _strdup(pNode->cNodeName.c_str());
+	
+	//*(*pDest)++ = '<';
+	pDest.push_back('<');
+
+	if (!open) pDest.push_back('/'); //*(*pDest)++ = '/';
+
+//	while (*c) *(*pDest)++ = *c++;
+	pDest.append(c);
 
 	if (open) for (size_t j=0; j<pNode->attributes.size(); j++) {
 		XMLNODEATTRIBUTE& a = pNode->attributes[j];
 
-		*(*pDest)++ = ' ';
-		strcpy(*pDest, a.name); *pDest += strlen(*pDest);
-		*(*pDest)++ = '=';
-		*(*pDest)++ = '"';
-		strcpy(*pDest, a.value); *pDest += strlen(*pDest);
-		*(*pDest)++ = '"';
+		//*(*pDest)++ = ' ';
+		pDest.push_back(' ');
+
+		// strcpy(*pDest, a.name); *pDest += strlen(*pDest);
+		pDest.append(a.name);
+
+		//*(*pDest)++ = '=';
+		pDest.push_back('=');
+
+		//*(*pDest)++ = '"';
+		pDest.push_back('"');
+
+		//strcpy(*pDest, a.value); *pDest += strlen(*pDest);
+		pDest.append(a.value+0);
+
+		//*(*pDest)++ = '"';
+		pDest.push_back('"');
 	}
 
-	*(*pDest)++ = '>';
-
+	//*(*pDest)++ = '>';
+	pDest.push_back('>');
+	free(c);
 	return 1;
 }
 
 // add a line feed
-int xmlTreeToString_putnewline(char **pDest, int iMaxLen)
+int xmlTreeToString_putnewline(std::string& pDest)
 {
-	*(*pDest)++ = 13;
-	*(*pDest)++ = 10;
+	pDest.push_back(13);
+	pDest.push_back(10);
 
 	return 2;
 }
 
-// copy raw string to *pDest
-int xmlPutRAW(char** pDest, char* source)
+int xmlPutRAW(std::string& pDest, char* source)
 {
-	while (*source) *(*pDest)++ = *source++; return 0;
+	pDest.append(source);
+	return 0;
 }
-
 // store value of node in *pDest. Use escape sequences if necessary
-int xmlTreeToString_putvalue(XMLNODE* pNode, char** pDest, int iMaxLen)
+int xmlTreeToString_putvalue(XMLNODE* pNode, std::string& pDest)
 {
 	int i=0;
-	char* c = pNode->cValue;
+	char* c = _strdup(pNode->cValue.c_str());
+	char* c_org = c;
 	while (*c) {
 		if (*c == '&') {
 			xmlPutRAW(pDest, "&amp;");
@@ -160,45 +181,48 @@ int xmlTreeToString_putvalue(XMLNODE* pNode, char** pDest, int iMaxLen)
 		if (*c == '"') {
 			xmlPutRAW(pDest, "&quot;");
 			i+=5;
-		} else *(*pDest)++ = *c;
+		} else pDest.push_back(*c);
 		c++;
 		i++;
 	}
-
+	free(c_org);
 	return i;
 }
 
+
 // store element in *pDest: <name><value><children></name>
-int xmlTreeToString_putelement(XMLNODE* pNode, char** pDest, int iMaxLen)
+int xmlTreeToString_putelement(XMLNODE* pNode, std::string& pDest)
 {
 	if (pNode) {
-		xmlTreeToString_putname(pNode, pDest, iMaxLen, 1);
-		if (pNode->pChild) xmlTreeToString_putnewline(pDest, iMaxLen);
-		xmlTreeToString_putvalue(pNode, pDest, iMaxLen);
-		xmlTreeToString_putelement((XMLNODE*)pNode->pChild, pDest, iMaxLen);
-		xmlTreeToString_putname(pNode, pDest, iMaxLen, 0);
-		xmlTreeToString_putnewline(pDest, iMaxLen);
-		xmlTreeToString_putelement((XMLNODE*)pNode->pNext, pDest, iMaxLen);
+		xmlTreeToString_putname(pNode, pDest, 1);
+		if (pNode->pChild) xmlTreeToString_putnewline(pDest);
+		xmlTreeToString_putvalue(pNode, pDest);
+		xmlTreeToString_putelement((XMLNODE*)pNode->pChild, pDest);
+		xmlTreeToString_putname(pNode, pDest, 0);
+		xmlTreeToString_putnewline(pDest);
+		xmlTreeToString_putelement((XMLNODE*)pNode->pNext, pDest);
 	}
 
 	return 0;
 }
 
+
 // convert XML tree to char* to be stored in a human-readable text file
-int xmlTreeToString_aux(XMLNODE* pNode, char** pDest, int iMaxLen)
+int xmlTreeToString_aux(XMLNODE* pNode, std::string& pDest)
 {
-	return xmlTreeToString_putelement(pNode, pDest, iMaxLen);	
+	return xmlTreeToString_putelement(pNode, pDest);	
 }
 
-int xmlTreeToString(XMLNODE* pNode, char* pDest, int iMaxLen)
+
+int xmlTreeToString(XMLNODE* pNode, std::string& pDest)
 {
-	char* c = pDest;
+//	char* c = pDest;
 
-	int result = xmlTreeToString_aux(pNode, &pDest, iMaxLen);
+	int result = xmlTreeToString_aux(pNode, pDest);
 
-	int len = strlen(c)-1;
-	while (c[len--] == 0x20)
-		c[len+1] = 0;
+	int len = pDest.size()-1;
+	while (pDest[len--] == 0x20)
+		pDest[len+1] = 0;
 
 	return result;
 }
@@ -216,10 +240,12 @@ void xmlDeleteNode(XMLNODE** ppNode)
 			xmlDeleteNode((XMLNODE**)&(*ppNode)->pChild);
 		}
 
-		delete[] (*ppNode)->cNodeName;
+//		delete[] (*ppNode)->cNodeName;
+		(*ppNode)->cNodeName = "";
 		
-		if ((*ppNode)->cValue)
-			delete[] (*ppNode)->cValue;
+//		if ((*ppNode)->cValue)
+//			delete[] (*ppNode)->cValue;
+		(*ppNode)->cValue = "";
 
 		delete *ppNode;
 		*ppNode = NULL;
@@ -229,13 +255,15 @@ void xmlDeleteNode(XMLNODE** ppNode)
 void xmlDeleteSimpleNode(XMLNODE** ppNode)
 {
 	if (*ppNode) {
-		delete[] (*ppNode)->cNodeName;
+//		delete[] (*ppNode)->cNodeName;
+		(*ppNode)->cNodeName = "";
 
-		if ((*ppNode)->cValue)
-			delete[] (*ppNode)->cValue;
-		
-		(*ppNode)->cValue = NULL;
-		(*ppNode)->cNodeName = NULL;
+//		if ((*ppNode)->cValue)
+//			delete[] (*ppNode)->cValue;
+		(*ppNode)->cValue = "";
+
+//		(*ppNode)->cValue = NULL;
+//		(*ppNode)->cNodeName = NULL;
 	}
 }
 
@@ -330,8 +358,8 @@ int	xmlTopoSort(XMLNODE* pSource, XMLNODE** pDest, TOPO_SORT_LIST* ppList)
 		XMLNODE* pCurr = pSource;
 		XMLNODE* pPrev = NULL;
 		while (pCurr) {
-			if (!strcmp(pCurr->cNodeName, cMin)) {
-				xmlAddSibling(&pTemp, cMin, pCurr->cValue)->pChild = pCurr->pChild;
+			if (!strcmp(pCurr->cNodeName.c_str(), cMin)) {
+				xmlAddSibling(&pTemp, cMin, (char*)pCurr->cValue.c_str())->pChild = pCurr->pChild;
 				if (!pTemp->pNext) 
 					pLast = pTemp;
 				else

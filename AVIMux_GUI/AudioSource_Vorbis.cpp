@@ -81,7 +81,7 @@ int VORBISFROMOGG::Close()
 
 int VORBISFROMOGG::Open(PACKETIZER* lpSource)
 {
-	if (!lpSource || lpSource->GetSize() <= 0)
+	if (!lpSource || lpSource->GetSize() < 0)
 		return VORBIS_OPEN_ERROR;
 
 	int j;
@@ -96,6 +96,9 @@ int VORBISFROMOGG::Open(PACKETIZER* lpSource)
 
 	iPrecedingBlockSize = 0;
 	iSourceTimecode = TIMECODE_UNKNOWN;
+
+//	GetTitleSet
+
 	return VORBIS_OPEN_OK;
 }
 
@@ -376,7 +379,7 @@ int VORBISFROMOGG::ReadFloor()
 		floor1_class_subclasses = new int[maximum_class+1];
 		floor1_class_masterbooks = new int[maximum_class+1];
 
-		for (j=0;j<=maximum_class;j++) {
+		for (int j=0;j<=maximum_class;j++) {
 			floor1_class_dimension[j] = 1+packet->ReadBits(3,1);
 			if (floor1_class_subclasses[j] = packet->ReadBits(2,1)) {
 				floor1_class_masterbooks[j] = packet->ReadBits(8,1);
@@ -396,7 +399,7 @@ int VORBISFROMOGG::ReadFloor()
 		int count = 0;
 		for (int i=0;i<floor1_partitions;i++) {
 			count=floor1_class_dimension[floor1_partition_class_list[i]];
-			for (j=0;j<count;j++) {
+			for (int j=0;j<count;j++) {
 				packet->ReadBits(range_bits); floor1_values++;
 			}
 		}
@@ -449,7 +452,7 @@ int VORBISFROMOGG::ReadResidue()
 		residue_cascade[i] = highbits + 8*lowbits;
 	}
 
-	for (i=0;i<residue_classification;i++) {
+	for (int i=0;i<residue_classification;i++) {
 		for (int j=0;j<8;j++) {
 			if (residue_cascade[i] & (1<<j)) {
 				packet->ReadBits(8,1);
@@ -713,6 +716,7 @@ int VORBISPACKETSFROMMATROSKA::Open(AUDIOSOURCEFROMMATROSKA* lpSource)
 	iFrameSizes = new int[256];
 	ZeroMemory(iFrameSizes, sizeof(int)*256);
 	SetDuration(GetSource()->GetUnstretchedDuration() * GetSource()->GetTimecodeScale());
+
 	return 0;
 }
 

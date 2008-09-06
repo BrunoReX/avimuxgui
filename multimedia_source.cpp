@@ -5,6 +5,7 @@
 #include "stdlib.h"
 #include "string.h"
 
+
 #ifdef DEBUG_NEW
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -147,7 +148,7 @@ int MULTIMEDIASOURCE::GetSourceType()
 
 void MULTIMEDIASOURCE::SetName(char* _lpcName)
 {
-	if (lpcName) free(lpcName);
+/*	if (lpcName) free(lpcName);
 	lpcName=NULL;
 	if (_lpcName && *_lpcName)
 	{
@@ -155,6 +156,8 @@ void MULTIMEDIASOURCE::SetName(char* _lpcName)
 		strcpy(lpcName,_lpcName);
 	}
 	return;
+	*/
+	GetTitleSet()->SetTitle(_lpcName);
 }
 
 void MULTIMEDIASOURCE::SetLanguageCode(char* _lpcName)
@@ -169,6 +172,7 @@ void MULTIMEDIASOURCE::SetLanguageCode(char* _lpcName)
 
 int MULTIMEDIASOURCE::GetName(char* lpDest)
 {
+	/*
 	unsigned char*	lpbDest=(unsigned char*)lpDest;
 	if (!lpcName) {
 		if (lpDest) *lpbDest=0;
@@ -176,6 +180,18 @@ int MULTIMEDIASOURCE::GetName(char* lpDest)
 		if (lpDest) memcpy(lpDest,lpcName,1+strlen(lpcName));
 	}
 	return (lpcName)?strlen(lpcName):0;
+	*/
+
+	char* pTitle = NULL;
+	GetTitleSet()->GetTitle(&pTitle);
+	if (lpDest) {
+		if (pTitle)
+			strcpy(lpDest, pTitle);
+		else
+			strcpy(lpDest, "");
+	}
+
+	return (int)strlen(lpDest?lpDest:pTitle?pTitle:"");
 }
 
 int MULTIMEDIASOURCE::GetLanguageCode(char* lpDest)
@@ -186,7 +202,7 @@ int MULTIMEDIASOURCE::GetLanguageCode(char* lpDest)
 	} else {
 		if (lpDest) memcpy(lpDest,lpcLangCode,1+strlen(lpcLangCode));
 	}
-	return (lpcLangCode)?strlen(lpcLangCode):0;
+	return (lpcLangCode)?(int)strlen(lpcLangCode):0;
 }
 
 char* MULTIMEDIASOURCE::GetCodecID()
@@ -343,4 +359,62 @@ __int64 MULTIMEDIASOURCE::GetFeature(__int64 iFeature)
 int MULTIMEDIASOURCE::GetStrippableHeaderBytes(void* pBuffer, int max)
 {
 	return MMS_UNKNOWN;
+}
+
+
+
+/* multimedia data packet stuff */
+void createMultimediaDataPacket(MULTIMEDIA_DATA_PACKET** packet)
+{
+	*packet = new MULTIMEDIA_DATA_PACKET;
+	(*packet)->timecode = -INT64_MAX;
+	(*packet)->duration = -INT64_MAX;
+	(*packet)->flags = 0;
+	(*packet)->nextTimecode = -INT64_MAX;
+	(*packet)->totalDataSize = 0;
+	(*packet)->usageCounter = 1;
+}
+
+void useMultimediaDataPacket(MULTIMEDIA_DATA_PACKET* packet)
+{
+	if (packet->usageCounter > 0)
+		packet->usageCounter++;
+}
+
+void freeMultimediaDataPacket(MULTIMEDIA_DATA_PACKET* packet)
+{
+	if (!packet)
+		return;
+
+	if (!packet->usageCounter)
+		return;
+
+	if (!--packet->usageCounter) {
+		if (packet->data)
+			free(packet->cData);
+		packet->data = NULL;
+	}
+
+	delete (packet);
+}
+
+int MULTIMEDIASOURCE::GetPreferredTitle(char **pDest)
+{
+	char lngcode[16]; memset(lngcode, 0, sizeof(lngcode));
+	GetLanguageCode(lngcode);
+
+	char* title;
+	GetTitleSet()->GetTitleStringFromLanguage(lngcode, &title);
+
+	if (!title)
+	{
+		GetTitleSet()->GetTitleString(0, &title);
+	}
+
+	if (pDest)
+	{
+		*pDest = title;
+	}
+
+	return !!title;
 }

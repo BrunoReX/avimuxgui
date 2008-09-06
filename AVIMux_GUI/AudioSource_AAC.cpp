@@ -1,11 +1,15 @@
 #include "stdafx.h"
-#include "silence.h"
-#include "audiosource_aac.h"
 
+// #include "silence.h"
+#include "audiosource_aac.h"
+#include "../BitStreamFactory.h"
+
+#ifdef DEBUG_NEW
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
+#endif
 #endif
 
 	///////////////////////////////////////////
@@ -43,8 +47,8 @@ int AACSOURCE::Open(STREAM* s)
 	if (s->GetSize() <= 0)
 		return AS_ERR;
 
-	if (AUDIOSOURCEFROMBINARY::Open(s)==AS_ERR) return AS_ERR;
-	bitsource=new BITSTREAM;
+	if (CBinaryAudioSource::Open(s)==AS_ERR) return AS_ERR;
+	bitsource = CBitStreamFactory::CreateInstance<CBitStream2>();
 	bitsource->Open(s);
 
 	// ADTS Header?
@@ -66,11 +70,14 @@ int AACSOURCE::Open(STREAM* s)
 	if (GetFrequency() <= 24000)
 		FormatSpecific(MMSSFS_AAC_SETSBR, 1);		
 
+	GetSource()->Seek(0);
+
 	return 1;
 }
 
 void AACSOURCE::ReadADTSHeader(ADTSHEADER* h)
 {
+	bitsource->FlushInputBuffer();
 	ZeroMemory(h,sizeof(*h));
 	h->syncword = bitsource->ReadBits(12);
 	h->ID = bitsource->ReadBits(1);
@@ -108,6 +115,7 @@ int AACSOURCE::ReadFrame_ADTS(void* lpDest, DWORD* lpdwMicroSecRead, __int64* lp
 
 	ZeroMemory(&h, sizeof(h));
 	ReadADTSHeader(&h);
+	int header_size = 7; // size of ADTS header is known
 
 	if (h.syncword != 0xFFF) {
 		return AS_ERR;
@@ -122,7 +130,8 @@ int AACSOURCE::ReadFrame_ADTS(void* lpDest, DWORD* lpdwMicroSecRead, __int64* lp
 		case AAC_ADTS_ID_MPEG4: SetMPEGVersion(4); break;
 	}
 	
-	int iRead = GetSource()->Read(lpDest,(int)(h.frame_length - GetSource()->GetPos() + iPos));
+	GetSource()->Seek(iPos + header_size);
+	int iRead = GetSource()->Read(lpDest,(int)(h.frame_length - header_size));
 
 	if (lpdwMicroSecRead) *lpdwMicroSecRead = (int)((__int64)1000000 * h.number_of_data_blocks *
 		 AAC_SAMPLESPERFRAME / GetFrequency());
@@ -130,6 +139,54 @@ int AACSOURCE::ReadFrame_ADTS(void* lpDest, DWORD* lpdwMicroSecRead, __int64* lp
 		AAC_SAMPLESPERFRAME / GetFrequency();
 
 	return iRead;
+}
+
+int AACSOURCE::ReadFrame(MULTIMEDIA_DATA_PACKET** dataPacket)
+{
+	__int64 pos = GetSource()->GetPos();
+	ZeroMemory(&h, sizeof(h));
+	ReadADTSHeader(&h);
+	int header_size = 7;
+
+	if (h.syncword != 0xFFF) {
+		return AS_ERR;
+	}
+
+	SetSampleRateIndex(h.sampling_fequency_index);
+	SetFrequency(aac_sampling_frequencies[h.sampling_fequency_index]);
+	SetProfile(h.profile);
+	SetChannelCount(h.channel_configuration);
+	switch (h.ID) {
+		case AAC_ADTS_ID_MPEG2: SetMPEGVersion(2); break;
+		case AAC_ADTS_ID_MPEG4: SetMPEGVersion(4); break;
+	}
+
+	char* data = (char*)malloc(h.frame_length - header_size);
+
+	GetSource()->Seek(pos + header_size);
+	DWORD dwRead = GetSource()->Read(data, h.frame_length - header_size);
+
+	if (dwRead != h.frame_length - header_size)
+		return -1;
+
+	createMultimediaDataPacket(dataPacket);
+	(*dataPacket)->cData = data;
+	(*dataPacket)->totalDataSize = h.frame_length - header_size;
+	(*dataPacket)->duration = GetFrameDuration();
+	(*dataPacket)->frameSizes.push_back(h.frame_length);
+	(*dataPacket)->timecode = GetCurrentTimecode() * GetTimecodeScale();
+	
+	if (IsEndOfStream())
+		(*dataPacket)->nextTimecode = TIMECODE_UNKNOWN;
+	else
+		(*dataPacket)->nextTimecode = (*dataPacket)->timecode + GetFrameDuration();
+
+	(*dataPacket)->flags = 0;
+	(*dataPacket)->compressionInfo.clear();
+
+	IncCurrentTimecode(GetFrameDuration());
+
+	return (*dataPacket)->totalDataSize;
 }
 
 int Pack2ADTS(void* lpSource, void* lpDest, AUDIOSOURCE* a, int iSize)
@@ -183,7 +240,7 @@ __int64 AACSOURCE::GetFrameDuration()
 
 int AACSOURCE::doClose()
 {
-	return AUDIOSOURCEFROMBINARY::doClose();
+	return CBinaryAudioSource::doClose();
 }
 
 int AACSOURCE::doRead(void* lpDest, DWORD dwMicroSecDesired, DWORD *lpdwMicroSecRead, __int64* lpqwNanoSecRead)
@@ -213,8 +270,9 @@ void AACSOURCE::GetProfileString(char* buf, int buf_len)
 		case AAC_ADTS_PROFILE_SSR: AAC_prof_name = "SSR"; break;
 		default: AAC_prof_name = "unknown";
 	}
-	
-	_snprintf(buf, buf_len, "%s-AAC", AAC_prof_name);
+
+	buf[0]=0;
+	_snprintf_s(buf, buf_len, buf_len, "%s-AAC", AAC_prof_name);
 	buf[buf_len - 1] = 0;
 }
 
@@ -304,7 +362,9 @@ int AACSOURCE::PerformCFRCheck(char** pSemaphore, DWORD* pStatus)
 	p->s = this;
 	p->pStatus = pStatus;
 
-	AfxBeginThread((AFX_THREADPROC)Check_AAC_CFR, p);
+	DWORD dwID;
+	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE )Check_AAC_CFR, p, NULL, &dwID);
+//	AfxBeginThread((AFX_THREADPROC)Check_AAC_CFR, p);
 
 	return 0;
 }
@@ -342,6 +402,8 @@ int AACSOURCE::GetOutputFrequency()
 		////////////////////////////
 		// read AAC back from AVI //
 		////////////////////////////
+
+#ifdef f_AVIFILE_I
 
 AACFROMAVI::AACFROMAVI()
 {
@@ -430,5 +492,7 @@ bool AACFROMAVI::IsEndOfStream()
 {
 	return avifile->IsEndOfStream(stream);
 }
+
+#endif
 
 #pragma pack(pop)

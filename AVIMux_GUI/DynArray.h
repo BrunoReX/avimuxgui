@@ -31,19 +31,4 @@ class CDynIntArray: public CDynArray
 		CDynIntArray* Duplicate(int count = -2);
 };
 
-class CHashIntArray: public CDynIntArray
-{
-	protected:
-		CDynIntArray**	pData;
-
-	public:
-		CHashIntArray();
-		void	SetSize(int iSize);
-		void	DeleteAll(void);
-};
-
-
-
-
-
 #endif

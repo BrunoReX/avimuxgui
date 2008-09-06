@@ -10,6 +10,8 @@
 #include "resource.h"
 #include "../buffers.h"
 
+#include <vector>
+
 /////////////////////////////////////////////////////////////////////////////
 // Dialogfeld CResizeableDialog 
 
@@ -22,12 +24,17 @@ private:
 	int					being_destroyed;
 	int					resize_in_progress;
 	int					has_been_initialized;
+	int					manual_syscommand;
 	bool				bMinimized;
+	bool				bMaximized;
 #ifdef I_ATTRIBUTES
 	CAttribs*			attribs;
 #endif
 	CFont*	user_font;
 	void	ApplyFont(CFont* f);
+
+/* multiple screen crap */
+	std::vector<RECT> displayRectangles;
 
 protected:
 #ifdef I_ATTRIBUTES
@@ -95,6 +102,10 @@ protected:
 	//}}AFX_DISPATCH
 	DECLARE_DISPATCH_MAP()
 	DECLARE_INTERFACE_MAP()
+public:
+	afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
+	afx_msg void OnSizing(UINT fwSide, LPRECT pRect);
+	afx_msg void OnMoving(UINT fwSide, LPRECT pRect);
 };
 
 //{{AFX_INSERT_LOCATION}}

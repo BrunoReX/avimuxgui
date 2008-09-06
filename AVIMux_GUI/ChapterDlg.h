@@ -8,7 +8,7 @@
 #include "ChapterDlgList.h"
 #include "UserDrawEdit.h"
 #include "resource.h"
-#include "..\Filestream.h"
+#include "..\FileStream.h"
 
 #if _MSC_VER > 1000
 #pragma once
@@ -22,7 +22,7 @@
 #include "ChapterSegmentUIDEdit.h"
 #include "AttachedWindows.h"
 
-int RenderChapters2File(FILESTREAM* f, CChapters* c);
+int RenderChapters2File(CFileStream* f, CChapters* c);
 
 int RenderChapters2File(FILE* f, CChapters* c);
 

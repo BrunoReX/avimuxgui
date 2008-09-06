@@ -2,7 +2,10 @@
 #define I_MULTIMEDIASOURCE
 
 #include "Compression.h"
+#include "TitleSet.h"
 #include <vector>
+
+#define INT64_MAX 0x7FFFFFFFFFFFFFFF
 
 const int MMS_INVALID	= 0x00;
 const int MMS_VIDEO		= 0x01;
@@ -39,26 +42,57 @@ typedef struct
 } ADVANCEDREAD_INFO;
 
 
-/* make up a universal read structure here */
+/* Make up a universal read structure here. This structure
+   is supposed to represent one data item that cannot be
+   easily split apart, like one mp3 frame or a bunch of
+   vorbis frames. */
 typedef struct
 {
+	/* Start timecode of a packet in nanoseconds */
 	__int64		timecode;
+
+	/* Duration of a packet in nanoseconds */
 	__int64		duration;
+
+	/* Start timecode of next packet if known; there could 
+	   be a gap */
 	__int64		nextTimecode;
 
+	/* some flags; yet to be defined */
 	int			flags;
 
+	/* if there are several frames, the sizes of each frame */
 	std::vector<int> frameSizes;
 
+	/* relative timecodes of referenced frames */
+	std::vector<int> referencedFrames;
+
+	/* information about compression */
+	std::vector<CCompressionInfo> compressionInfo;
+	
+	/* entire size of this packet */
 	int			totalDataSize;
+
+	/* usage counter; when 0 it's not used anymore and data can
+	   be free()ed */
+	int			usageCounter;
+
+	/* raw data */
 	union {
 		void*		data;
 		char*		cData;
 	};
-} MULTIMEDIA_READ_STRUCT;
+} MULTIMEDIA_DATA_PACKET;
+
+void createMultimediaDataPacket(MULTIMEDIA_DATA_PACKET** packet);
+void freeMultimediaDataPacket(MULTIMEDIA_DATA_PACKET* packet);
+void useMultimediaDataPacket(MULTIMEDIA_DATA_PACKET* packet);
 
 const int TIMECODE_UNSCALED = 0x01;
 //const __int64 TIMECODE_UNDEFINED = 0x7FFFFFFFFFFFFFFF;
+const __int64 TIMECODE_UNKNOWN = -1;
+const __int64 TIMECODE_UNINITIALIZED = -2;
+const __int64 DURATION_UNKNOWN = -1;
 
 const int BIAS_ABSOLUTE = 0x01;
 const int BIAS_RELATIVE = 0x02;
@@ -103,7 +137,7 @@ class CSizeGuesser
 
 };
 
-class MULTIMEDIASOURCE
+class MULTIMEDIASOURCE : public CHasTitles
 {
 	private:
 		MULTIMEDIASOURCE_INFO info;
@@ -162,6 +196,8 @@ class MULTIMEDIASOURCE
 
 		int			virtual GetStrippableHeaderBytes(void* pBuffer, int max);
 		int			virtual IsDefault();
+
+		int			virtual GetPreferredTitle(char** pDest);
 
 		// delay
 		__int64		GetAccumulatedDelay();

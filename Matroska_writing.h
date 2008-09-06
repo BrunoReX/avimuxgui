@@ -225,8 +225,10 @@ const int MATROSKA_TDDM_NEVER  = 0x01;
 const int MATROSKA_TDDM_GAP    = 0x02;
 const int MATROSKA_TDDM_ALWAYS = 0x03;
 
-typedef struct 
+class TRACK_DESCRIPTOR : public CHasTitles
 {
+public:
+	TRACK_DESCRIPTOR();
 	int				iLacing;
 	int				iEnabled;
 	int				iDefault;
@@ -247,20 +249,17 @@ typedef struct
 	float			fTrackTimecodeScale;
 	CStringBuffer*	cCodecID;
 	CBuffer*		cCodecPrivate;
-	CStringBuffer*	cName;
+	
 	CStringBuffer*	cLngCode;
 	int				i;
-	
-/*	int				compression;
-	int				compression_private_size;
-	void*			compression_private;
-*/
 
 	TRACK_COMPRESSION track_compression;
 
 	VIDEOTRACK_SPECIFIC	video;
 	AUDIOTRACK_SPECIFIC audio;
-} TRACK_DESCRIPTOR;
+
+	TRACK_DESCRIPTOR& operator=(const TRACK_DESCRIPTOR &other);
+};
 
 class EBMLMTrackInfo_Writer: public EBMLElement_Writer
 {

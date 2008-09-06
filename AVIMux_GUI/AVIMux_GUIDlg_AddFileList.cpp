@@ -801,7 +801,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 				lpAS->Open(fi->AVIFile,lpdwSubtitleList[i]);
 
 				subs[i-1]=new SUBTITLES;
-				subs[i-1]->Open(new CTEXTFILE(STREAM_READ,lpAS,CM_UTF8));
+				subs[i-1]->Open(new CTextFile(STREAM_READ,lpAS,CHARACTER_ENCODING_UTF8));
 
 				lpAS->Close();
 				delete lpAS;
@@ -814,7 +814,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 					lpAS=new AVISTREAM;
 					lpAS->Open(fi->AVIFile,lpdwSubtitleList[i]);
 					temp_subs=new SUBTITLES;
-					temp_subs->Open(new CTEXTFILE(STREAM_READ,lpAS,CM_UTF8));
+					temp_subs->Open(new CTextFile(STREAM_READ,lpAS,CHARACTER_ENCODING_UTF8));
 					if (!subs[i-1]->Merge(temp_subs,qwBias))
 					{
 						MessageBox(LoadString(IDS_COULDNTMERGESUBS),cstrError,MB_OK | MB_ICONERROR);
@@ -877,6 +877,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 					p->Open((AUDIOSOURCEFROMMATROSKA*)a);
 					VORBISFROMOGG* vorbis = new VORBISFROMOGG;
 					vorbis->Open(p);
+					vorbis->GetTitleSet()->Import(a->GetTitleSet());
 					a = vorbis;
 					asi[j]->lpFormat = new char[1<<16];
 					asi[j]->iFormatSize = vorbis->RenderSetupHeader(asi[j]->lpFormat);

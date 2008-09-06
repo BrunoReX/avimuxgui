@@ -17,7 +17,7 @@ char* reserve(const char* s)
 	return reserve((char*)s);
 }
 
-void PrepareSimpleDialog(void* lpofn, HWND m_hWnd, char* cFilter)
+void PrepareSimpleDialog(void* lpofn, HWND m_hWnd, const char* cFilter)
 {
 	memset(lpofn, 0, sizeof(OPENFILENAME));
 

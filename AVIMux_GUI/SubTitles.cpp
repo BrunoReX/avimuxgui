@@ -143,8 +143,10 @@ int SUBTITLESOURCELIST::Append(SUBTITLESOURCE* pNext)
 		pNext->SetBias(0);
 		char cBuffer[200];
 		ZeroMemory(cBuffer,sizeof(cBuffer));
-		pNext->GetName(cBuffer);
-		SetName(cBuffer);
+	//	pNext->GetName(cBuffer);
+	//	SetName(cBuffer);
+		GetTitleSet()->Import(pNext->GetTitleSet());
+
 		ZeroMemory(cBuffer,sizeof(cBuffer));
 		pNext->GetLanguageCode(cBuffer);
 		SetLanguageCode(cBuffer);
@@ -353,6 +355,8 @@ SUBTITLESFROMMATROSKA::SUBTITLESFROMMATROSKA(MATROSKA* m, int iStream)
 		}
 		SetTimecodeScale(info.m->GetTimecodeScale());
 		SetDefault(info.m->IsDefault(info.iStream));
+
+		GetTitleSet()->Import(info.m->GetTrackTitleSet());
 	}
 }
 
@@ -546,12 +550,12 @@ SUBTITLES::~SUBTITLES(void)
 {
 }
 
-void SUBTITLESOURCE::SetSource(CTEXTFILE* c)
+void SUBTITLESOURCE::SetSource(CTextFile* c)
 {
 	lpSource = c;
 }
 
-int SUBTITLES::Open(CTEXTFILE* source)
+int SUBTITLES::Open(CTextFile* source)
 {
 	DWORD	dwHeader;
 	char	cBuffer[2048];
@@ -618,7 +622,7 @@ int SUBTITLES::Open(CTEXTFILE* source)
 	return true;
 }
 
-CTEXTFILE* SUBTITLESOURCE::GetSource()
+CTextFile* SUBTITLESOURCE::GetSource()
 {
 	return lpSource;
 }
@@ -664,7 +668,7 @@ int SUBTITLES::ParseSRT()
 {
 	DWORD	dwNumber=1;
 	DWORD	dwHour,dwMin,dwSec,dwFrac;
-	char	cBuffer[1024];
+	char	cBuffer[8192];
 	char*	lpcBuffer=cBuffer;
 	int		iRead;
 	int		i;
@@ -739,7 +743,7 @@ int SUBTITLES::ParseSRT()
 
 		lpCurrSub->lpcText=new char[lstrlen(cBuffer)+1];
 		lstrcpy(lpCurrSub->lpcText,cBuffer);
-		lpCurrSub->iCharCoding = GetSource()->IsUTF8Out()?CM_UTF8:CM_ANSI;
+		lpCurrSub->iCharCoding = GetSource()->IsUTF8Out()?CHARACTER_ENCODING_UTF8:CHARACTER_ENCODING_ANSI;
 
 		lpCurrSub->lpNext=new SUBTITLE_DESCRIPTOR;
 		i=sizeof(SUBTITLE_DESCRIPTOR);
@@ -755,7 +759,7 @@ int SUBTITLES::ParseSRT()
 
 int SUBTITLESOURCE::StoreSSAHeaderInfo(char* lpcName,char* lpcInfo,char** lplpDest)
 {
-	if (!strnicmp(lpcInfo,lpcName,lstrlen(lpcName)))
+	if (!_strnicmp(lpcInfo,lpcName,lstrlen(lpcName)))
 	{
 		if (*lplpDest) delete (*lplpDest);
 		*lplpDest=new char[1+lstrlen(lpcInfo)-lstrlen(lpcName)];
@@ -827,13 +831,13 @@ int SUBTITLESOURCE::ReadLine(char* lpBuffer)
 
 int SUBTITLESOURCE::ReadSSAHeader(void)
 {
-	char	cBuffer[1024];
+	char	cBuffer[8192];
 	int		i;
 
 	ReadLine(cBuffer);
 
 	i=5;
-	while (stricmp(cBuffer+i,"[Script Info]") && i>=0)
+	while (_stricmp(cBuffer+i,"[Script Info]") && i>=0)
 	{
 		i--;
 	}
@@ -843,7 +847,9 @@ int SUBTITLESOURCE::ReadSSAHeader(void)
 	lpSSAHeader=new SSA_HEADER;
 	ZeroMemory(lpSSAHeader,sizeof(SSA_HEADER));
 
-	while ( ReadLine(cBuffer)>-1 && (stricmp(cBuffer,"[V4 Styles]") && stricmp(cBuffer,"[V4+ Styles]")))
+	while ( ReadLine(cBuffer)>-1 && 
+			(_stricmp(cBuffer,"[V4 Styles]") && 
+			_stricmp(cBuffer,"[V4+ Styles]")))
 	{
 		for (i=0;i<14;i++) {
 			StoreSSAHeaderInfo(header_attribs[i],cBuffer,&(lpSSAHeader->lpcArray[i]));
@@ -859,7 +865,7 @@ char* RemoveBlanks(char* lpcText)
 
 int SUBTITLESOURCE::ReadSSAStyles()
 {
-	char		cBuffer[1024];
+	char		cBuffer[8192];
 	DWORD*		lpMembers;
 	DWORD		dwAttribCount=1;
 	DWORD		dwStyleCount;
@@ -884,7 +890,7 @@ int SUBTITLESOURCE::ReadSSAStyles()
 	{
 		for (j=0;j<(int)dwAttribCount;j++)
 		{
-			if (!strnicmp(RemoveBlanks(cBuffer+iPos),style_attribs[j],lstrlen(style_attribs[j])))
+			if (!_strnicmp(RemoveBlanks(cBuffer+iPos),style_attribs[j],lstrlen(style_attribs[j])))
 			{
 				lpMembers[i]=j;
 			}
@@ -896,7 +902,7 @@ int SUBTITLESOURCE::ReadSSAStyles()
 	// retrieve styles
 
 	styles=new SSA_STYLE*[1024];
-	ZeroMemory(styles,4096);
+	ZeroMemory(styles, 1024*sizeof(void*));
 	dwStyleCount=0;
 	while ( ReadLine(cBuffer)>-1 && lstrcmp(cBuffer,"[Events]"))
 	{
@@ -961,7 +967,7 @@ __int64 SUBTITLESOURCE::SSATime2NanoSec(char* lpcTime)
 
 int SUBTITLESOURCE::ReadSSAEvents(void)
 {
-	char		cBuffer[1024];
+	char		cBuffer[8192];
 	DWORD*		lpMembers;
 	DWORD		dwAttribCount=1;
 	int			i,j,iPos;
@@ -1028,7 +1034,7 @@ int SUBTITLESOURCE::ReadSSAEvents(void)
 			lpCurrSub->qwBegin=SSATime2NanoSec(lpCurrSub->lpSSA->sesStruct.lpcBegin);
 			lpCurrSub->qwEnd=SSATime2NanoSec(lpCurrSub->lpSSA->sesStruct.lpcEnd);
 			lpCurrSub->dwX2=1;
-			lpCurrSub->iCharCoding = GetSource()->IsUTF8Out()?CM_UTF8:CM_ANSI;
+			lpCurrSub->iCharCoding = GetSource()->IsUTF8Out()?CHARACTER_ENCODING_UTF8:CHARACTER_ENCODING_ANSI;
 			lpCurrSub->dwNoPos=1;
 			for (i=0;i<(int)dwNbrOfStyles;i++)
 			{
@@ -1134,7 +1140,12 @@ int SUBTITLES::Render2AVIChunk_Begin(void** lpDest,DWORD** lpdwLength)
 	*lpdwDest++=MakeFourCC("GAB2");
 	*lpbDest++=0;
 	*lpwDest++=2;
-	i = UTF82WStr(lpcName,(char*)(lpdwDest+1));
+	//i = UTF82WStr(lpcName,(char*)(lpdwDest+1));
+
+	char pTitle[32768]; pTitle[0]=0;
+	GetName(pTitle);
+	i = UTF82WStr(pTitle,(char*)(lpdwDest+1));
+	
 	*lpdwDest++=i;//;2*lstrlen(lpcName)+2;
  
 	lpbDest+=i;
@@ -1315,7 +1326,7 @@ int SUBTITLES::RenderSRT2AVIChunk(void** lpDest)
 
 int SUBTITLESOURCE::RenderSSAScriptInfo(char** lpcDest) 
 {
-	char	cBuffer[1024];
+	char	cBuffer[8192];
 	char*	lpcBegin = *lpcDest;
 
 	wsprintf(cBuffer,"[Script Info]");
@@ -1341,7 +1352,7 @@ int SUBTITLESOURCE::RenderSSAScriptInfo(char** lpcDest)
 
 int SUBTITLESOURCE::RenderSSAStyles(char** lpcDest)
 {
-	char	cBuffer[1024];
+	char	cBuffer[8192];
 	char*	lpcBegin = *lpcDest;
 
 	sprintf(*lpcDest,"[V4 Styles]");
@@ -1367,7 +1378,7 @@ int SUBTITLESOURCE::RenderSSAStyles(char** lpcDest)
 		wsprintf(*lpcDest,"Style: ");
 		*lpcDest+=strlen(*lpcDest);
 
-		for (i=0;i<18;i++)
+		for (int i=0;i<18;i++)
 		{
 			sprintf(*lpcDest,"%s",lplpSSAStyles[j]->lpcArray[i]);
 			*lpcDest+=lstrlen(*lpcDest);
@@ -1415,7 +1426,7 @@ int SUBTITLESOURCE::RenderCodecPrivate(void* lpDest)
 
 int SUBTITLES::RenderSSAEvent(SUBTITLE_DESCRIPTOR* lpCurrSub,char** lpcDest, __int64 qwMSBegin, __int64 qwMSEnd)
 {
-	char cBuffer[1024];
+	char cBuffer[8192];
 	cBuffer[0] = 0;
 	char*	lpcBegin = *lpcDest;
 
@@ -1445,7 +1456,7 @@ int SUBTITLES::RenderSSAEvent(SUBTITLE_DESCRIPTOR* lpCurrSub,char** lpcDest, __i
 
 int SUBTITLES::RenderSSAEvent4MKV(SUBTITLE_DESCRIPTOR* lpCurrSub,char** lpcDest, __int64 qwMSBegin, __int64 qwMSEnd)
 {
-	char cBuffer[1024];
+	char cBuffer[8192];
 	cBuffer[0] = 0;
 	char*	lpcBegin = *lpcDest;
 
@@ -1481,7 +1492,7 @@ int SUBTITLES::RenderSSA2AVIChunk(void** lpDest)
 	SUBTITLE_DESCRIPTOR*	lpCurrSub=subs;
 	__int64	qwMSBegin,qwMSEnd;
 
-	char	cBuffer[1024];
+	char	cBuffer[8192];
 	__int64 qwBias = GetBias(BIAS_UNSCALED);
 
 	lpdwDest=*(DWORD**)lpDest;

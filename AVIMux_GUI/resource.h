@@ -425,6 +425,11 @@
 #define IDC_HEXVIEW_LISTBOX2            1373
 #define IDC_OUTPUT_THREADED             1374
 #define IDC_HOTKEY1                     1375
+#define IDC_GUI1_HIGHLIGHT_DEFAULT_STREAMS 1376
+#define IDC_CHECK3                      1378
+#define IDC_GUI1_HIGHLIGHT_NOAVI_STREAMS 1378
+#define IDC_GUI_USE_CLEARTYPE_FONT      1379
+#define IDC_GUI1_USE_CLEARTYPE_FONT     1379
 #define ID_INFORMATIONEN                40001
 #define IDM_VIDEOINFORMATION            40001
 #define ID_TEST                         40002
@@ -536,6 +541,8 @@
 #define IDM_DESELVIDEO                  40109
 #define IDM_WAITFORLOAD                 40110
 #define IDM_RIFFTREE                    40111
+#define IDM_NEWSTREAMLANGUAGE           40112
+#define IDM_DELETESTREAMLANGUAGE        40113
 #define IDM_EXTRACTSRT                  65535
 
 // Next default values for new objects
@@ -543,8 +550,8 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        170
-#define _APS_NEXT_COMMAND_VALUE         40112
-#define _APS_NEXT_CONTROL_VALUE         1376
+#define _APS_NEXT_COMMAND_VALUE         40114
+#define _APS_NEXT_CONTROL_VALUE         1380
 #define _APS_NEXT_SYMED_VALUE           176
 #endif
 #endif

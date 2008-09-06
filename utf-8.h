@@ -26,4 +26,17 @@ int  _stdcall WStr2Str(char* source, char** dest);
 
 extern char    cUTF8Hdr[];
 
+static const int CHARACTER_ENCODING_ANSI     = 0x01;
+static const int CHARACTER_ENCODING_UTF8     = 0x02;
+static const int CHARACTER_ENCODING_UTF16_LE = 0x03;
+static const int CHARACTER_ENCODING_UTF16_BE = 0x04;
+
+int StringConvert(const char* source, int source_format, int max_source_len,
+				   char** dest, int dest_format);
+int FromUTF8(char* source, wchar_t** dest);
+int FromUTF8(char* source, char** dest);
+
+int  UTF8CharLen(char in);
+int IsUTF8(const char* src, size_t max_source_len);
+
 #endif

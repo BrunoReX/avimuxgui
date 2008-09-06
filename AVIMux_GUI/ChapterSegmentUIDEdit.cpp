@@ -7,7 +7,7 @@
 #include "..\Matroska.h"
 #include "..\UnicodeCalls.h"
 #include "languages.h"
-#include "..\Filestream.h"
+#include "..\FileStream.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -43,7 +43,7 @@ int CChapterSegmentUIDEdit::Validate()
 	bValid = false;
 
 	GetWindowText(t, 64);
-	if (!stricmp(t, "N/A"))
+	if (!_stricmp(t, "N/A"))
 		return 1;
 
 	if (bValid = !!hex2int128(t, cUID))
@@ -130,7 +130,7 @@ void CChapterSegmentUIDEdit::OnDropFiles(HDROP hDropInfo)
 		lpcName = (char*)calloc(1,4096);
 		toUTF8(temp, lpcName);
 
-		FILESTREAM* f = new FILESTREAM;
+		CFileStream* f = new CFileStream;
 		if (f->Open(lpcName, STREAM_READ)==STREAM_OK) {
 			MATROSKA* m = new MATROSKA;
 			if (m->Open(f, MMODE_READ)== MOPEN_OK) {

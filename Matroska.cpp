@@ -196,6 +196,7 @@ MATROSKA::MATROSKA()
 
 MATROSKA::~MATROSKA()
 {
+	Close();
 }
 
 READ_INFO::READ_INFO()
@@ -675,7 +676,7 @@ int MATROSKA::GetTracksCopiesCount()
 bool MATROSKA::IsKeyframe()
 {
 	int iTrack = GetActiveTrack();
-	int iRes;
+	int iRes = 0;
 
 	while (QUEUE_empty(queue[iTrack]) && ((iRes=ReadBlock()) != READBL_ENDOFSEGMENT));
 	
@@ -739,6 +740,9 @@ __int64 MATROSKA::GetSegmentFilePos()
 
 bool MATROSKA::CanRead()
 {
+	if (!info)
+		return false;
+
 	if (info->mode & MMODE_READ)
 		return true;
 	else
@@ -747,6 +751,9 @@ bool MATROSKA::CanRead()
 
 bool MATROSKA::CanWrite()
 {
+	if (!info)
+		return false;
+
 	if (info->mode & MMODE_WRITE)
 		return true;
 	else
@@ -1003,7 +1010,7 @@ void MATROSKA::SetInitialHeaderSize(int size)
 	ws.iSizeOfReservedSpace = size;
 }
 
-void MATROSKA::EnableClusterIndex(int bEnable)
+/*void MATROSKA::EnableClusterIndex(int bEnable)
 {
 	ws.bClusterIndex = bEnable;
 }
@@ -1017,28 +1024,28 @@ int MATROSKA::IsCueBlockNumberEnabled()
 {
 	return (int)ws.bCueBlockNumber;
 }
-
-void MATROSKA::EnableWriteFlagDefault(int bEnabled)
+*/
+/*void MATROSKA::EnableWriteFlagDefault(int bEnabled)
 {
-	ws.bWriteFlagDefault = bEnabled;
+	ws.bWriteFlagDefault = !!bEnabled;
 }
 
 void MATROSKA::EnableWriteFlagEnabled(int bEnabled)
 {
-	ws.bWriteFlagEnabled = bEnabled;
+	ws.bWriteFlagEnabled = !!bEnabled;
 }
 
 void MATROSKA::EnableWriteFlagLacing(int bEnabled)
 {
-	ws.bWriteFlagLacing = bEnabled;
+	ws.bWriteFlagLacing = !!bEnabled;
 }
-
+*/
 void MATROSKA::EnableRandomizeElementOrder(int bEnabled)
 {
 	MATROSKA_RandomizeElementOrder(!!bEnabled);
 }
 
-int MATROSKA::IsEnabled_WriteFlagDefault()
+/*int MATROSKA::IsEnabled_WriteFlagDefault()
 {
 	return (int)ws.bWriteFlagDefault;
 }
@@ -1052,7 +1059,7 @@ int MATROSKA::IsEnabled_WriteFlagLacing()
 {
 	return (int)ws.bWriteFlagLacing;
 }
-
+*/
 
 void MATROSKA::EnableCues(int iStreamType, int bEnable)
 {
@@ -1065,11 +1072,11 @@ bool MATROSKA::IsCuesEnabled(int iStreamType)
 	return !!(ws.bWriteCues&iStreamType);
 }
 
-void MATROSKA::EnableCueBlockNumber(int bEnabled)
+/*void MATROSKA::EnableCueBlockNumber(int bEnabled)
 {
 	ws.bCueBlockNumber = bEnabled;
 }
-
+*/
 int MATROSKA::BeginWrite()
 {
 	e_Header->SetDocTypeVersion((int)ws.matroska_version);
@@ -1096,7 +1103,10 @@ int MATROSKA::BeginWrite()
 	int iSize = GetTrackCount()*192; 
 	for (int i=0;i<GetTrackCount();i++) {
 		if (tracks[i]->cCodecPrivate) iSize+=tracks[i]->cCodecPrivate->GetSize();
-		if (tracks[i]->cName) iSize+=tracks[i]->cName->GetSize();
+		char* title = NULL;
+		if (tracks[i]->GetTitleSet()->GetTitle(&title)) 
+			iSize+=strlen(title);
+		
 		if (tracks[i]->cCodecID) iSize+=tracks[i]->cCodecID->GetSize();
 		if (tracks[i]->cLngCode) iSize+=tracks[i]->cLngCode->GetSize();
 		tracks[i]->iBufferedBlocks = 0;
@@ -1200,12 +1210,22 @@ int MATROSKA::Close()
 	if (e_Segments) DeleteElementList(&e_Segments);
 	if (e_EBML) DeleteElementList(&e_EBML);
 	if (e_Main) DeleteEBML(&e_Main);
-	if (iStreams2Queue) delete iStreams2Queue;
-	if (SegmentInfo) delete SegmentInfo;
+	
+	if (iStreams2Queue) {
+		delete iStreams2Queue;
+		iStreams2Queue = NULL;
+	}
+	
+	if (SegmentInfo) {
+		delete SegmentInfo;
+		SegmentInfo = NULL;
+	}
+
 //	if (chapters);
 
 	//if (info && info->mode == MMODE_WRITE) {
-	if (CanWrite()) {
+	if (CanWrite()) 
+	{
 		EBMLMSeekhead_Writer* e_TargetSeekhead = NULL;
 		e_TargetSeekhead = e_PrimarySeekhead;
 
@@ -1218,7 +1238,7 @@ int MATROSKA::Close()
 			SetSegmentDuration((float)ws.iLatestTimecode - (float)ws.iEarliestTimecode);
 		
 		if (e_Cluster) {
-			if (IsClusterIndexEnabled()) {
+			if (Enable(MF_WRITE_CLUSTER_INDEX, 0, MFA_RETRIEVE_ONLY)) {
 				e_Seekhead->AddEntry((char*)MID_CLUSTER,ws.iPosInSegment,1);
 			}
 			ws.iPosInSegment += e_Cluster->Write();
@@ -1279,15 +1299,16 @@ int MATROSKA::Close()
 		EBMLElement_Writer*	e_Tags = new EBMLElement_Writer(GetDest(),(char*)MID_TAGS);
 		int k;
 		for (k=0;k<iTrackCount;k++) {
-			__int64 iBitsPS = (__int64)((double)tracks[k]->iTotalSize * 8000000000 / ws.fSetDuration / GetTimecodeScale());
-			double  dFPS    = (double) ((double)tracks[k]->iTotalFrameCount * 1000000000 / ws.fSetDuration / GetTimecodeScale());
+			TRACK_DESCRIPTOR* t = tracks[k];
+			__int64 iBitsPS = (__int64)((double)t->iTotalSize * 8000000000 / ws.fSetDuration / GetTimecodeScale());
+			double  dFPS    = (double) ((double)t->iTotalFrameCount * 1000000000 / ws.fSetDuration / GetTimecodeScale());
 
 			EBMLElement_Writer* e_Tag = e_Tags->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_TG_TAG));
 			EBMLElement_Writer* e_Target = e_Tag->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_TG_TARGET));
 			e_Target->AppendChild_UInt((char*)MID_TG_TRACKUID,tracks[k]->iTrackUID,-1);
 			
 			EBMLElement_Writer* e_SimpleTag = e_Tag->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_TG_SIMPLETAG));
-			char cSize[20]; cSize[0]=0; itoa((int)iBitsPS, cSize, 10);
+			char cSize[20]; cSize[0]=0; _itoa((int)iBitsPS, cSize, 10);
 			e_SimpleTag->AppendChild_String((char*)MID_TG_TAGNAME,"BITSPS");
 			e_SimpleTag->AppendChild_String((char*)MID_TG_TAGSTRING,cSize);
 
@@ -1299,7 +1320,23 @@ int MATROSKA::Close()
 			e_SimpleTag->AppendChild_String((char*)MID_TG_TAGNAME,"FPS");
 			sprintf(cSize, "%7.4f", dFPS);
 			e_SimpleTag->AppendChild_String((char*)MID_TG_TAGSTRING,cSize);
-			e_SimpleTag->EnableCRC32();
+//			e_SimpleTag->EnableCRC32();
+
+			for (size_t j=0; j<t->GetTitleSet()->GetTitleCount(); j++) {
+				char* cLng = NULL;
+				char* cTitle = NULL;
+				t->GetTitleSet()->GetTitleLanguage(j, &cLng);
+				t->GetTitleSet()->GetTitleString(j, &cTitle);
+				if (strcmp(cLng, "default")) {
+					e_SimpleTag = e_Tag->AppendChild(new EBMLElement_Writer(GetDest(),(char*)MID_TG_SIMPLETAG));
+					e_SimpleTag->AppendChild_String((char*)MID_TG_TAGNAME, "TITLE");
+					if (cLng && *cLng)
+						e_SimpleTag->AppendChild_String((char*)MID_TG_TAGLANGUAGE, cLng);
+					e_SimpleTag->AppendChild_String((char*)MID_TG_TAGSTRING, cTitle);
+					e_SimpleTag->EnableCRC32();
+				}
+			}
+
 			e_Tag->EnableCRC32();
 		}
 
@@ -1481,9 +1518,12 @@ int MATROSKA::Close()
 		if (write_buffer.block_of_stream)
 			delete write_buffer.block_of_stream;
 		
-	}
+	} // if (CanWrite()) 
 
-	if (info) delete info;
+	if (info) {
+		delete info;
+		info = NULL;
+	}
 
 	return 0;
 }
@@ -1669,10 +1709,30 @@ int MATROSKA::GetColorSpace(int iTrack)
 
 char* MATROSKA::GetTrackName(int iIndex)
 {
-	CBuffer*	C = pActiveSegInfo->tracks->track_info[MapT(iIndex)]->cName;
+/*	CBuffer*	C = pActiveSegInfo->tracks->track_info[MapT(iIndex)]->cName;
+
 	if (C) {
 		return C->AsString();
 	} else return "";
+	*/
+
+	char* c = NULL;
+	pActiveSegInfo->tracks->track_info[MapT(iIndex)]->GetTitleSet()->GetTitle(&c);
+	if (c != NULL)
+		return c;
+	else 
+		return "";
+}
+
+ITitleSet* MATROSKA::GetTrackTitleSet(int iTrack)
+{
+	if (info->mode == MMODE_READ) {
+		return pActiveSegInfo->tracks->track_info[MapT(iTrack)]->GetTitleSet();
+	} else if (info->mode == MMODE_WRITE) {
+		return tracks[MapT(iTrack)]->GetTitleSet();
+	}
+
+	return NULL;
 }
 
 char* MATROSKA::GetSegmentUID()
@@ -1975,7 +2035,8 @@ void MATROSKA::SetTrackCount(int iCount)
 	tracks = (TRACK_DESCRIPTOR**)realloc(tracks,sizeof(*tracks)*iCount);
 	if (iCount>iTrackCount) {
 		for (int i=iTrackCount;i<iCount;i++) {
-			newz(TRACK_DESCRIPTOR, 1, tracks[i]);
+			//newz(TRACK_DESCRIPTOR, 1, tracks[i]);
+			tracks[i] = new TRACK_DESCRIPTOR;
 			tracks[i]->fTrackTimecodeScale = 1.0;
 			tracks[i]->iMinCache = 1;
 			tracks[i]->iMaxCache = 1;
@@ -1985,7 +2046,7 @@ void MATROSKA::SetTrackCount(int iCount)
 	ws.iLastCuePointTimecode = new __int64[iCount+1];
 	for (int j=0;j<=iCount;ws.iLastCuePointTimecode[j++]=-ws.min_cue_point_interval-1);
 	
-	j = write_buffer.iCount = iBufsPerStream * iCount;
+	int j = write_buffer.iCount = iBufsPerStream * iCount;
 	write_buffer.block = new ADDBLOCK[j];
 	ZeroMemory(write_buffer.block, sizeof(ADDBLOCK)*j);
 	write_buffer.used = new int[j];
@@ -2037,14 +2098,20 @@ void MATROSKA::SetCodecPrivate(int iTrack, void* pData, int iSize)
 	}
 }
 
-void MATROSKA::SetTrackName(int iTrack,char* cName)
+void MATROSKA::SetTrackName(int iTrack, char* cName, char* cLanguage)
 {
 	TRACK_DESCRIPTOR* t = tracks[iTrack];
 
-	if (t->cName) DecBufferRefCount(&t->cName);
+/*	if (t->cName) DecBufferRefCount(&t->cName);
+
 	if (cName) {
 		t->cName = new CStringBuffer (cName);
 	}
+	*/
+	if (!cLanguage || !cLanguage[0])
+		t->GetTitleSet()->SetTitle(cName);
+	else
+		t->GetTitleSet()->SetTitleForLanguage(cLanguage, cName);
 }
 
 void MATROSKA::SetTrackLanguageCode(int iTrack,char* cLngCode)
@@ -2321,7 +2388,8 @@ int MATROSKA::StoreBlock(ADDBLOCK *a)
 	if (e_Cluster->AddBlock(a, &block_info)==ABR_CLUSTERFULL) {
 		int iSize = (int)e_Cluster->Write();
 		ws.iAccumulatedOverhead += e_Cluster->GetWriteOverhead();
-		if (IsClusterIndexEnabled()) {
+		//if (IsClusterIndexEnabled()) {
+		if (Enable(MF_WRITE_CLUSTER_INDEX, 0, MFA_RETRIEVE_ONLY)) {
 			if (e_Seekhead->AddEntry((char*)MID_CLUSTER,ws.iPosInSegment) == ESHAE_FULL) {
 				e_SecondarySeekhead = new EBMLMSeekhead_Writer(GetDest());
 				e_SecondarySeekhead->AddEntry((char*)MID_CLUSTER,ws.iPosInSegment);
@@ -2344,7 +2412,8 @@ int MATROSKA::StoreBlock(ADDBLOCK *a)
 			tracks[iTrackIndex]->iTrackType == MSTRT_AUDIO && IsCuesEnabled(CUE_AUDIO) ||
 			tracks[iTrackIndex]->iTrackType == MSTRT_SUBT && IsCuesEnabled(CUE_SUBS)) {
 			AddCuepoint(a->iStream, ws.iPosInSegment,iTimecode, 
-				(IsCueBlockNumberEnabled()?ws.iBlocksInCluster:0));
+				(/*IsCueBlockNumberEnabled()*/
+				Enable(MF_WRITE_CUE_BLOCK_NUMBER, 0, MFA_RETRIEVE_ONLY)?ws.iBlocksInCluster:0));
 		}
 	}
 
@@ -2552,7 +2621,40 @@ __int64 MATROSKA::GetMaxClusterTime()
 	return ws.iMaxClusterTime;
 }
 
-void MATROSKA::EnableClusterPosition(int bEnable)
+bool MATROSKA::Enable(unsigned __int64 flag, int additional_info, int action)
+{
+	if (action != MFA_ENABLE && action != MFA_DISABLE && action != MFA_RETRIEVE_ONLY)
+	{
+		throw std::logic_error("bad parameter for Matroska::Enable(...)");
+		return false;
+	}
+
+	bool* bFlag = NULL;
+	bool bNullFlag = false;
+	switch (flag) {
+		case MF_WRITE_FLAG_DEFAULT: bFlag = &ws.bWriteFlagDefault; break;
+		case MF_WRITE_FLAG_ENABLED: bFlag = &ws.bWriteFlagEnabled; break;
+		case MF_WRITE_FLAG_FORCED: bFlag = &ws.bWriteFlagForced; break;
+		case MF_WRITE_FLAG_LACED: bFlag = &ws.bWriteFlagLacing; break;
+		case MF_WRITE_CLUSTER_INDEX: bFlag = &ws.bClusterIndex; break;
+		case MF_WRITE_CLUSTER_POSITION: bFlag = &ws.bClusterPosition; break;
+		case MF_WRITE_PREV_CLUSTER_SIZE: bFlag = &ws.bPrevClusterSize; break;
+		case MF_WRITE_CUE_BLOCK_NUMBER: bFlag = &ws.bCueBlockNumber; break;
+		default: bFlag = &bNullFlag;	
+	}
+
+	bool bOld = *bFlag;
+
+	if (action == MFA_ENABLE)
+		*bFlag = true;
+	if (action == MFA_DISABLE)
+		*bFlag = false;
+
+	return bOld;
+}
+
+
+/*void MATROSKA::EnableClusterPosition(int bEnable)
 {
 	ws.bClusterPosition = bEnable;
 }
@@ -2561,7 +2663,7 @@ bool MATROSKA::IsClusterPositionEnabled()
 {
 	return !!ws.bClusterPosition;
 }
-
+*/
 bool MATROSKA::Is1stClusterLimited()
 {
 	return !!ws.iLimit1stCluster;
@@ -2572,21 +2674,21 @@ bool MATROSKA::IsDisplayWidth_HeightEnabled()
 	return !!ws.bDisplayWidth_Height;
 }
 
-void MATROSKA::EnablePrevClusterSize(int bEnable)
+/*void MATROSKA::EnablePrevClusterSize(int bEnable)
 {
 	ws.bPrevClusterSize = !!bEnable;
 }
-
+*/
 void MATROSKA::EnableDisplayWidth_Height(int bEnable)
 {
 	ws.bDisplayWidth_Height = !!bEnable;
 }
-
+/*
 bool MATROSKA::IsPrevClusterSizeEnabled()
 {
 	return !!ws.bPrevClusterSize;
 }
-
+*/
 void MATROSKA::SetAppName(char* cName)
 {
 	e_SegInfo->SetWritingApp(new CStringBuffer(cName));
@@ -2677,6 +2779,11 @@ __int64 MATROSKA::GetTrackSize(int iTrack)
 
 		} while (q != q->pLast);
 
+		if (fTime < 0.0001)
+		{
+			return 0;
+		}
+
 		return (__int64)(min(GetSource()->GetSize(),(float)iSize*GetSegmentDuration()/fTime));
 	} else {
 		return 0;
@@ -2735,17 +2842,29 @@ __int64 MATROSKA::GetSeekheadSize()
 
 char* MATROSKA::GetSegmentTitle(int iSegment)
 {
-	CStringBuffer* c = NULL;
+//	CStringBuffer* c = NULL;
+
+	char* c = NULL;
 
 	if (iSegment == -1) {
-		c = pActiveSegInfo->cTitle;
+//		c = pActiveSegInfo->cTitle;
+		if (!GetTitleSet()->GetTitle(&c))
+			return "";
 	} else {
 		if (iSegment < GetSegmentCount()) {
-			c = SegmentInfo[iSegment]->cTitle;
-		} 
+			//c = SegmentInfo[iSegment]->cTitle;
+			if (!SegmentInfo[iSegment]->GetTitleSet()->GetTitle(&c))
+				return "";
+		} else 
+			return "";
 	}
 
-	return (c)?c->Get():"";
+	return c;
+}
+
+ITitleSet* MATROSKA::GetTitleSet()
+{
+	return pActiveSegInfo->GetTitleSet();
 }
 
 int MATROSKA::SetSparseFlag(int iTrack, int bFlag)

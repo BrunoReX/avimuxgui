@@ -308,7 +308,7 @@ typedef struct {
 	DWORD iFrameNbr;
 } FRAMEINFO, *LPFRAMEINFO;
 
-const FrameCacheSize = 3;
+const int FrameCacheSize = 3;
 ////////////////////////////
 
 typedef struct

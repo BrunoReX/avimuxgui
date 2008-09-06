@@ -16,7 +16,7 @@ typedef struct
 {
 	char*	cText;
 	bool	bAllocated;
-	DWORD	dwUserData;
+	DWORD_PTR dwUserData;
 } UNICODETREEITEM_DATA;
 
 class CUnicodeTreeCtrl : public CTreeCtrl, public CUnicodeBase
@@ -32,10 +32,11 @@ public:
 	CUnicodeTreeCtrl();
 	void	InitUnicode();
 	HTREEITEM InsertItem(LPTVINSERTSTRUCT lpInsertStruct);
+	HTREEITEM GetTopMostParentItem(HTREEITEM hItem);
 	bool	DeleteItem(HTREEITEM hItem);
 	bool	DeleteAllItems(HTREEITEM hRoot = NULL);
 	void	SetItemData(HTREEITEM hItem, DWORD dwData);
-	DWORD	GetItemData(HTREEITEM);
+	DWORD_PTR GetItemData(HTREEITEM);
 	char*	GetItemText(HTREEITEM);
 	void	SetItem(TVITEM* pItem);
 	bool	SetItemText(HTREEITEM hItem, LPCTSTR lpszItem);

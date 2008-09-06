@@ -11,7 +11,7 @@
 #include "../FormatTime.h"
 #include "Languages.h"
 #include "FileDialogs.h"
-#include "..\Filestream.h"
+#include "..\FileStream.h"
 
 
 #ifdef _DEBUG
@@ -113,7 +113,7 @@ void CVideoSourceListBox::OnRButtonUp(UINT nFlags, CPoint point)
 
 typedef struct 
 {
-	FILESTREAM* file;
+	CFileStream* file;
 	CAVIMux_GUIDlg* dlg;
 	VIDEOSOURCE* v;
 
@@ -128,7 +128,7 @@ int ExtractThread(EXTRACT_THREAD_VIDEO_DATA*	lpETD)
 
 	VIDEOSOURCE* v = lpETD->v;
 	v->Enable(1);
-	FILESTREAM* f = lpETD->file;
+	CFileStream* f = lpETD->file;
 	char cTime[20];
 	char* lpBuffer = new char[2<<20];
 	int iLastTime = GetTickCount();
@@ -214,7 +214,7 @@ BOOL CVideoSourceListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 			
 			if (open) {
 				EXTRACT_THREAD_VIDEO_DATA* lpETD = new EXTRACT_THREAD_VIDEO_DATA;
-				lpETD->file = new FILESTREAM;
+				lpETD->file = new CFileStream;
 				if (lpETD->file->Open(o.lpstrFile,STREAM_WRITE)!=STREAM_ERR) {
 					lpETD->dlg = cMainDlg;
 					lpETD->v = v;

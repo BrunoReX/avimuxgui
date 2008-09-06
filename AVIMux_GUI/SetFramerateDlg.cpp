@@ -55,13 +55,13 @@ void CSetFramerateDlg::SetData(FRAME_RATE* f)
 	{
 		if (IsDlgButtonChecked(IDR_FR_NSPF))
 		{
-			itoa((int)(1000000000./fr.frate),Buffer,10);
+			_itoa((int)(1000000000./fr.frate),Buffer,10);
 			dwUnit=UNIT_NSPF;
 		}
 		else
 		if (IsDlgButtonChecked(IDR_FR_MSPF))
 		{	
-			gcvt(1000000./fr.frate,9,Buffer);
+			_gcvt(1000000./fr.frate,9,Buffer);
 			dwUnit=UNIT_MSPF;
 		}
 		else

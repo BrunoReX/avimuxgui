@@ -3,11 +3,18 @@
 
 #include "basestreams.h"
 #include "xml.h"
+#include "utf-8.h"
 
-const int CBN_REF1	= 0x01;
-const int CSB_ASCII = 0x04;
-const int CSB_UTF8  = 0x08;
-const int CSB_UTF16 = 0x10;
+const int CBN_REF1	= 0x80;
+
+const int CSB_ASCII = CHARACTER_ENCODING_ANSI;
+const int CSB_UTF8  = CHARACTER_ENCODING_UTF8;
+const int CSB_UTF16 = CHARACTER_ENCODING_UTF16_LE;
+
+const int CSB_FLAGS = CBN_REF1 |
+						CSB_ASCII |
+						CSB_UTF8 |
+						CSB_UTF16;
 
 
 class CBuffer
@@ -63,7 +70,7 @@ class CStringBuffer: public CBuffer
 		void	Prepare(int iFormat);
 	public:
 		CStringBuffer();
-		CStringBuffer(char* s, int iFlags = CBN_REF1);
+		CStringBuffer(const char* s, int iFlags = CBN_REF1);
 		int		SetOutputFormat(int iFormat);
 		void	virtual Set(char* s, int iFlags = CSB_ASCII);
 		char	virtual* Get(void);
@@ -119,7 +126,7 @@ class CAttribs
 		CAttribs();
 		virtual ~CAttribs();
 		CAttribs(int iSize);
-		void				Add(char* cName, int iFlags, int iType, void* pData);
+		void				Add(const char* cName, int iFlags, int iType, void* pData);
 		void				AddInt(char* cName, int iFlags, __int64 pData);
 		void		virtual CopyTo(CAttribs* target);
 		void				Set(char* cName, void* pData);

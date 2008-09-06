@@ -5,6 +5,7 @@
 //#include "AVIMux_GUI.h"
 #include "ResizeableDialog.h"
 #include "../strings.h"
+#include ".\resizeabledialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -15,6 +16,44 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // Dialogfeld CResizeableDialog 
 
+BOOL CALLBACK MyMonitorEnumProc(
+  HMONITOR hMonitor,  // handle to display monitor
+  HDC hdcMonitor,     // handle to monitor DC
+  LPRECT lprcMonitor, // monitor intersection rectangle
+  LPARAM dwData       // data
+)
+{
+	std::vector<RECT>* displayRectangles = (std::vector<RECT>*)(void*)dwData;
+
+	displayRectangles->push_back(*lprcMonitor);
+
+	return true;
+}
+
+bool IsInRect(LPRECT pRect, int x, int y)
+{
+	if (x >= pRect->left && x <= pRect->right &&
+		y >= pRect->top && y <= pRect->bottom)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool IsInAnyRect(std::vector<RECT>* pRects, int x, int y)
+{
+	bool result = false;
+	for (std::vector<RECT>::iterator iter = pRects->begin();
+		iter != pRects->end(); iter++)
+	{
+		RECT rect = *iter;
+		if (IsInRect(&rect, x, y))
+			result = true;
+	}
+
+	return result;
+}
 
 CResizeableDialog::CResizeableDialog(UINT nID, CWnd* pParent /*=NULL*/)
 	: CDialog(nID, pParent)
@@ -24,12 +63,16 @@ CResizeableDialog::CResizeableDialog(UINT nID, CWnd* pParent /*=NULL*/)
 	attribs = NULL;
 #endif
 	has_been_initialized = 0;
+	manual_syscommand = 0;
 	bMinimized = false;
+	bMaximized = false;
 	user_font = NULL;
 
 	//{{AFX_DATA_INIT(CResizeableDialog)
 		// HINWEIS: Der Klassen-Assistent fügt hier Elementinitialisierung ein
 	//}}AFX_DATA_INIT
+
+	EnumDisplayMonitors(NULL, NULL, MyMonitorEnumProc, (LPARAM)&displayRectangles);
 }
 CResizeableDialog::~CResizeableDialog()
 {
@@ -57,12 +100,24 @@ void CResizeableDialog::OnSysCommand(UINT nID, LPARAM lParam)
 	if (nID == SC_CLOSE)
 		PostMessage(WM_COMMAND, IDCANCEL < 16);
 	else {
-		if (nID == SC_MINIMIZE)
+		if (nID == SC_MINIMIZE) {
 			bMinimized = true;
-		if (nID == SC_RESTORE)
+			bMaximized = false;
+		} else
+		if (nID == SC_RESTORE  || nID == 0xF122) {
 			bMinimized = false;
-		if (nID == SC_MAXIMIZE)
-			bMinimized = false;			
+			bMaximized = false;
+			if (!manual_syscommand)
+				has_been_initialized = 1;
+			manual_syscommand = 0;
+		} else
+		if (nID == SC_MAXIMIZE || nID == 0xF032) {
+			bMinimized = false;	
+			bMaximized = true;
+			if (!manual_syscommand)
+				has_been_initialized = 1;
+			manual_syscommand = 0;
+		} 
 
 		CDialog::OnSysCommand(nID, lParam);
 	}
@@ -109,6 +164,9 @@ BEGIN_MESSAGE_MAP(CResizeableDialog, CDialog)
 	ON_WM_SYSCOMMAND()
 	ON_WM_MOVE()
 	//}}AFX_MSG_MAP
+	ON_WM_ACTIVATE()
+	ON_WM_SIZING()
+	ON_WM_MOVING()
 END_MESSAGE_MAP()
 
 BEGIN_DISPATCH_MAP(CResizeableDialog, CDialog)
@@ -138,7 +196,7 @@ void CResizeableDialog::OnSize(UINT nType, int cx, int cy)
 	CDialog::OnSize(nType, cx, cy);
 	
 	if (!being_destroyed  && !bMinimized && cx > 0 && cy > 0) {
-		resize_in_progress = 1;
+	resize_in_progress = 1;
 
 		ReorderWindows(redo);
 
@@ -152,12 +210,16 @@ void CResizeableDialog::OnSize(UINT nType, int cx, int cy)
 		if (has_been_initialized) {
 			RECT r;
 			GetWindowRect(&r);
-			if (attribs)
-				attribs->SetInt("window_size/width", r.right - r.left);
-			if (attribs)
-				attribs->SetInt("window_size/height", r.bottom - r.top);
+			if (attribs) {
+				if (!bMaximized && !bMinimized) {
+					attribs->SetInt("window_size/width", r.right - r.left);
+					attribs->SetInt("window_size/height", r.bottom - r.top);
+				}
+				attribs->SetInt("window_size/maximized", !!bMaximized);
+			}
 		}
 #endif
+
 		UpdateWindow();
 	}
 
@@ -196,6 +258,7 @@ void CResizeableDialog::ReinitFont(CFont* f)
 			if (f->Exists("face")) {
 				f->GetStr("face", &fname);
 				strcpy(logfont.lfFaceName, fname);
+				free(fname);
 			}
 
 			user_font = new CFont;
@@ -217,6 +280,7 @@ void CResizeableDialog::ReinitPosition()
 	int height = -INT_MAX;
 	int left = -INT_MAX;
 	int top = -INT_MAX;
+	int maximized = 0;
 
 	if (attribs) 
 		left = (int)attribs->GetIntWithDefault("window_position/left", -INT_MAX);
@@ -227,6 +291,8 @@ void CResizeableDialog::ReinitPosition()
 		width = (int)attribs->GetInt("window_size/width");
 	if (attribs && attribs->GetIntWithDefault("window_size/height"))
 		height = (int)attribs->GetInt("window_size/height");
+	if (attribs && attribs->GetIntWithDefault("window_size/maximized"))
+		maximized = (int)attribs->GetInt("window_size/maximized");
 
 	RECT r;
 	GetWindowRect(&r);
@@ -243,6 +309,8 @@ void CResizeableDialog::ReinitPosition()
 	int screen_width = GetSystemMetrics(SM_CXSCREEN);
 	int screen_height = GetSystemMetrics(SM_CYSCREEN);
 
+
+
 	left = (left!=-INT_MAX)?left:(screen_width - width) / 2;
 	top = (top!=-INT_MAX)?top:(screen_height - height) / 2;
 
@@ -251,37 +319,60 @@ void CResizeableDialog::ReinitPosition()
 	r.right = r.left + width;
 	r.bottom = r.top + height;
 
-/* put window on screen */
-	if (r.right-r.left > screen_width) {
-		r.left = 0; r.right = screen_width;
+	if ((IsInAnyRect(&displayRectangles, r.left, r.top) &&
+		IsInAnyRect(&displayRectangles, r.left, r.bottom) &&
+		IsInAnyRect(&displayRectangles, r.right, r.top) &&
+		IsInAnyRect(&displayRectangles, r.right, r.bottom)) ||
+		maximized)
+	{
+		/* each of the 4 points is on the screen, accept this */
 	}
-	if (r.bottom-r.top > screen_height) {
-		r.top = 0; r.bottom = screen_height;
+	else 
+	{
+	/* put window on screen */
+		if (r.right-r.left > screen_width) {
+			r.left = 0; r.right = screen_width;
+		}
+		if (r.bottom-r.top > screen_height) {
+			r.top = 0; r.bottom = screen_height;
+		}
+		if (r.right > screen_width) {
+			int diff = r.right - screen_width;
+			r.right = screen_width;
+			r.left -= diff;
+		}
+		if (r.bottom > screen_height) {
+			int diff = r.bottom - screen_height;
+			r.bottom = screen_height;
+			r.top -= diff;
+		}
+		if (r.left < 0) {
+			r.right -= r.left;
+			r.left = 0;
+		}
+		if (r.top < 0) {
+			r.bottom -= r.top;
+			r.top = 0;
+		}
 	}
-	if (r.right > screen_width) {
-		int diff = r.right - screen_width;
-		r.right = screen_width;
-		r.left -= diff;
-	}
-	if (r.bottom > screen_height) {
-		int diff = r.bottom - screen_height;
-		r.bottom = screen_height;
-		r.top -= diff;
-	}
-	if (r.left < 0) {
-		r.right -= r.left;
-		r.left = 0;
-	}
-	if (r.top < 0) {
-		r.bottom -= r.top;
-		r.top = 0;
-	}
-
 	width = r.right - r.left;
-	height = r.top - r.bottom;
-			 
-	MoveWindow(&r);
-	PostMessage(WM_SIZE, 0, (width | (height << 16)));
+	height = r.bottom - r.top;
+		
+	WINDOWPLACEMENT wp;
+	memset(&wp, 0, sizeof(wp));
+	GetWindowPlacement(&wp);
+
+	wp.rcNormalPosition.left = r.left;
+	wp.rcNormalPosition.right = r.right;
+	wp.rcNormalPosition.top = r.top;
+	wp.rcNormalPosition.bottom = r.bottom;
+
+	if (maximized)
+		wp.showCmd = SW_SHOWMAXIMIZED;
+	else
+		wp.showCmd = SW_SHOW;
+
+	SetWindowPlacement(&wp);
 }
 
 #endif
@@ -299,12 +390,12 @@ BOOL CResizeableDialog::OnInitDialog()
 	ReinitPosition();
 #endif
 
-	has_been_initialized = 1;
 	// TODO: Zusätzliche Initialisierung hier einfügen
 	
 	RECT r;
 	GetWindowRect(&r);
-	PostMessage(WM_SIZE, 0, (r.right-r.left) | ((r.bottom-r.top)<<16));
+	for (int j=0; j<2; j++)
+		PostMessage(WM_SIZE, 0, (r.right-r.left) | ((r.bottom-r.top)<<16));
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX-Eigenschaftenseiten sollten FALSE zurückgeben
@@ -435,13 +526,58 @@ void CResizeableDialog::OnMove(int x, int y)
 	GetWindowRect(&r);
 
 #ifdef I_ATTRIBUTES
-	if (has_been_initialized) {
+	if (has_been_initialized)
+	{
+		WINDOWPLACEMENT wp;
+		memset(&wp, 0, sizeof(wp));
+		wp.length = sizeof(wp);
+		GetWindowPlacement(&wp);
+
+/*		if (!bMaximized) {
+			if (attribs)
+				attribs->SetInt("window_position/left", r.left);
+			if (attribs)
+				attribs->SetInt("window_position/top", r.top);
+		}*/
 		if (attribs)
-			attribs->SetInt("window_position/left", r.left);
-		if (attribs)
-			attribs->SetInt("window_position/top", r.top);
+		{
+			attribs->SetInt("window_position/left", wp.rcNormalPosition.left);
+			attribs->SetInt("window_position/top", wp.rcNormalPosition.top);
+			attribs->SetInt("window_size/width", 
+				wp.rcNormalPosition.right - wp.rcNormalPosition.left);
+			attribs->SetInt("window_size/height", 
+				wp.rcNormalPosition.bottom - wp.rcNormalPosition.top);
+
+			attribs->SetInt("window_size/maximized", !!(wp.showCmd == SW_SHOWMAXIMIZED));
+		}
 	}
 #endif
 	// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen
 	
+}
+
+void CResizeableDialog::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
+{
+	CDialog::OnActivate(nState, pWndOther, bMinimized);
+
+	if (nState == WA_ACTIVE) {
+		ReinitPosition();
+	}
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein.
+}
+
+void CResizeableDialog::OnSizing(UINT fwSide, LPRECT pRect)
+{
+	CDialog::OnSizing(fwSide, pRect);
+
+	has_been_initialized = 1;
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein.
+}
+
+void CResizeableDialog::OnMoving(UINT fwSide, LPRECT pRect)
+{
+	CDialog::OnMoving(fwSide, pRect);
+
+	has_been_initialized = 1;
+	// TODO: Fügen Sie hier Ihren Meldungsbehandlungscode ein.
 }

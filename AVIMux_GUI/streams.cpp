@@ -13,7 +13,7 @@ MEMORYSTREAM::~MEMORYSTREAM(void)
 
 };
 
-int MEMORYSTREAM::Open(FILESTREAM* lpSource, DWORD _dwMode)
+int MEMORYSTREAM::Open(CFileStream* lpSource, DWORD _dwMode)
 {
 	DWORD		dwNbrOfMB;
 	DWORD		i;

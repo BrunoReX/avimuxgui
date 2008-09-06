@@ -448,16 +448,16 @@ bool CVideoInformationDlg::InitDialog_Matroska()
 			sprintf(buffer,"%-20s: %s","language",mkvfile->GetLanguage());
 			Tree_Insert(&m_Tree,buffer,hTrack);
 
-			if (mkvfile->GetTrackCompressionDescriptorCount(j) == 1) {
+			for (int k=0; k<mkvfile->GetTrackCompressionDescriptorCount(j); k++) {
 
-				if (mkvfile->GetTrackCompression(j, 0) != COMPRESSION_NONE) {
+				if (mkvfile->GetTrackCompression(j, k) != COMPRESSION_NONE) {
 					char* compr = "";
-					if (mkvfile->GetTrackCompression(j, 0) == COMPRESSION_ZLIB) 
+					if (mkvfile->GetTrackCompression(j, k) == COMPRESSION_ZLIB) 
 						compr = "zlib";
-					if (mkvfile->GetTrackCompression(j, 0) == COMPRESSION_HDRSTRIPPING) 
+					if (mkvfile->GetTrackCompression(j, k) == COMPRESSION_HDRSTRIPPING) 
 						compr = "header stripping";
 
-					sprintf(buffer,"%-20s: %s","compression",compr);
+					sprintf(buffer,"%-20s: #%02d %s", "compression", k, compr);
 					Tree_Insert(&m_Tree,buffer,hTrack);
 				}
 
@@ -604,7 +604,7 @@ bool CVideoInformationDlg::InitDialog_VideoSource()
 
 BOOL CVideoInformationDlg::OnInitDialog() 
 {
-	static const sizes[13]={100,250,500,1000,2500,5000,10000,25000,50000,100000,200000,500000,1000000};
+	static const int sizes[13]={100,250,500,1000,2500,5000,10000,25000,50000,100000,200000,500000,1000000};
 
 	char*	lpDest;
 	DWORD	dwChunkSizes[14],dwSize;

@@ -24,7 +24,7 @@ CResolutionEdit::~CResolutionEdit()
 {
 }
 
-CResolutionEdit::VerifyElement()
+int CResolutionEdit::VerifyElement()
 {
 	char t[128]; memset(t, 0, sizeof(t));
 

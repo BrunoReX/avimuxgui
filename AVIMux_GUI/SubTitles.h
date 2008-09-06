@@ -147,7 +147,7 @@ class SUBTITLESOURCE: public MULTIMEDIASOURCE
 	private:
 		SUBTITLESOURCE_INFO		info;
 		int	virtual				ReadLine(char* lpBuffer);
-		CTEXTFILE*				lpSource;
+		CTextFile*				lpSource;
 		DWORD					dwFormat;
 
 	protected:
@@ -157,7 +157,7 @@ class SUBTITLESOURCE: public MULTIMEDIASOURCE
 		int						iDisplayOrderCount;
 		__int64					qwBegin,qwEnd,dwNbrOfStyles;
 		int virtual				doClose();
-		CTEXTFILE	virtual *GetSource();
+		CTextFile	virtual *GetSource();
 		void		virtual AddSSAStyle(SSA_STYLE* style);
 		SSA_STYLE	virtual *FindSSAStyle(SSA_STYLE* style);
 
@@ -168,7 +168,7 @@ class SUBTITLESOURCE: public MULTIMEDIASOURCE
 		int			virtual	RenderSSAStyles(char** lpDest);
 		int			virtual RenderSSAHeaderAfterStyles(char** lpDest);
 
-		void		virtual	SetSource(CTEXTFILE* c);
+		void		virtual	SetSource(CTextFile* c);
 		void		virtual	SetFormat(int iFormat);
 		int			virtual	SSAStylesEqual(SSA_STYLE_STRUCT* lpSSA1,SSA_STYLE_STRUCT* lpSSA2);
 		__int64		virtual	SSATime2NanoSec(char* lpcTime);
@@ -281,7 +281,7 @@ class SUBTITLES: public SUBTITLESOURCE
 		__int64 virtual GetNextTimecode();
 		int virtual		Read(void* lpDest, int* iSize = NULL, __int64* lpiTimecode = NULL,
 							ADVANCEDREAD_INFO* lpAARI = NULL);
-		int	virtual		Open(CTEXTFILE* source);
+		int	virtual		Open(CTextFile* source);
 		int virtual		Merge(SUBTITLES* lpSubsToMerge,__int64 qwBias);
 		int virtual		Render2AVIChunk(void* lpDest);
 		int virtual		Render2Text(void* lpDest);

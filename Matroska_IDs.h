@@ -6,7 +6,9 @@
 
 #include "EBML_IDs.h"
 
+#ifndef uint32
 #define uint32 unsigned __int32
+#endif
 
 const char MID_CRC32 [] =				{ 0xBF };
 const char MID_VOID [] =				{ 0xEC };

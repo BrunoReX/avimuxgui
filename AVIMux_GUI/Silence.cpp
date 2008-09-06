@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "silence.h"
-#include "stdio.h"
+//#include "stdio.h"
 
 #define SCS_INVALID		-1
 

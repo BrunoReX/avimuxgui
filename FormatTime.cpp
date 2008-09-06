@@ -3,10 +3,10 @@
 
 void Millisec2HMSF(__int64 qwMillisec,int* lpdwH,int* lpdwM,int* lpdwS,int* lpdwF)
 {
-	*lpdwH=(DWORD)(qwMillisec/3600000);
-	*lpdwM=(DWORD)(qwMillisec%3600000/60000);
-	*lpdwS=(DWORD)(qwMillisec%60000/1000);
-	*lpdwF=(DWORD)(qwMillisec%1000);
+	*lpdwH=(int)(qwMillisec/3600000);
+	*lpdwM=(int)(qwMillisec%3600000/60000);
+	*lpdwS=(int)(qwMillisec%60000/1000);
+	*lpdwF=(int)(qwMillisec%1000);
 }
 
 void Millisec2Str(__int64 qwMillisec, char* lpcDest)

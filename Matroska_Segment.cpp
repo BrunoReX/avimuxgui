@@ -22,10 +22,9 @@ such files
 #include "Matroska_Segment.h"
 #include "Matroska_IDs.h"
 #include "Warnings.h"
-#include "DynArray.h"
 #include "crc.h"
 #include "AVIMux_GUI/ecc.h"
-#include "generateuids.h"
+#include "UID.h"
 #include <algorithm>
 
 #ifdef DEBUG_NEW
@@ -43,52 +42,7 @@ static char THIS_FILE[] = __FILE__;
 const int ISTATE_JUMPSEARCH	= 0x01;
 const int ISTATE_LINEARSEARCH = 0x02;
 
-TRACK_COMPRESSION_DESCRIPTOR::TRACK_COMPRESSION_DESCRIPTOR()
-{
-	compression = COMPRESSION_NONE;
-	compressed_elements = 0;
-	compression_private = NULL;
-	compression_private_size = NULL;
-	is_decompressed = false;
-	order = 0;
-}
 
-TRACK_COMPRESSION_DESCRIPTOR::~TRACK_COMPRESSION_DESCRIPTOR()
-{
-	if (compression_private_size && compression_private)
-		free(compression_private);
-}
-
-TRACK_COMPRESSION_DESCRIPTOR& TRACK_COMPRESSION_DESCRIPTOR::operator =(const TRACK_COMPRESSION_DESCRIPTOR &other)
-{
-	compression = other.compression;
-	order = other.order;
-	compressed_elements = other.compressed_elements;
-
-	if (compression_private && compression_private_size)
-		free(compression_private);
-
-	compression_private_size = other.compression_private_size;
-	if (compression_private_size) {
-		compression_private = malloc(compression_private_size);
-		memcpy(compression_private, other.compression_private,
-			compression_private_size);
-	}
-
-	return *this;
-}
-
-bool TRACK_COMPRESSION_DESCRIPTOR::operator ==(const TRACK_COMPRESSION_DESCRIPTOR &other)
-{
-	return (
-		compression == other.compression &&
-		order == other.order &&
-		compressed_elements == other.compressed_elements &&
-		compression_private_size == other.compression_private_size &&
-		((!compression_private && !other.compression_private) ||
-		(compression_private && other.compression_private &&
-		!memcmp(compression_private, other.compression_private, compression_private_size))));
-}
 
 //TRACK_COMPRESSION_DESCRIPTOR::TRACK_COMPRESSION_DESCRIPTOR(TRACK_COMPRESSION_DESCRIPTOR& other)
 
@@ -100,7 +54,7 @@ TRACK_INFO::TRACK_INFO()
 	qwDefaultDuration = 0;
 	iTrackOffset = 0;
 
-	cName = NULL;
+//	cName = NULL;
 	cCodecID = NULL;
 	cCodecName = NULL;
 	cCodecPrivate = NULL;
@@ -145,7 +99,7 @@ TRACK_INFO::TRACK_INFO()
 TRACK_INFO::~TRACK_INFO()
 {
 	DecBufferRefCount(&cLanguage);
-	DecBufferRefCount(&cName);
+//	DecBufferRefCount(&cName);
 	DecBufferRefCount(&cCodecID);
 	DecBufferRefCount(&cCodecPrivate);
 	DecBufferRefCount(&cCodecName);
@@ -238,7 +192,7 @@ SEGMENT_INFO::SEGMENT_INFO()
 	iTotalBlockCount = NULL;	// total number of blocks
 	iOtherBlocksThan = NULL;	// blocks of tracks[j!=i] read since the last block of track i
 
-	cTitle = NULL;
+//	cTitle = NULL;
 	cMuxingApp = NULL;
 	cWritingApp = NULL;
 	
@@ -874,55 +828,7 @@ void RemoveDoubles(EBMLElementVector& e)
 	e = result;
 }
 
-// pointer to list and element description
-int EBMLElement::InsertElement(void** _e, EBMLElement* seg, char* ID, EBMLElement* pos)
-{
-	EBMLELEMENTLIST** e = (EBMLELEMENTLIST**)_e;
-	char* created_id;
-	created_id = new char[5];
-	ZeroMemory(created_id,sizeof(created_id));
 
-	if (!*e) {
-		newz(EBMLELEMENTLIST, 1, *e);
-	}
-	seg->SeekStream(pos->AsInt());
-	(*e)->pElement = (EBMLElement**)realloc((*e)->pElement,
-		((*e)->iCount+1)*sizeof(EBMLElement));
-
-	seg->Create(&(*e)->pElement[(*e)->iCount++], (char**)&created_id);
-
-	if (pos->CompIDs(ID, (char*)created_id)) {
-		delete created_id;
-		return 1;
-	} else {
-		delete created_id;
-		(*e)->iCount--;
-		return -1;
-	}
-}
-
-// pointer to list and element description
-int EBMLElement::InsertElement(EBMLElementVector& e, EBMLElement* seg, char* ID, EBMLElement* pos)
-{
-	char* created_id;
-	created_id = new char[5];
-	ZeroMemory(created_id,sizeof(created_id));
-
-	seg->SeekStream(pos->AsInt());
-
-	EBMLElement* element;
-
-	seg->Create(&element, (char**)&created_id);
-
-	if (pos->CompIDs(ID, (char*)created_id)) {
-		delete created_id;
-		e.push_back(element);
-		return 1;
-	} else {
-		delete created_id;
-		return -1;
-	}
-}
 
 // Output error about bad seekhead entry to stderr
 void BadSeekheadError(int i, int j, char* cID)
@@ -1073,7 +979,8 @@ void EBMLM_Segment::RetrieveSegmentInfo(EBMLELEMENTLIST* e_SIList)
 				case ETM_SI_MUXINGAPP: cb->Refer(&SegmentInfo->cMuxingApp); break;
 				case ETM_SI_WRITINGAPP: cb->Refer(&SegmentInfo->cWritingApp); break;
 				case ETM_SI_TITLE: 
-					SegmentInfo->cTitle=new CStringBuffer(cb->AsString(), CBN_REF1 | CSB_UTF8);
+					//SegmentInfo->cTitle=new CStringBuffer(cb->AsString(), CBN_REF1 | CSB_UTF8);
+					SegmentInfo->GetTitleSet()->SetTitle(cb->AsString());
 					break;
 				case ETM_SI_SEGMENTFILENAME: cb->Refer(&SegmentInfo->CurrSeg.cFilename); break;
 				case ETM_SI_PREVFILENAME: cb->Refer(&SegmentInfo->PrevSeg.cFilename); break;
@@ -1094,6 +1001,15 @@ void EBMLM_Segment::RetrieveSegmentInfo(EBMLELEMENTLIST* e_SIList)
 
 //		DeleteElementList(&e_SIList);
 	}
+}
+
+int compare_tcd(TRACK_COMPRESSION_DESCRIPTOR& tc1, TRACK_COMPRESSION_DESCRIPTOR& tc2)
+{
+	if (tc1.order < tc2.order)
+		return -1;
+	if (tc1.order == tc2.order)
+		return 0;
+	return 1;
 }
 
 int EBMLM_Segment::RetrieveInfo()
@@ -1416,7 +1332,9 @@ int EBMLM_Segment::RetrieveInfo()
 			while (e_next) {
 				e_old = e_next;
 				switch (e_old->GetType()) {
-					case ETM_TR_NAME: e_old->GetData()->Refer(&t->cName); break;
+					case ETM_TR_NAME: 
+						t->GetTitleSet()->SetTitle(e_old->GetData()->AsString()); 
+						break; 
 					case ETM_TR_LANGUAGE: e_old->GetData()->Refer(&t->cLanguage); break;
 					case ETM_TR_CODECID: e_old->GetData()->Refer(&t->cCodecID); break;
 					case ETM_TR_CODECNAME: e_old->GetData()->Refer(&t->cCodecName); break;
@@ -1521,24 +1439,31 @@ int EBMLM_Segment::RetrieveInfo()
 								tci.order = (int)order;
 								
 								// check if order already exists
-								TRACK_COMPRESSION::iterator iter = t->track_compression.begin();
-								bool found = false;
-								for (; iter != t->track_compression.end() && !found; iter++)
-									found |= iter->order == tci.order;
-								iter--;
+								if (t->track_compression.size())
+								{
+									TRACK_COMPRESSION::iterator iter = t->track_compression.begin();
+									bool found = false;
+									for (; iter != t->track_compression.end() && !found; iter++)
+										found |= iter->order == tci.order;
+	//								iter--;
 
-								// if compression descriptor for that position
-								// exists, check for consistency
-								if (!found)
+									TRACK_COMPRESSION::reverse_iterator _iter = 
+										TRACK_COMPRESSION::reverse_iterator(t->track_compression.rend());
+									_iter--;
+									// if compression descriptor for that position
+									// exists, check for consistency
+									if (!found)
+										t->track_compression.push_back(tci);
+									else {
+										if (!(tci == *_iter))
+											B0rked("Found inconsistent track compression information", 
+												(*e_ContentEncoding)(0)->GetStreamPos());
+									}
+									
+	//								int k = t->track_compression.size();
+									DeleteVectors(cpr_search);
+								} else
 									t->track_compression.push_back(tci);
-								else {
-									if (!(tci == *iter))
-										B0rked("Found inconsistent track compression information", 
-											(*e_ContentEncoding)(0)->GetStreamPos());
-								}
-								
-//								int k = t->track_compression.size();
-								DeleteVectors(cpr_search);
 							}
 							DeleteElementList(&e_ContentEncoding);
 							DeleteVectors(cp_search);
@@ -1567,6 +1492,9 @@ int EBMLM_Segment::RetrieveInfo()
 
 			if (t->audio.fOutputSamplingFrequency<0) 
 				t->audio.fOutputSamplingFrequency = t->audio.fSamplingFrequency;
+
+			std::sort(t->track_compression.begin(), t->track_compression.end(),
+				compare_tcd);
 		}
 	}
 
@@ -1620,9 +1548,15 @@ int EBMLM_Segment::RetrieveInfo()
 			   ChapterUIDs: targets[2]
 			*/
 
-			CDynIntArray* aTracks = new CDynIntArray;
+			//CDynIntArray* aTracks = new CDynIntArray;
+			std::vector<int> aTracks;
 			if (!e_Target->iCount) {
-				B0rked("Tag does not contain Target");
+				Note("Tag does not contain Target and will be considered global for this segment");
+				/* fix crash when accessing targets[0], targets[1], ... later 
+				   by pushbacking empty vectors */
+                targets.push_back(std::vector<EBMLElement*>());
+                targets.push_back(std::vector<EBMLElement*>());
+                targets.push_back(std::vector<EBMLElement*>());
 			} else {
 				// find all track IDs
 				e_Target->pElement[0]->SearchMulti(targets, target_sme);
@@ -1634,7 +1568,7 @@ int EBMLM_Segment::RetrieveInfo()
 						B0rked("Couldn't find Track for TrackUID in Target",
 							(*iter)->GetStreamPos());
 					} else {
-						aTracks->Insert(iIndex);
+						aTracks.push_back(iIndex);
 					}
 				}
 				
@@ -1644,8 +1578,8 @@ int EBMLM_Segment::RetrieveInfo()
 				// go through tags and look for bitsps and framesps
 				while (e_next) {
 					e_old = e_next;
-					for (k=0;k<aTracks->GetCount();k++) {
-						t = SegmentInfo->tracks->track_info[aTracks->At(k)];
+					for (k=0;k<aTracks.size();k++) {
+						t = SegmentInfo->tracks->track_info[aTracks[k]];
 						switch (e_old->GetType()) {
 							case ETM_TG_BITSPS: 
 								t->tags.iFlags |= TRACKTAGS_BITSPS;
@@ -1692,8 +1626,8 @@ int EBMLM_Segment::RetrieveInfo()
 					// Tag indicating the bitrate of something
 					if (!strcmp(cName, "BITSPS") || !strcmp(cName, "BPS")) {
 						__int64 iBPS = atoi(cString);
-						for (l=0;l<aTracks->GetCount();l++) {
-							t = SegmentInfo->tracks->track_info[aTracks->At(l)];
+						for (l=0;l<aTracks.size();l++) {
+							t = SegmentInfo->tracks->track_info[aTracks[l]];
 							t->tags.iFlags |= TRACKTAGS_BITSPS;
 							t->tags.iBitsPS = iBPS;
 						}
@@ -1744,10 +1678,18 @@ int EBMLM_Segment::RetrieveInfo()
 					}
 
 					// generic tags without any meaning
-					if (!e_Target->iCount || targets[0].empty()	&& targets[1].empty() && targets[2].empty()) {
+					if (!e_Target->iCount || 
+							targets[0].empty() && 
+							targets[1].empty() && 
+							targets[2].empty()
+						) {
 						// global Tag
 						tagAddIndex(SegmentInfo->pGlobalTags, 	
 							tagAdd(&SegmentInfo->pAllTags, cName, cString, cLanguage));
+
+						if (!strcmp(cName, "TITLE")) {
+							SegmentInfo->GetTitleSet()->AddTitle(cString, cLanguage);
+						}
 					} 
 
 					if (!targets[0].empty()) {
@@ -1756,8 +1698,12 @@ int EBMLM_Segment::RetrieveInfo()
 							int track_index = TrackUID2TrackIndex(targets[0][i]->AsInt());
 							if (track_index == TUID2TI_INVALID) 
 								B0rked("No track found for specified TrackUID in Target", targets[0][i]->GetStreamPos());
-							else
+							else {
 								tagAddIndex(SegmentInfo->tracks->track_info[track_index]->pTags, index);
+								if (!strcmp(cName, "TITLE")) {
+									SegmentInfo->tracks->track_info[track_index]->GetTitleSet()->AddTitle(cString, cLanguage);
+								}
+							}
 						}
 					}
 				}
@@ -1768,8 +1714,8 @@ int EBMLM_Segment::RetrieveInfo()
 			DeleteElementList(&e_Target);
 			DeleteElementList(&e_SimpleTags);
 
-			aTracks->DeleteAll();
-			delete aTracks;
+		//	aTracks->DeleteAll();
+		//	delete aTracks;
 		}
 		
 		DeleteVector(e_Tag);
@@ -1953,7 +1899,7 @@ void EBMLM_Segment::Delete()
 		delete SegmentInfo->tracks;
 	}
 	DecBufferRefCount(&SegmentInfo->cMuxingApp);
-	DecBufferRefCount(&SegmentInfo->cTitle);
+	//DecBufferRefCount(&SegmentInfo->cTitle);
 	DecBufferRefCount(&SegmentInfo->cWritingApp);
 	DecBufferRefCount(&SegmentInfo->CurrSeg.cFilename);
 	DecBufferRefCount(&SegmentInfo->PrevSeg.cFilename);

@@ -1,10 +1,16 @@
 #include "stdafx.h"
 #include "audiosource_mp3.h"
 
+#include "TraceFile.h"
+#include "..\FormatTime.h"
+#include "..\FormatInt64.h"
+
+#ifdef DEBUG_NEW
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
+#endif
 #endif
 
 	//////////////////////
@@ -60,6 +66,48 @@ DWORD MP3SOURCE::ReadFrameHeader(void)
 	return dwRes;
 }
 
+int MP3SOURCE::FindNextFrameHeader(int MaxSearchLength, int& badBytes)
+{
+	badBytes = 0;
+	__int64 SourcePosition = GetSource()->GetPos();
+
+	MP3FRAMEHEADER frameHeader;
+
+	int CurrentSearchPos = 0;
+	while (CurrentSearchPos < MaxSearchLength)
+	{
+		GetSource()->Seek(SourcePosition + CurrentSearchPos++);
+
+		DWORD dwData;
+		if (GetSource()->Read(&dwData, 4) != 4)
+			return 0;
+
+		frameHeader.SetFrameHeader(dwData);
+		if (!frameHeader.IsValid())
+			continue;
+
+		int iPadd;
+		int Size = frameHeader.GetFrameSize(&iPadd);
+
+		if (GetSource()->Seek(GetSource()->GetPos() + Size - 4) != STREAM_OK)
+			return 0;
+
+		if (GetSource()->Read(&dwData, 4) != 4)
+			return 0;
+
+		frameHeader.SetFrameHeader(dwData);
+		if (!frameHeader.IsValid())
+			continue;
+
+		badBytes = CurrentSearchPos - 1;
+		GetSource()->Seek(SourcePosition + badBytes);
+		return 1;
+	}
+
+
+	return 0;
+}
+
 int MP3SOURCE::Open(STREAM* lpStream)
 {
 	if (!lpStream || lpStream->GetSize() <= 0)
@@ -67,14 +115,15 @@ int MP3SOURCE::Open(STREAM* lpStream)
 
 	DWORD		dwHeader=0;
 	int			iPadd,i;
-	byte		data[2000];
+//	byte		data[2000];
 	DWORD		dwStart=0;
 	__int64	qwPos=0;
 
 	dwRingBufferPos=0;
 	fh=new MP3FRAMEHEADER;
-	AUDIOSOURCEFROMBINARY::Open(lpStream);
-	GetSource()->Read(&dwHeader,4);
+	CBinaryAudioSource::Open(lpStream);
+
+/*	GetSource()->Read(&dwHeader,4);
 	fh->SetFrameHeader(dwHeader);
 	if (!fh->SyncOK()||(!fh->GetFrequency())||(!fh->GetBitrate()))
 	{
@@ -109,6 +158,21 @@ int MP3SOURCE::Open(STREAM* lpStream)
 			return AS_ERR;
 		}
 	}
+	*/
+
+	int BadBytes = 0;
+	int Success = FindNextFrameHeader(GetResyncRange(), BadBytes);
+
+	if (!Success) {
+		GetSource()->SetOffset(0);
+		return AS_ERR;
+	}
+
+	GetSource()->SetOffset(BadBytes);
+	GetSource()->Seek(0);
+	GetSource()->Read(&dwHeader,4);
+	fh->SetFrameHeader(dwHeader);
+
 	dwFrequency=fh->GetFrequency();
 	if (!fh->GetBitrate())
 	{
@@ -142,6 +206,22 @@ int MP3SOURCE::Open(STREAM* lpStream)
 		iFrameDuration=round((double)8000000*(double)fSize/(double)dwBitrate);
 	} else {
 		iFrameDuration=FRAMEDURATION_UNKNOWN;
+	}
+
+	if (GetMPEGVersion() == 4) {
+		/* MPEG 2.5 not supported */
+
+		return false;
+	}
+
+	bool bSuccess = qwPos<GetResyncRange() && qwPos < GetSize();
+	if (bSuccess) {
+		char cName[1024]; memset(cName, 0, sizeof(cName));
+		GetName(cName);
+
+		char msg[2048]; memset(msg, 0, sizeof(msg));
+		sprintf_s(msg, "MPEG %d Layer %d", GetMPEGVersion(), GetLayerVersion());
+		//GetApplicationTraceFile()->Trace(TRACE_LEVEL_INFO, "MP3SOURCE created", msg);
 	}
 
 	return (/*dwFrameSize && dwBitrate &&*/ qwPos<GetResyncRange() && qwPos < GetSize());
@@ -226,6 +306,12 @@ int MP3FRAMEHEADER::GetBitrate(void)
 	{
 		return 0;
 	}
+}
+
+bool MP3FRAMEHEADER::IsValid()
+{
+	int iPadd;
+	return (SyncOK() &&  GetFrequency() && GetFrameSize(&iPadd));
 }
 
 int MP3FRAMEHEADER::GetFrequencyIndex(void)
@@ -374,6 +460,24 @@ int MP3SOURCE::ReadFrame(void* lpDest,DWORD* lpdwMicroSecRead,__int64* lpqwNanoS
 	}
 	else
 	{
+		char cTime[64]; cTime[0]=0;
+		Millisec2Str(GetCurrentTimecode() * GetTimecodeScale() / 1000000, cTime);
+
+		char cCurrPos[64]; cCurrPos[0]=0;
+		QW2Str(GetSource()->GetPos(), cCurrPos, 0);
+
+		char cSize[64]; cSize[0]=0;
+		QW2Str(GetSource()->GetSize(), cSize, 0);
+
+		char cName[1024]; cName[0]=0;
+		GetName(cName);
+
+		char msg[2048]; msg[0]=0;
+		sprintf_s(msg, "Error reading frame header\nStream: %s\nPosition: %s\nTotal size: %s\nLast timecode: %s",
+			cName, cCurrPos, cSize, cTime);
+
+		//GetApplicationTraceFile()->Trace(TRACE_LEVEL_ERROR, "Bad input stream", msg);
+
 		GetSource()->Seek(qwOldPos);
 		return 0;
 	}
@@ -451,6 +555,75 @@ int MP3SOURCE::doRead(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdwMicroSecRe
 		}
 
 	}
+}
+
+int MP3SOURCE::ReadFrame(MULTIMEDIA_DATA_PACKET** packet)
+{
+	int iPadd;
+	float fSize;
+
+	createMultimediaDataPacket(packet);
+
+	__int64 iPos = GetSource()->GetPos();
+	DWORD dwFrameHeader = ReadFrameHeader();
+	fh->SetFrameHeader(dwFrameHeader);
+	DWORD dwFrameSize=fh->GetFrameSize(&iPadd,&fSize);
+
+	if (fh->SyncOK() && dwFrameSize && fh->GetBitrate())
+	{
+		(*packet)->data = malloc(dwFrameSize);
+
+		DWORD* pdwTarget = (DWORD*)((*packet)->data);
+		*pdwTarget++ = dwFrameHeader;
+
+		dwRingBuffer[dwRingBufferPos++]=fh->GetBitrate();
+		dwRingBufferPos%=1024;
+
+		__int64 qwNanoSecRead = round((double)(fSize)/(double)fh->GetBitrate()*8000000.0);
+
+		(*packet)->duration = qwNanoSecRead;
+		(*packet)->frameSizes.push_back(static_cast<int>(dwFrameSize));
+		(*packet)->referencedFrames.clear();
+		(*packet)->totalDataSize = dwFrameSize;
+		(*packet)->timecode = GetCurrentTimecode() * GetTimecodeScale();
+		(*packet)->flags = 0;
+		(*packet)->compressionInfo.clear();
+		IncCurrentTimecode(qwNanoSecRead);
+
+		if (!IsEndOfStream())
+			(*packet)->nextTimecode = GetCurrentTimecode();
+		else
+			(*packet)->nextTimecode = TIMECODE_UNKNOWN;
+
+		return (GetSource()->Read(pdwTarget, dwFrameSize - 4) + 4);
+	}
+	else
+	{
+		char cTime[64]; cTime[0]=0;
+		Millisec2Str(GetCurrentTimecode() * GetTimecodeScale() / 1000000, cTime);
+
+		char cCurrPos[64]; cCurrPos[0]=0;
+		QW2Str(GetSource()->GetPos(), cCurrPos, 0);
+
+		char cSize[64]; cSize[0]=0;
+		QW2Str(GetSource()->GetSize(), cSize, 0);
+
+		char cName[1024]; cName[0]=0;
+		GetName(cName);
+
+		char msg[2048]; msg[0]=0;
+		sprintf_s(msg, "Error reading frame header\nStream: %s\nPosition: %s\nTotal size: %s\nLast timecode: %s",
+			cName, cCurrPos, cSize, cTime);
+
+		//GetApplicationTraceFile()->Trace(TRACE_LEVEL_ERROR, "Bad input stream", msg);
+
+		GetSource()->Seek(iPos);
+		return 0;
+
+	}
+
+
+	return 0;
 }
 
 int MP3SOURCE::GetFrequency(void)

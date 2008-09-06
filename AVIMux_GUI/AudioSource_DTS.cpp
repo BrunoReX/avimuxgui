@@ -1,10 +1,12 @@
 #include "stdafx.h"
 #include "audiosource_dts.h"
 
+#ifdef DEBUG_NEW
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
+#endif
 #endif
 
 	//////////////////////
@@ -82,7 +84,7 @@ __int64 DTSSOURCE::GetFrameDuration()
 	return dtsinfo.nano_seconds_per_frame;
 }
 
-int DTSSOURCE::ProcessFrameHeader(DTSINFO*	lpdtsinfo)
+int DTSSOURCE::ParseFrameHeader(DTSINFO* lpdtsinfo)
 {
 	DWORD	channel_table[16] = { 1,2,2,2,2,3,3,4,4,5,6,6,6,7,8,8 };
 	DWORD	sample_rate_table[16] =	{
@@ -95,35 +97,59 @@ int DTSSOURCE::ProcessFrameHeader(DTSINFO*	lpdtsinfo)
 		1509.75f,1920,2048,3072,3840,   0,   0,   0 };
 
 	__int64	qwOldPos;
-
+	int bitpos;
 	DWORD		dwFrameSize;
 	DWORD		dwChannels;
 	DWORD		dwFrequency;
 	float		fBitrate;
 
 	qwOldPos=GetSource()->GetPos();
+	bitpos = bitsource->GetBitPos();	
 
-	bitsource->ReadBits(32);				// Sync
+	uint32 uiSync = bitsource->ReadBits(32);// Sync
+	if (uiSync != 0x7ffe8001)
+		return 0;
+
 	bitsource->ReadBits(1);					// Frametype
 	bitsource->ReadBits(5);					// deficit sample count
 	bitsource->ReadBits(1);					// CRC present?
-	bitsource->ReadBits(7);					// number of PCM samples per block
+	DWORD dwPCMSampleCount = bitsource->ReadBits(7);					// number of PCM samples per block
 	dwFrameSize=(bitsource->ReadBits(14)+1);	// primary frame byte size
 	dwChannels=channel_table[bitsource->ReadBits(6)]; // audio channel arrangement
 	dwFrequency=sample_rate_table[bitsource->ReadBits(4)]; // core audio sample frequency
 	fBitrate=bitrate_table[bitsource->ReadBits(5)]; // transmission bitrate
-	double seconds = (double)dwFrameSize / fBitrate / 125; 
+	DWORD dwIgnore = bitsource->ReadBits(10);
+	DWORD dwLFEFlag = bitsource->ReadBits(2);
+
+//	double seconds = (double)dwFrameSize / fBitrate / 125; 
     if(lpdtsinfo)
 	{
 		lpdtsinfo->fBitrate=fBitrate;
 		lpdtsinfo->dwFrameSize=dwFrameSize;
 		lpdtsinfo->dwFrequency=dwFrequency;
-		lpdtsinfo->dwChannels=dwChannels;
-		lpdtsinfo->nano_seconds_per_frame = (__int64)(seconds * 1000000000.);
+		lpdtsinfo->nano_seconds_per_frame = (32. * (dwPCMSampleCount + 1.)) / dwFrequency * 1000000000;
+		if (dwLFEFlag == 1 || dwLFEFlag == 2)
+		{
+			lpdtsinfo->dwLFE = 1;			
+		}
+		else
+		{
+			lpdtsinfo->dwLFE = 0;			
+		}
+		lpdtsinfo->dwChannels=dwChannels + lpdtsinfo->dwLFE;
 	}
 
 	GetSource()->Seek(qwOldPos);
+	bitsource->SetBitPos(bitpos);
 	return 1;
+}
+
+char* DTSSOURCE::GetChannelString()
+{
+	char cTemp[8]; cTemp[0]=0;
+	
+	_snprintf(cTemp, 8, "%d.%d", GetChannelCount()-dtsinfo.dwLFE, dtsinfo.dwLFE);
+	return _strdup(cTemp);
 }
 
 int DTSSOURCE::Open(STREAM *lpStream)
@@ -131,7 +157,7 @@ int DTSSOURCE::Open(STREAM *lpStream)
 	if (!lpStream || lpStream->GetSize() <= 0) 
 		return AS_ERR;
 
-	if (AUDIOSOURCEFROMBINARY::Open(lpStream)==AS_ERR)
+	if (CBinaryAudioSource::Open(lpStream)==AS_ERR)
 		return AS_ERR;
 
 	bitsource=new BITSTREAM;
@@ -142,7 +168,10 @@ int DTSSOURCE::Open(STREAM *lpStream)
 
 	if (!Resync()) 
 		return AS_ERR;
-	ProcessFrameHeader(&dtsinfo);
+
+	ParseFrameHeader(&dtsinfo);
+
+	SetCurrentTimecode(0, TIMECODE_UNSCALED);
 
 	return 1;
 }
@@ -152,7 +181,10 @@ int DTSSOURCE::GetFormatTag()
 	return 0x2001;
 }
 
-int DTSSOURCE::doRead(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdwMicroSecRead,__int64* lpqwNanoSecRead)
+int DTSSOURCE::doRead(void* lpDest, 
+					  DWORD dwMicroSecDesired,
+					  DWORD* lpdwMicroSecRead,
+					  __int64* lpqwNanoSecRead)
 {
 	BYTE*		lpbDest=(BYTE*)lpDest;
 	int 		dwMSR1 = 0,dwMSR2 = 0;
@@ -178,7 +210,6 @@ int DTSSOURCE::doRead(void* lpDest,DWORD dwMicroSecDesired,DWORD* lpdwMicroSecRe
 		if (lpqwNanoSecRead) (*lpqwNanoSecRead)=qwNSR1;
 
 		return dwReadFirst;
-
 	}
 
 	return 0;
@@ -194,6 +225,42 @@ int DTSSOURCE::ReadFrame(void* lpDest,DWORD* lpdwMicroSecRead,__int64 *lpqwNanoS
 	if (lpdwMicroSecRead) *lpdwMicroSecRead=(DWORD)round(8000*z);
 
 	return dwRead;
+}
+
+int DTSSOURCE::ReadFrame(MULTIMEDIA_DATA_PACKET** dataPacket)
+{
+	DTSINFO dtsinfo;
+
+	/* check if frame header can be read correctly */
+	if (!ParseFrameHeader(&dtsinfo))
+	{
+		return -1;
+	}
+
+	char* data = (char*)malloc(dtsinfo.dwFrameSize);
+	DWORD dwRead = GetSource()->Read(data, dtsinfo.dwFrameSize);
+
+	if (dwRead != dtsinfo.dwFrameSize)
+		return -1;
+
+	createMultimediaDataPacket(dataPacket);
+	(*dataPacket)->cData = data;
+	(*dataPacket)->totalDataSize = dtsinfo.dwFrameSize;
+	(*dataPacket)->duration = dtsinfo.nano_seconds_per_frame;
+	(*dataPacket)->frameSizes.push_back(dtsinfo.dwFrameSize);
+	(*dataPacket)->timecode = GetCurrentTimecode() * GetTimecodeScale();
+	
+	if (IsEndOfStream())
+		(*dataPacket)->nextTimecode = TIMECODE_UNKNOWN;
+	else
+		(*dataPacket)->nextTimecode = (*dataPacket)->timecode + dtsinfo.nano_seconds_per_frame;
+
+	(*dataPacket)->flags = 0;
+	(*dataPacket)->compressionInfo.clear();
+
+	IncCurrentTimecode(dtsinfo.nano_seconds_per_frame);
+
+	return (*dataPacket)->totalDataSize;
 }
 
 int DTSSOURCE::GetFrameSize()

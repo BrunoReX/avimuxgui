@@ -245,6 +245,9 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\AVIMux_GUIDlg_MainWindowStates.cpp">
+			</File>
+			<File
 				RelativePath="AVIMux_GUIDlg_OnInitDialog.cpp">
 				<FileConfiguration
 					Name="Debug|Win32">
@@ -1079,6 +1082,9 @@
 						Optimization="2"
 						PreprocessorDefinitions=""/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\TitleSet.cpp">
 			</File>
 			<File
 				RelativePath="TransformFilter.cpp">
@@ -2506,13 +2512,13 @@
 			Name="Ressourcendateien"
 			Filter="ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe">
 			<File
-				RelativePath="res_eng\res\AVIMux_GUI.ico">
-			</File>
-			<File
 				RelativePath="res\AVIMux_GUI.ico">
 			</File>
 			<File
 				RelativePath="res_deu\res\AVIMux_GUI.ico">
+			</File>
+			<File
+				RelativePath="res_eng\res\AVIMux_GUI.ico">
 			</File>
 			<File
 				RelativePath="res\bitmap1.bmp">

@@ -4,7 +4,7 @@
 #include "buffers.h"
 #include "formattime.h"
 #include "stdio.h"
-#include "generateuids.h"
+#include "UID.h"
 
 #ifdef DEBUG_NEW
 #ifdef _DEBUG
@@ -21,8 +21,7 @@ static char THIS_FILE[] = __FILE__;
 	* GetTags should define an error condition
 	* replace stupid dynarrays with vectors
 
-
-  */
+*/
 
 char* physicalequiv2string(int index)
 {
@@ -318,7 +317,7 @@ int CChapters::SetChapterBegin(int iIndex,__int64 iBegin)
 	return 0;
 }
 
-int CChapters::SetChapterText(int iIndex, char* cText, int iIndex2)
+int CChapters::SetChapterText(int iIndex, const char* cText, int iIndex2)
 {
 	iIndex = Map(iIndex);
 	CHAPTER_DISPLAY&	cdi = chapters->chapters[iIndex]->display;
@@ -366,7 +365,7 @@ int CChapters::GetChapterDisplayCount(int iIndex)
 	return (int)chapters->chapters[iIndex]->display.size();
 }
 
-int CChapters::SetChapterLng(int iIndex, char* cText, int iIndex2)
+int CChapters::SetChapterLng(int iIndex, const char* cText, int iIndex2)
 {
 	iIndex = Map(iIndex);
 	CHAPTER_DISPLAY&	cd = chapters->chapters[iIndex]->display;
@@ -381,6 +380,7 @@ int CChapters::SetChapterLng(int iIndex, char* cText, int iIndex2)
 
 	return 0;
 }
+
 
 int CChapters::GetChapter(CDynIntArray* aIndex, __int64* lpiBegin,
 						  __int64* lpiEnd, char* cText)
@@ -417,6 +417,7 @@ int CChapters::GetChapter(std::vector<int> index, __int64* pBegin,
 	return 0;
 }
 
+
 CChapters* CChapters::GetChapter(CDynIntArray* aIndex, int* iIndex)
 {
 	if (!aIndex)
@@ -438,6 +439,26 @@ CChapters* CChapters::GetChapter(CDynIntArray* aIndex, int* iIndex)
 	return cLevel;
 }
 
+CChapters* CChapters::GetChapter(const std::vector<int>& index, int* lastIndex)
+{
+	std::vector<int>::const_iterator iter = index.begin();
+
+	CChapters* cLevel = this;
+	for (; iter+1 != index.end(); iter++)
+	{
+		if (cLevel->HasSubChapters(*iter)) {
+			cLevel = GetSubChapters(*iter);
+		} else {
+			return NULL;
+		}
+	}
+
+	if (lastIndex)
+		*lastIndex = index[index.size()-1];
+
+	return cLevel;
+}
+
 int CChapters::GetChapter(int iIndex, __int64* lpiBegin, __int64* lpiEnd, char* cText)
 {
 	iIndex=Map(iIndex);
@@ -449,6 +470,7 @@ int CChapters::GetChapter(int iIndex, __int64* lpiBegin, __int64* lpiEnd, char* 
 
 	return 0;
 }
+
 
 int CChapters::GetChapter(CDynIntArray* aIndex, SINGLE_CHAPTER_DATA *lpSCD)
 {
@@ -1048,7 +1070,7 @@ CChapters* CChapters::FindUID(__int64 UID, int bEdition, int* pIndex)
 	return 0;
 }
 
-int CChapters::FindChapterDisplayLanguageIndex(int iIndex, char* cLng, int allow_und)
+int CChapters::FindChapterDisplayLanguageIndex(int iIndex, const char* cLng, int allow_und)
 {
 	if (!cLng)
 		return -1;
@@ -1293,7 +1315,18 @@ void CChapters::CopyChapterDisplay(CChapters* cSource, int iIndexSource, int iIn
 	}
 }
 
-#define IS(b,a) (!stricmp(b->cNodeName, a))
+#define IS(b,a) (!_stricmp(b->cNodeName.c_str(), a))
+
+unsigned __int64 stroui64(const char* src)
+{
+	unsigned __int64 result = 0;
+	while (*src)
+	{
+		result = result * 10 + (-48 + *src++);
+	}
+
+	return result;
+}
 
 int CChapters::ImportFromXML(XMLNODE* xmlNode, int depth)
 {
@@ -1322,27 +1355,28 @@ int CChapters::ImportFromXML(XMLNODE* xmlNode, int depth)
 		return ImportFromXML((XMLNODE*)xmlNode->pChild, depth + 1);
 	} else
 
-	if (!stricmp(xmlNode->cNodeName, "Chapters")) {
+	if (!_stricmp(xmlNode->cNodeName.c_str(), "Chapters")) {
 		if ((res = ImportFromXML((XMLNODE*)xmlNode->pChild, depth + 1)) && res != CHAP_IMPXML_OK)
 			return res;
 	} else
-	if (!stricmp(xmlNode->cNodeName, "EditionEntry")) {
+	if (!_stricmp(xmlNode->cNodeName.c_str(), "EditionEntry")) {
 		bSingleDefault = 0;
 		scd.bIsEdition = 1;
 		XMLNODE* xmlCurr = (XMLNODE*)xmlNode->pChild;
 		j = 0;
-		__int64 uid = 0;
-		while (xmlCurr && xmlCurr->cNodeName) {
-			if (!stricmp(xmlCurr->cNodeName, "EditionFlagHidden")) 
-				scd.bHidden = !!atoi(xmlCurr->cValue); else
-			if (!stricmp(xmlCurr->cNodeName, "EditionFlagOrdered"))
-				scd.bOrdered = !!atoi(xmlCurr->cValue); else
-			if (!stricmp(xmlCurr->cNodeName, "EditionManaged"))
-				scd.bOrdered = !!atoi(xmlCurr->cValue); else
-			if (!stricmp(xmlCurr->cNodeName, "EditionFlagDefault"))
-				scd.bDefault = !!atoi(xmlCurr->cValue); else
-			if (!stricmp(xmlCurr->cNodeName, "EditionUID"))
-				uid = _atoi64(xmlCurr->cValue);
+		unsigned __int64 uid = 0;
+		while (xmlCurr && xmlCurr->cNodeName.size()) {
+			if (!_stricmp(xmlCurr->cNodeName.c_str(), "EditionFlagHidden")) 
+				scd.bHidden = !!atoi(xmlCurr->cValue.c_str()); else
+			if (!_stricmp(xmlCurr->cNodeName.c_str(), "EditionFlagOrdered"))
+				scd.bOrdered = !!atoi(xmlCurr->cValue.c_str()); else
+			if (!_stricmp(xmlCurr->cNodeName.c_str(), "EditionManaged"))
+				scd.bOrdered = !!atoi(xmlCurr->cValue.c_str()); else
+			if (!_stricmp(xmlCurr->cNodeName.c_str(), "EditionFlagDefault"))
+				scd.bDefault = !!atoi(xmlCurr->cValue.c_str()); else
+			if (!_stricmp(xmlCurr->cNodeName.c_str(), "EditionUID"))
+				sscanf(xmlCurr->cValue.c_str(), "%I64u", &uid);
+//				uid = _atoi64(xmlCurr->cValue);
 			
 			xmlCurr = (XMLNODE*)xmlCurr->pNext;
 		}
@@ -1370,10 +1404,10 @@ int CChapters::ImportFromXML(XMLNODE* xmlNode, int depth)
 		if (res != CHAP_IMPXML_OK)
 			return res;
 	} else
-	if (!strnicmp(xmlNode->cNodeName, "Edition", 7)) {
+	if (!_strnicmp(xmlNode->cNodeName.c_str(), "Edition", 7)) {
 
 	} else
-    if (!stricmp(xmlNode->cNodeName, "ChapterAtom")) {
+    if (!_stricmp(xmlNode->cNodeName.c_str(), "ChapterAtom")) {
 		// import a chapter
 		scd.iEnd = -1;
 		scd.bHidden = 0;
@@ -1384,34 +1418,37 @@ int CChapters::ImportFromXML(XMLNODE* xmlNode, int depth)
 		i = GetChapterCount()-1;
 		XMLNODE* xmlCurr = (XMLNODE*)xmlNode->pChild;
 		j = 0;
-		while (xmlCurr && xmlCurr->cNodeName) {
-			__int64 uid = NULL;
+		while (xmlCurr && xmlCurr->cNodeName.c_str()) {
+			unsigned __int64 uid = NULL;
 
 			if IS(xmlCurr, "ChapterTimeStart") {
-				SetChapterBegin(i, Str2Millisec(xmlCurr->cValue) * 1000000);
+				SetChapterBegin(i, Str2Millisec((char*)xmlCurr->cValue.c_str()) * 1000000);
 				failed=false;
 			}
 
 			if IS(xmlCurr, "ChapterTimeEnd") 
-				SetChapterEnd(i, Str2Millisec(xmlCurr->cValue) * 1000000);
+				SetChapterEnd(i, Str2Millisec((char*)xmlCurr->cValue.c_str()) * 1000000);
 
 			if IS(xmlCurr, "ChapterFlagHidden")
-				HideChapter(i, !!atoi(xmlCurr->cValue));
+				HideChapter(i, !!atoi(xmlCurr->cValue.c_str()));
 			if IS(xmlCurr, "ChapterFlagEnabled") 
-				EnableChapter(i, !!atoi(xmlCurr->cValue));
+				EnableChapter(i, !!atoi(xmlCurr->cValue.c_str()));
 			if IS(xmlCurr, "ChapterPhysicalEquiv")
-				SetChapterPhysicalEquiv(i, atoi(xmlCurr->cValue));
+				SetChapterPhysicalEquiv(i, atoi(xmlCurr->cValue.c_str()));
 			if IS(xmlCurr, "ChapterSegmentUID")
-				SetSegmentUID(i, !!hex2int128(xmlCurr->cValue, cBuffer), cBuffer);
+				SetSegmentUID(i, !!hex2int128((char*)xmlCurr->cValue.c_str(), cBuffer), cBuffer);
 
 			if IS(xmlCurr, "ChapterUID") {
-				uid = _atoi64(xmlCurr->cValue);
+
+				sscanf(xmlCurr->cValue.c_str(), "%I64u", &uid);
+				//uid = _atoi64(xmlCurr->cValue);
+				
 			
 				CChapters* c = NULL; int iIndex = NULL;
 				c = FindUID(uid, 0,&iIndex);
-				if (c)
+				if (c) {
 					return CHAP_IMPXML_NONUNIQUE_UID;
-
+				}
 				SetUID(i, uid);
 			}
 
@@ -1423,14 +1460,14 @@ int CChapters::ImportFromXML(XMLNODE* xmlNode, int depth)
 				b=false;
 			}
 
-			if (!stricmp(xmlCurr->cNodeName, "ChapterDisplay")) {
+			if (!_stricmp(xmlCurr->cNodeName.c_str(), "ChapterDisplay")) {
 				XMLNODE* disp = (XMLNODE*)xmlCurr->pChild;
 
 				while (disp) {
-					if (!stricmp(disp->cNodeName, "ChapterString")) 
-						SetChapterText(i, disp->cValue, j);
-					if (!stricmp(disp->cNodeName, "ChapterLanguage"))
-						SetChapterLng(i, disp->cValue, j);
+					if (!_stricmp(disp->cNodeName.c_str(), "ChapterString")) 
+						SetChapterText(i, disp->cValue.c_str(), j);
+					if (!_stricmp(disp->cNodeName.c_str(), "ChapterLanguage"))
+						SetChapterLng(i, disp->cValue.c_str(), j);
 					disp = (XMLNODE*)disp->pNext;
 				}
 
@@ -1450,7 +1487,7 @@ int CChapters::ImportFromXML(XMLNODE* xmlNode, int depth)
 		XMLNODE* pFirst = (XMLNODE*)xmlNode->pChild;
 		XMLNODE* pCurr  = pFirst;
 
-		while (pCurr && stricmp(pCurr->cNodeName, "Targets"))
+		while (pCurr && _stricmp(pCurr->cNodeName.c_str(), "Targets"))
 			pCurr = (XMLNODE*)pCurr->pNext;
 
 		XMLNODE* pTargets = pCurr;
@@ -1460,11 +1497,11 @@ int CChapters::ImportFromXML(XMLNODE* xmlNode, int depth)
 		while (pCurrTarget) {
 			CChapters* pChapter = NULL;
 			int        iIndex   = 0;
-			__int64    UID      = 0;
+			unsigned __int64    UID      = 0;
 			pCurr = pFirst;
 
-			if (!stricmp(pCurrTarget->cNodeName, "EditionUID")) {
-				UID = _atoi64(pCurrTarget->cValue);
+			if (!_stricmp(pCurrTarget->cNodeName.c_str(), "EditionUID")) {
+				UID = stroui64(pCurrTarget->cValue.c_str());
 				pChapter = FindUID(UID, 1, &iIndex);
 				if (!pChapter) {
 					pCurrTarget = (XMLNODE*)pCurrTarget->pNext;
@@ -1473,38 +1510,38 @@ int CChapters::ImportFromXML(XMLNODE* xmlNode, int depth)
 			}
 
 			while (pCurr) {
-				if (!stricmp(pCurr->cNodeName, "Simple")) {
+				if (!_stricmp(pCurr->cNodeName.c_str(), "Simple")) {
 					XMLNODE* pSC_First = (XMLNODE*)pCurr->pChild;
 					XMLNODE* pSC_Curr  = pSC_First;
-					char*    cString   = NULL;
-					char*    cLanguage = NULL;
-					char*    cName     = NULL;
+					std::string cString;
+					std::string cLanguage;
+					std::string cName;
 
 					while (pSC_Curr) {
-						if (!stricmp(pSC_Curr->cNodeName, "Name"))
+						if (!_stricmp(pSC_Curr->cNodeName.c_str(), "Name"))
 							cName      = pSC_Curr->cValue;
-						if (!stricmp(pSC_Curr->cNodeName, "String"))
+						if (!_stricmp(pSC_Curr->cNodeName.c_str(), "String"))
 							cString    = pSC_Curr->cValue;
-						if (!stricmp(pSC_Curr->cNodeName, "Language") || !stricmp(pSC_Curr->cNodeName, "TagLanguage"))
+						if (!_stricmp(pSC_Curr->cNodeName.c_str(), "Language") || !_stricmp(pSC_Curr->cNodeName.c_str(), "TagLanguage"))
 							cLanguage  = pSC_Curr->cValue;
 
 						pSC_Curr = (XMLNODE*)pSC_Curr->pNext;
 					}
 
-					if (!stricmp(cName, "TITLE")) {
+					if (!_stricmp(cName.c_str(), "TITLE")) {
 						int count = pChapter->GetChapterDisplayCount(iIndex);
 						int index2 = count - 1;
 
-						if (cLanguage && *cLanguage) {
-							int found = pChapter->FindChapterDisplayLanguageIndex(iIndex, cLanguage);
+						if (!cLanguage.empty()) {
+							int found = pChapter->FindChapterDisplayLanguageIndex(iIndex, cLanguage.c_str());
 							if (found > -1)
 								index2 = found;
 							
-							pChapter->SetChapterLng(iIndex, cLanguage, count);
+							pChapter->SetChapterLng(iIndex, cLanguage.c_str(), count);
 						}
 
-						if (cString && *cString) 
-							pChapter->SetChapterText(iIndex, cString, count);
+						if (!cString.empty()) 
+							pChapter->SetChapterText(iIndex, cString.c_str(), count);
 						
 					}
 				}

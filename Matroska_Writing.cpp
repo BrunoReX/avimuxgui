@@ -6,7 +6,7 @@
 #include "integers.h"
 #include "math.h"
 #include "CRC.h"
-#include "generateuids.h"
+#include "UID.h"
 #include "Compression.h"
 
 #ifdef DEBUG_NEW
@@ -556,7 +556,16 @@ void EBMLFloat_Writer::SetFData(long double ldData)
 				 break;
 		case  8: reverse((char*)&dData, (char*)GetData()->GetData(), 8);
                  break;
-		case 10: reverse((char*)&ldData, (char*)GetData()->GetData(), 10);
+		case 10: char* result = (char*)GetData()->GetData(); 
+			     char temp[10];
+			    __asm {
+					lea eax, ldData
+					fld qword ptr [eax]
+					lea eax, temp
+					fstp tbyte ptr [eax]
+				}
+				reverse(temp, result, 10);
+			//reverse((char*)&ldData, (char*)GetData()->GetData(), 10);
 			     break;
 	}
 }
@@ -837,10 +846,74 @@ void EBMLMTrackInfo_Writer::SetTrackCount(int iCount)
 	tracks = (TRACK_DESCRIPTOR**)calloc(iCount,sizeof(TRACK_DESCRIPTOR*));
 
 	if (iCount>iTrackCount) {
-		for (int i=iTrackCount;i<iCount;tracks[i++]=(TRACK_DESCRIPTOR*)calloc(1,sizeof(TRACK_DESCRIPTOR)));
+//		for (int i=iTrackCount;i<iCount;tracks[i++]=
+//			(TRACK_DESCRIPTOR*)calloc(1,sizeof(TRACK_DESCRIPTOR)));
+		for (int i=iTrackCount; i<iCount; tracks[i++] = new TRACK_DESCRIPTOR);
 	}
 
 	iTrackCount = iCount;
+}
+
+TRACK_DESCRIPTOR::TRACK_DESCRIPTOR()
+{
+	iLacing = 0;
+	iEnabled = 0;
+	iDefault = 0;
+	iTrackNbr = 0;
+	iTrackUID = 0;
+	iTrackType = 0;
+	iMinCache = 0;
+	iMaxCache = 0;
+	memset(iLaceSchemes, 0, sizeof(iLaceSchemes));
+	iBlocksWritten = 0;
+	memset(iFramesWritten, 0, sizeof(iFramesWritten));
+	memset(iLaceOverhead, 0, sizeof(iLaceOverhead));
+	iTotalFrameCount = 0;
+	iTotalSize = 0;
+	iDefaultDuration = 0;
+	iDurationMode = 0;
+	iBufferedBlocks = 0;
+	fTrackTimecodeScale = 1.0;
+	cCodecID = NULL;
+	cCodecPrivate = NULL;
+	cLngCode = NULL;
+	i = 0;
+	memset(&video, 0, sizeof(video));
+	memset(&audio, 0, sizeof(audio));
+}
+
+TRACK_DESCRIPTOR& TRACK_DESCRIPTOR::operator =(const TRACK_DESCRIPTOR& other)
+{
+	iLacing = other.iLacing;
+	iEnabled = other.iEnabled;
+	iDefault = other.iDefault;
+	iTrackNbr = other.iTrackNbr;
+	iTrackUID = other.iTrackUID;
+	iTrackType = other.iTrackType;
+	iMinCache = other.iMinCache;
+	iMaxCache = other.iMaxCache;
+	memcpy(iLaceSchemes, other.iLaceSchemes, sizeof(iLaceSchemes));
+	iBlocksWritten = other.iBlocksWritten;
+	memcpy(iFramesWritten, other.iFramesWritten, sizeof(iFramesWritten));
+	memcpy(iLaceOverhead, other.iLaceOverhead, sizeof(iLaceOverhead));
+	iTotalSize = other.iTotalSize;
+	iTotalFrameCount = other.iTotalFrameCount;
+	iDefaultDuration = other.iDefaultDuration;
+	iDurationMode = other.iDurationMode;
+	iBufferedBlocks = other.iBufferedBlocks;
+	fTrackTimecodeScale = other.fTrackTimecodeScale;
+	(cCodecID = other.cCodecID)->IncRefCount();
+	(cCodecPrivate = other.cCodecPrivate)->IncRefCount();
+	(cLngCode = other.cLngCode)->IncRefCount();
+	i = other.i;
+	track_compression = other.track_compression;
+	video = other.video;
+	audio = other.audio;
+
+	ITitleSet* imp = ((TRACK_DESCRIPTOR)other).GetTitleSet();
+	GetTitleSet()->Import(imp);
+
+	return *this;
 }
 
 void EBMLMTrackInfo_Writer::SetTrackProperties(int iNbr,TRACK_DESCRIPTOR* track)
@@ -849,8 +922,10 @@ void EBMLMTrackInfo_Writer::SetTrackProperties(int iNbr,TRACK_DESCRIPTOR* track)
 	if (!track->iTrackUID) 
 		generate_uid((char*)&track->iTrackUID, 4);
 	
-	if (iNbr<iTrackCount)
-		memcpy(tracks[iNbr],track,sizeof(TRACK_DESCRIPTOR));
+	if (iNbr<iTrackCount) {
+		tracks[iNbr] = track;
+//		memcpy(tracks[iNbr],track,sizeof(TRACK_DESCRIPTOR));
+	}
 	
 }
 
@@ -873,13 +948,16 @@ void EBMLMTrackInfo_Writer::Build()
 		e_Track->AppendChild_UInt((char*)MID_TR_TRACKNUMBER,tracks[i]->iTrackNbr);
 		e_Track->AppendChild_UInt((char*)MID_TR_TRACKUID,tracks[i]->iTrackUID);
 
-		if (m->IsEnabled_WriteFlagDefault())
+		//if (m->IsEnabled_WriteFlagDefault())
+		if (m->Enable(MF_WRITE_FLAG_DEFAULT, 0, MFA_RETRIEVE_ONLY))
 			e_Track->AppendChild_UInt((char*)MID_TR_FLAGDEFAULT,!!tracks[i]->iDefault,-1);
 		
-		if (m->IsEnabled_WriteFlagEnabled()) 
+		//if (m->IsEnabled_WriteFlagEnabled()) 
+		if (m->Enable(MF_WRITE_FLAG_ENABLED, 0, MFA_RETRIEVE_ONLY))
 			e_Track->AppendChild_UInt((char*)MID_TR_FLAGENABLED,!!tracks[i]->iEnabled,-1);
 		
-		if (m->IsEnabled_WriteFlagLacing()) 
+		//if (m->IsEnabled_WriteFlagLacing()) 
+		if (m->Enable(MF_WRITE_FLAG_LACED, 0, MFA_RETRIEVE_ONLY))
 			e_Track->AppendChild_UInt((char*)MID_TR_FLAGLACING,!!tracks[i]->iLacing,-1);
 
 		e_Track->AppendChild_UInt((char*)MID_TR_TRACKTYPE,tracks[i]->iTrackType,0);
@@ -890,7 +968,11 @@ void EBMLMTrackInfo_Writer::Build()
 		if (tracks[i]->cCodecPrivate)
 			tracks[i]->cCodecPrivate->IncRefCount();
 		e_Track->AppendChild_Binary((char*)MID_TR_CODECPRIVATE,tracks[i]->cCodecPrivate);
-		e_Track->AppendChild_String((char*)MID_TR_NAME,tracks[i]->cName);
+
+		char* title = NULL;
+		if (tracks[i]->GetTitleSet()->GetTitle(&title))
+			e_Track->AppendChild_String((char*)MID_TR_NAME, title);
+		
 		e_Track->AppendChild_String((char*)MID_TR_LANGUAGE,tracks[i]->cLngCode);
 		e_Track->AppendChild_Float((char*)MID_TR_TRACKTIMECODESCALE,tracks[i]->fTrackTimecodeScale,-1);
 		switch (tracks[i]->iTrackType) {
@@ -1063,13 +1145,15 @@ EBMLMCluster_Writer::EBMLMCluster_Writer(STREAM* pStream,void* p, __int64 _iTime
 
 	AppendChild_UInt((char*)MID_CL_TIMECODE,iTimecode,-1);
 
-	if (m->IsPrevClusterSizeEnabled()) {
+	//if (m->IsPrevClusterSizeEnabled()) {
+	if (m->Enable(MF_WRITE_PREV_CLUSTER_SIZE, 0, MFA_RETRIEVE_ONLY))
 		AppendChild_UInt((char*)MID_CL_PREVSIZE,iPrevSize,0);
-	}
+	//}
 	
-	if (m->IsClusterPositionEnabled()) {
+	//if (m->IsClusterPositionEnabled()) {
+	if (m->Enable(MF_WRITE_CLUSTER_POSITION, 0, MFA_RETRIEVE_ONLY))
 		AppendChild_UInt((char*)MID_CL_POSITION,iPosition,-1);
-	}
+	//}
 
 	EnableCRC32();
 	iCurrentSize = GetSize();

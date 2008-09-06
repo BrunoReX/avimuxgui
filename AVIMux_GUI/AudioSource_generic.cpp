@@ -1,10 +1,12 @@
 #include "stdafx.h"
 #include "audiosource_generic.h"
 
+#ifdef DEBUG_NEW
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
+#endif
 #endif
 
 	//////////////////////////
@@ -70,6 +72,14 @@ int AUDIOSOURCE::GetOutputFrequency()
 int AUDIOSOURCE::GetChannelCount()
 {
 	return 0;
+}
+
+char* AUDIOSOURCE::GetChannelString()
+{
+	char cTemp[64]; cTemp[0] = 0;
+
+	sprintf(cTemp, "%d", GetChannelCount());
+	return _strdup(cTemp);
 }
 
 int AUDIOSOURCE::GetGranularity()
