@@ -274,6 +274,16 @@ void CResizeableDialog::ReinitFont(CFont* f)
 	}
 }
 
+void CResizeableDialog::ForceSize(int width, int height)
+{
+	if (attribs != NULL) {
+		attribs->SetInt("window_size/width", width);
+		attribs->SetInt("window_size/height", height);
+
+		::PostMessage(*this, WM_SIZE, width, height);
+	}
+}
+
 void CResizeableDialog::ReinitPosition()
 {
 	int width = -INT_MAX;

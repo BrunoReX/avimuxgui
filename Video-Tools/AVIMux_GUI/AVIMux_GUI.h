@@ -13,6 +13,7 @@
 #endif
 
 #include "IncResource.h"		// Hauptsymbole
+#include "..\..\Common\TraceFiles\TraceFile.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CAVIMux_GUIApp:

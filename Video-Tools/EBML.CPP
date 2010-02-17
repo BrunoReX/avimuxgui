@@ -78,7 +78,7 @@ int EBMLElement::AutoCheckCRC32()
 			int check = CheckCRC();
 
 			if (check == EBML_CRC_FAILED) {
-				char cTxt[128]; cTxt[0]=0;sprintf(cTxt, "CRC check failed on element %s", GetTypeString());
+				char cTxt[128]; cTxt[0]=0;sprintf_s(cTxt, "CRC check failed on element %s", GetTypeString());
 				B0rked(cTxt, GetStreamPos() - GetHeaderSize());
 			}
 			GetSource()->Seek(j);
@@ -799,7 +799,8 @@ int EBMLElement::SearchMulti(std::vector<std::vector<EBMLElement*> > &dest, SEAR
 				if (dest[i][0]->GetDataType() == EBMLDATATYPE_UTF8 ||
 					dest[i][0]->GetDataType() == EBMLDATATYPE_ASCII) {
 					if (*((char**)search.dests[i])) {
-						memcpy(*((char**)search.dests[i]), dest[i][0]->GetData(), dest[i][0]->GetLength());
+						memcpy(*((char**)search.dests[i]), dest[i][0]->GetData(), 
+							static_cast<size_t>(dest[i][0]->GetLength()));
 						*((char**)search.dests[i])[strlen((char*)*((char**)search.dests[i]))] = 0;
 					} else {
 						*((char**)search.dests[i]) = _strdup(dest[i][0]->AsString());
@@ -817,7 +818,7 @@ int EBMLElement::SearchMulti(std::vector<std::vector<EBMLElement*> > &dest, SEAR
 				char c[256]; c[0]=0;
 				char id[32]; id[0]=0;
 				EBMLID2string(search.ids[i], id);
-				sprintf(c, "Missing mandatory element %s in %s", id, GetTypeString());
+				sprintf_s(c, "Missing mandatory element %s in %s", id, GetTypeString());
 				B0rked(c, GetStreamPos());
 				error = 1;
 			}
@@ -825,7 +826,7 @@ int EBMLElement::SearchMulti(std::vector<std::vector<EBMLElement*> > &dest, SEAR
 				char c[256]; c[0]=0;
 				char id[32]; id[0]=0;
 				EBMLID2string(search.ids[i], id);
-				sprintf(c, "Element %s should be present in %s, but wasn't found", id, GetTypeString());
+				sprintf_s(c, "Element %s should be present in %s, but wasn't found", id, GetTypeString());
 				Warning(c, GetStreamPos());
 				error = 1;
 			}
@@ -833,7 +834,7 @@ int EBMLElement::SearchMulti(std::vector<std::vector<EBMLElement*> > &dest, SEAR
 				char c[256]; c[0]=0;
 				char id[32]; id[0]=0;
 				EBMLID2string(search.ids[i], id);
-				sprintf(c, "Multiple occurences of unique element %s in %s", id, GetTypeString());
+				sprintf_s(c, "Multiple occurences of unique element %s in %s", id, GetTypeString());
 				B0rked(c, GetStreamPos());
 			}
 		}
@@ -1242,10 +1243,10 @@ char* EBML_DocTypeReadVersion:: GetTypeString()
 	return "DocTypeReadVersion";
 }
 
-EBMLElement* EBMLELEMENTLIST::operator ()(int index)
+EBMLElement* EBMLELEMENTLIST::operator ()(size_t index)
 {
-	if (index < 0 || index >= iCount)
-		return 0;
+	if (index >= iCount)
+		return NULL;
 
 	return pElement[index];
 }

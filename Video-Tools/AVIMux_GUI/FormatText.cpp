@@ -6,6 +6,7 @@
 #include "../dynarray.h"
 #include "../strings.h"
 #include <vector>
+#include "../finalizer.h"
 
 void FormatSize(char* d,__int64 qwSize)
 {
@@ -269,8 +270,11 @@ int decompose_cropping_1(char* in, char* topleft, char* bottomright, char* type)
 	return 0;
 }
 
-int Str2Resolution(char* c, int in_x, int in_y, RESOLUTION* r, RESOLUTION* r_out)
+int Str2Resolution(const char* _c, int in_x, int in_y, RESOLUTION* r, RESOLUTION* r_out)
 {
+	char* c = _strdup(_c);
+	Finalizer<char, void, free> cGuard(c);
+
 
 	char res[128]; memset(res, 0, sizeof(res));
 	char crop[128]; memset(crop, 0, sizeof(crop));

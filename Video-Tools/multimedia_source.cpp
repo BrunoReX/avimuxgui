@@ -18,7 +18,7 @@ MULTIMEDIASOURCE::MULTIMEDIASOURCE()
 {
 	memset(&info,0,sizeof(info));
 	lpcName = NULL;
-	lpcLangCode = NULL;
+//	lpcLangCode = NULL;
 	info.iTimecodeScale = 1000000;
 	info.iMaxLength = 0;
 	info.dStretchFactor = 1;
@@ -160,14 +160,15 @@ void MULTIMEDIASOURCE::SetName(char* _lpcName)
 	GetTitleSet()->SetTitle(_lpcName);
 }
 
-void MULTIMEDIASOURCE::SetLanguageCode(char* _lpcName)
+void MULTIMEDIASOURCE::SetLanguageCode(const std::string& languageCode)
 {
-	if (lpcLangCode) free(lpcLangCode);
+/*	if (lpcLangCode) free(lpcLangCode);
 	lpcLangCode=NULL;
 	if (_lpcName && *_lpcName) {
 		lpcLangCode = new char[1+strlen(_lpcName)];
 		strcpy(lpcLangCode,_lpcName);
-	}
+	}*/
+	m_languageCode = languageCode;
 }
 
 int MULTIMEDIASOURCE::GetName(char* lpDest)
@@ -194,15 +195,21 @@ int MULTIMEDIASOURCE::GetName(char* lpDest)
 	return (int)strlen(lpDest?lpDest:pTitle?pTitle:"");
 }
 
-int MULTIMEDIASOURCE::GetLanguageCode(char* lpDest)
+int MULTIMEDIASOURCE::GetLanguageCode(std::string& result)
 {
-	unsigned char*	lpbDest=(unsigned char*)lpDest;
-	if (!lpcLangCode) {
+	/*unsigned char*	lpbDest=(unsigned char*)lpDest;
+
+///	if (!lpcLangCode) {
+	if (m_languageCode.empty()) {
 		if (lpDest) *lpbDest=0;
 	} else {
-		if (lpDest) memcpy(lpDest,lpcLangCode,1+strlen(lpcLangCode));
-	}
-	return (lpcLangCode)?(int)strlen(lpcLangCode):0;
+		if (lpDest) memcpy(lpDest, m_languageCode.c_str(), 1 + m_languageCode.size()); 
+		//1+strlen(lpcLangCode));
+	}*/
+
+	result = m_languageCode;
+
+	return m_languageCode.size();
 }
 
 char* MULTIMEDIASOURCE::GetCodecID()
@@ -400,11 +407,14 @@ void freeMultimediaDataPacket(MULTIMEDIA_DATA_PACKET* packet)
 
 int MULTIMEDIASOURCE::GetPreferredTitle(char **pDest)
 {
-	char lngcode[16]; memset(lngcode, 0, sizeof(lngcode));
-	GetLanguageCode(lngcode);
+	//char lngcode[16]; memset(lngcode, 0, sizeof(lngcode));
+	//GetLanguageCode(lngcode);
+
+	std::string languageCode;
+	GetLanguageCode(languageCode);
 
 	char* title;
-	GetTitleSet()->GetTitleStringFromLanguage(lngcode, &title);
+	GetTitleSet()->GetTitleStringFromLanguage(languageCode.c_str(), &title);
 
 	if (!title)
 	{

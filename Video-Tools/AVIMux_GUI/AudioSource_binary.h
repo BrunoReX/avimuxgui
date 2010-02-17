@@ -14,13 +14,21 @@ class CBinaryAudioSource: public AUDIOSOURCE
 		DWORD			dwResync_Range;
 		__int64			unstretched_duration;
 		bool			bEndReached;
+
+		bool			m_Open;
 	protected:
 		int		virtual ReadFrame(MULTIMEDIA_DATA_PACKET** dataPacket) { return 0; }
 		int		virtual doRead(void*,DWORD,DWORD*,__int64*) { return STREAM_ERR; }
 		int		virtual doRead(MULTIMEDIA_DATA_PACKET** dataPacket);
 		int		virtual doClose(void);
 		__int64	virtual	GetExactSize();
-	public:
+
+		void    virtual SetIsOpen(bool value);
+		bool    virtual GetIsOpen();
+
+		void	virtual LogFrameHeaderReadingError();
+		void	virtual LogFrameDataReadingError(__int64 errorPos, int sizeExpected);
+public:
 		CBinaryAudioSource();
 		~CBinaryAudioSource();
 		int		virtual Close();

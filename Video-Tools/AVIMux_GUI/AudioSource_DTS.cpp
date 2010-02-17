@@ -110,9 +110,9 @@ int DTSSOURCE::ParseFrameHeader(DTSINFO* lpdtsinfo)
 	if (uiSync != 0x7ffe8001)
 		return 0;
 
-	bitsource->ReadBits(1);					// Frametype
-	bitsource->ReadBits(5);					// deficit sample count
-	bitsource->ReadBits(1);					// CRC present?
+	DWORD dwFrameType = bitsource->ReadBits(1);					// Frametype
+	DWORD dwDeficitSampleCount = bitsource->ReadBits(5);	    // deficit sample count
+	DWORD dwHasCRC = bitsource->ReadBits(1);					// CRC present?
 	DWORD dwPCMSampleCount = bitsource->ReadBits(7);					// number of PCM samples per block
 	dwFrameSize=(bitsource->ReadBits(14)+1);	// primary frame byte size
 	dwChannels=channel_table[bitsource->ReadBits(6)]; // audio channel arrangement
@@ -127,7 +127,7 @@ int DTSSOURCE::ParseFrameHeader(DTSINFO* lpdtsinfo)
 		lpdtsinfo->fBitrate=fBitrate;
 		lpdtsinfo->dwFrameSize=dwFrameSize;
 		lpdtsinfo->dwFrequency=dwFrequency;
-		lpdtsinfo->nano_seconds_per_frame = (32. * (dwPCMSampleCount + 1.)) / dwFrequency * 1000000000;
+		lpdtsinfo->nano_seconds_per_frame = static_cast<__int64>((32. * (dwPCMSampleCount + 1.)) / dwFrequency * 1000000000);
 		if (dwLFEFlag == 1 || dwLFEFlag == 2)
 		{
 			lpdtsinfo->dwLFE = 1;			
@@ -144,12 +144,11 @@ int DTSSOURCE::ParseFrameHeader(DTSINFO* lpdtsinfo)
 	return 1;
 }
 
-char* DTSSOURCE::GetChannelString()
+std::string DTSSOURCE::GetChannelString()
 {
-	char cTemp[8]; cTemp[0]=0;
-	
-	_snprintf(cTemp, 8, "%d.%d", GetChannelCount()-dtsinfo.dwLFE, dtsinfo.dwLFE);
-	return _strdup(cTemp);
+	std::ostringstream sstrResult;
+	sstrResult << GetChannelCount()-dtsinfo.dwLFE << "." << dtsinfo.dwLFE;
+	return sstrResult.str();
 }
 
 int DTSSOURCE::Open(STREAM *lpStream)
@@ -166,13 +165,16 @@ int DTSSOURCE::Open(STREAM *lpStream)
 	lpStream->SetOffset(0);	
 	lpStream->Seek(0);
 
-	if (!Resync()) 
+	if (!Resync())  {
+		delete bitsource;
 		return AS_ERR;
+	}
 
 	ParseFrameHeader(&dtsinfo);
 
 	SetCurrentTimecode(0, TIMECODE_UNSCALED);
 
+	SetIsOpen(true);
 	return 1;
 }
 
@@ -219,10 +221,22 @@ int DTSSOURCE::ReadFrame(void* lpDest,DWORD* lpdwMicroSecRead,__int64 *lpqwNanoS
 {
 	DWORD	dwRead;
 
+	__int64 position = GetSource()->GetPos();
 	dwRead=GetSource()->Read(lpDest,dtsinfo.dwFrameSize);
-	double z=((double)dwRead/dtsinfo.fBitrate);
-	if (lpqwNanoSecRead) *lpqwNanoSecRead=round(8000000*z);
-	if (lpdwMicroSecRead) *lpdwMicroSecRead=(DWORD)round(8000*z);
+	if (dwRead != dtsinfo.dwFrameSize)
+	{
+		if (GetIsOpen())
+			LogFrameDataReadingError(position, dtsinfo.dwFrameSize);
+	}
+
+	//double z=((double)dwRead/dtsinfo.fBitrate);
+	//if (lpqwNanoSecRead) *lpqwNanoSecRead=round(8000000*z);
+	//if (lpdwMicroSecRead) *lpdwMicroSecRead=(DWORD)round(8000*z);
+	if (lpqwNanoSecRead)
+		*lpqwNanoSecRead = dtsinfo.nano_seconds_per_frame;
+
+	if (lpdwMicroSecRead)
+		*lpdwMicroSecRead = (DWORD)(round( (((double)dtsinfo.nano_seconds_per_frame) + 499.0) / 1000.0));
 
 	return dwRead;
 }
@@ -234,14 +248,21 @@ int DTSSOURCE::ReadFrame(MULTIMEDIA_DATA_PACKET** dataPacket)
 	/* check if frame header can be read correctly */
 	if (!ParseFrameHeader(&dtsinfo))
 	{
+		if (GetIsOpen())
+			LogFrameHeaderReadingError();
 		return -1;
 	}
 
+	__int64 position = GetSource()->GetPos();
 	char* data = (char*)malloc(dtsinfo.dwFrameSize);
 	DWORD dwRead = GetSource()->Read(data, dtsinfo.dwFrameSize);
 
 	if (dwRead != dtsinfo.dwFrameSize)
+	{
+		if (GetIsOpen())
+			LogFrameDataReadingError(position, dtsinfo.dwFrameSize);
 		return -1;
+	}
 
 	createMultimediaDataPacket(dataPacket);
 	(*dataPacket)->cData = data;

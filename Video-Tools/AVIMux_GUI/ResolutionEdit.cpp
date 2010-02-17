@@ -26,12 +26,13 @@ CResolutionEdit::~CResolutionEdit()
 
 int CResolutionEdit::VerifyElement()
 {
-	char t[128]; memset(t, 0, sizeof(t));
+	DWORD textSize = GetWindowTextLength();
+	std::vector<TCHAR> text(textSize+1);
+	GetWindowText(&text[0], textSize+1);
 
-	GetWindowText(t, 128);
 	RESOLUTION r1, r2;
 
-	if (Str2Resolution(t, 0, 0, &r1, &r2) == STRF_OK)
+	if (Str2Resolution(((std::string)CUTF8(&text[0])).c_str(), 0, 0, &r1, &r2) == STRF_OK)
 		return 1;
 	else
 		return 0;

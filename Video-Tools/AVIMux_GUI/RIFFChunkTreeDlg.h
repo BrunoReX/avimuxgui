@@ -22,7 +22,7 @@ class CRIFFChunkTreeDlg : public CResizeableDialog
 // Konstruktion
 private:
 	STREAM*		source;
-	void	RenderItem(FILE* file, HTREEITEM hItem, int iLevel);
+	void	RenderItem(STREAM* file, HTREEITEM hItem, int iLevel);
 	//CRITICAL_SECTION critical_section;
 
 //	HTREEITEM InsertItem(HTREEITEM hParent, char* cText);

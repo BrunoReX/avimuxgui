@@ -38,8 +38,10 @@ int VIDEOSOURCELIST::Append(VIDEOSOURCE *pNext)
 			pNext->GetName(c);
 			GetTitleSet()->Import(pNext->GetTitleSet());
 //			SetName(c);
-			pNext->GetLanguageCode(c);
-			SetLanguageCode(c);
+			
+			std::string languageCode;
+			pNext->GetLanguageCode(languageCode);
+			SetLanguageCode(languageCode);
 			SetDefault(pNext->IsDefault());
 		}
 		info.iCount++;

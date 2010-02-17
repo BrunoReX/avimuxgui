@@ -35,10 +35,11 @@ int PACKETIZER::GetName(char* lpcName)
 	return 0;
 }
 
-int PACKETIZER::GetLanguageCode(char* lpDest)
+int PACKETIZER::GetLanguageCode(std::string& result)
 {
-	if (lpDest)
-		*lpDest = 0;
+	result = "";
+//	if (lpDest)
+//		*lpDest = 0;
 
 	return 0;
 }

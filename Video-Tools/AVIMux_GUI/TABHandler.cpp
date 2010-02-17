@@ -29,7 +29,7 @@ LRESULT CALLBACK TABHandler_WindowProc(
 
 	/* that should really not occur */
 	if (iter == tab_handler_data_map.end()) {
-		MessageBox(NULL, "B0rked!!!", "Error", MB_OK);
+		MessageBox(NULL, _T("B0rked!!!"), _T("Error"), MB_OK);
 	}
 
 	TABHANDLER_USERDATA* data = iter->second;
@@ -66,7 +66,7 @@ LRESULT CALLBACK TABHandler_WindowProc(
 			return 1;
 			break;
 		case WM_TAB_SELECTALLAFTERTAB:
-			data->bSelectAll = wParam;
+			data->bSelectAll = !!wParam;
 			break;
 		case WM_DESTROY:
 			/* deinstall TAB window handler */

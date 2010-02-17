@@ -9,6 +9,7 @@
 #include "..\utf-8.h"
 #include "..\UnicodeCalls.h"
 #include "osversion.h"
+#include <vector>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -99,16 +100,14 @@ void CUserDrawEdit::SetColor(COLORREF c)
 void CUserDrawEdit::OnPaint() 
 {
 	CPaintDC dc(this); // device context for painting
-	
-	// TODO: Code für die Behandlungsroutine für Nachrichten hier einfügen
 
-	char c[4096]; memset(c, 0, sizeof(c));
-	char *u = NULL; //; u[0]=0;
 	RECT r;
 	CFont* font = GetFont();
-	GetWindowText(c, 4096);
-	int j = fromUTF8(c, &u);
-	if (IsUnicode()) j/=2;
+	
+	int textSize = GetWindowTextLength();
+	std::vector<TCHAR> text(textSize+1);
+	GetWindowText(&text[0], textSize+1);
+
 	COLORREF backcolor, textcolor;
 
 	if (IsWindowEnabled()) {
@@ -145,17 +144,13 @@ void CUserDrawEdit::OnPaint()
 	dc.SetBkColor(backcolor);
 	
 	if (dc.GetTextAlign() == TA_CENTER)
-		(*UExtTextOut())(dc,(r.left+r.right)>>1,1,ETO_CLIPPED,&r,
-		u,j-1,NULL);
+		ExtTextOut(dc, (r.left+r.right)>>1, 1, ETO_CLIPPED, &r, &text[0], textSize, NULL);
 	else
-		(*UExtTextOut())(dc,r.left,1,ETO_CLIPPED,&r,
-		u,j-1,NULL);
+		ExtTextOut(dc, r.left, 1, ETO_CLIPPED, &r, &text[0], textSize, NULL);
 
 	DeleteObject(brush);
 	DeleteObject(pen);
 	ReleaseDC(&dc);
-
-	free(u);
 }
 
 void CUserDrawEdit::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct) 

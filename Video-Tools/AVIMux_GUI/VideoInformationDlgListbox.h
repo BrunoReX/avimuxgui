@@ -20,7 +20,7 @@
 #define REPAIRS_TOTALFRAMES			0x00000010
 
 const int KOS_AVIFILEEX		= 0x01;
-const int KOS_VIDEOSOURCE	= 0x02;
+//const int KOS_VIDEOSOURCE	= 0x02;
 const int KOS_MATROSKA		= 0x03;
 
 
@@ -42,7 +42,15 @@ public:
 
 // Attribute
 public:
+	int					AddString(LPCSTR pszString)
+	{
+		return CListBox::AddString(CUTF8(pszString).TStr());
+	}
 
+	int					AddString(LPCWSTR pszString)
+	{
+		return CListBox::AddString(CUTF8(pszString).TStr());
+	}
 // Operationen
 public:
 

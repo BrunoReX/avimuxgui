@@ -12,8 +12,8 @@ the file encoding is not detected automatically.
 #ifndef I_TEXTFILE
 #define I_TEXTFILE
 
-#include "../basestreams.h"
-#include "../utf-8.h"
+#include "stream.h"
+#include "utf-8.h"
 
 const int TFRC_ALL			= 0x01;
 const int TFRC_NOLINEBREAKS = 0x02;
@@ -27,13 +27,11 @@ const int TFRC_DONTUPDATEPOS= 0x04;
 class CTextFile: public STREAM
 {
 	private:
-		int		iCharCoding;
-		int		iOutputCoding;
+		CharacterEncoding::CharacterEncodings iCharCoding;
+		CharacterEncoding::CharacterEncodings iOutputCoding;
 		int		iHdrSize;
 		STREAM*	source;
 	protected:
-
-
 
 		/** \brief Read one input character
 		 * 
@@ -46,7 +44,7 @@ class CTextFile: public STREAM
 	public:
 		/* constructors */
 		CTextFile();
-		CTextFile(DWORD _dwMode, STREAM* s, int iOutputFormat = CHARACTER_ENCODING_ANSI);
+		CTextFile(StreamMode::StreamModes _dwMode, STREAM* s, CharacterEncoding::CharacterEncodings iOutputFormat = CharacterEncoding::ANSI);
 		virtual ~CTextFile();
 		/* encoding -> bool */
 		bool	virtual IsUTF8In();
@@ -60,14 +58,16 @@ class CTextFile: public STREAM
 		int		virtual Read(void* d, int iBytes);
 
 		/* Those two use the one above */
+#if FALSE
 		int		virtual ReadLine(char* d);
 		int		virtual ReadLine(char* d, int max_len);
+#endif
 
 		/** \brief Returns the input file encoding
 		 *
 		 * The difference between UTF-16 LE and UTF-16 BE is also returned.
 		 */
-		int		GetFileInputEncoding();
+		CharacterEncoding::CharacterEncodings GetFileInputEncoding();
 
 		/** \brief Returns the input encoding
 		 *
@@ -79,14 +79,14 @@ class CTextFile: public STREAM
 		 * the UTF-16 LE encoded characters. Consequently, this method will report
 		 * UTF-16 LE encoding for both UTF-16 BE and UTF-16 LE.
 		 */
-		int		GetInputEncoding();
+		CharacterEncoding::CharacterEncodings GetInputEncoding();
 
 		/** \brief Returns the output encoding
 		 *
          * \remarks UTF-16 BE not being supported for output, the return
 		 * value cannot be CHARACTER_ENCODING_UTF16_BE 
 		 */
-		int		GetOutputEncoding();
+		CharacterEncoding::CharacterEncodings GetOutputEncoding();
 
 		/** \brief Opens a stream 
 		 *
@@ -95,7 +95,7 @@ class CTextFile: public STREAM
 		 * \param dwMode STREAM_READ for reading
 		 * \param s The CStream to read from
 		 */
-		int		virtual Open(DWORD  dwMode, STREAM* s);
+		int		virtual Open(StreamMode::StreamModes dwMode, STREAM* s);
 
 		/** \brief Reopen a file
 		 */
@@ -119,7 +119,10 @@ class CTextFile: public STREAM
 		 * \returns The number of bytes that were stored
 		 * \remarks It is assumed that no line is longer than 4095 bytes.
 		 */
-		int		virtual ReadLine(char** d);
+//		int		virtual ReadLine(char** d);
+
+		int		virtual ReadLine(std::string& result);
+		int		virtual ReadLine(std::wstring& result);
 
 		/** \brief Override an automatically detected file input encoding 
 		 *
@@ -130,7 +133,7 @@ class CTextFile: public STREAM
 		 * - CHARACTER_ENCODING_UTF16_LE
 		 * - CHARACTER_ENCODING_UTF16_BE
 		 */
-		void	virtual SetFileInputEncoding(int iEncoding);
+		void	virtual SetFileInputEncoding(CharacterEncoding::CharacterEncodings iEncoding);
 
 		/** \brief Choose the encoding to return text from the file 
 		 *
@@ -140,7 +143,7 @@ class CTextFile: public STREAM
 		 * - CHARACTER_ENCODING_UTF8
 		 * - CHARACTER_ENCODING_UTF16_LE
 		 */
-		void	virtual SetOutputEncoding(int iEncoding);
+		void	virtual SetOutputEncoding(CharacterEncoding::CharacterEncodings iEncoding);
 		
 		/** \brief Seek inside the file
 		 *

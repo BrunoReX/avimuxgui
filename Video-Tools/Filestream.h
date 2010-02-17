@@ -72,10 +72,10 @@ public:
 		virtual ~CFileStream(void);
 
 		/* open a file; the filename must be given in UTF-8 encoding */
-		int			virtual	Open (char* lpFileName, DWORD _dwMode);
+		int			virtual	Open (const char* lpFileName, StreamMode::StreamModes _dwMode);
 
 		/* open a file; the filename must be given in UTF-16 encoding */
-		int			virtual Open (wchar_t* lpFileName, DWORD _dwMode);
+		int			virtual Open (const wchar_t* lpFileName, StreamMode::StreamModes _dwMode);
 
 		/* read the HANDLE of the current file */
 		HANDLE				GethFile (void) { return hFile; }
@@ -88,6 +88,9 @@ public:
 
 		/* request the current position within the file */
 		__int64		virtual GetPos(void);
+
+		/* get the name of the file */
+		int			virtual GetName(char* pDest, unsigned int buf_len);
 
 		/* request the size of the file; note that this class only supports
 		   real files, it won't work with stuff like /dev/null anyway */

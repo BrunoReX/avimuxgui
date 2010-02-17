@@ -2,6 +2,8 @@
 #include "Warnings.h"
 #include "stdio.h"
 #include "formatint64.h"
+#include <sstream>
+#include <string>
 
 FILE* warn_output = stderr;
 int bWarningsEnabled = 1;
@@ -25,25 +27,32 @@ void EnableLongMessages(int bEnabled)
 
 void MKVParser_DebugMessage(char* message, char* cat, __int64 pos = 0)
 {
+	std::ostringstream sstrResult;
+
 	if (bWarningsEnabled) {
 		char	buffer[1000];
 		buffer[0]=0;
 		printf("\r                                                                               \r");
 		if (!pos) {
 			if (bLongMessages) {
-				sprintf(buffer,"(mkv parser) %s: \n  %s\n\n",cat,message);
+				sstrResult << "(mkv parser) " << cat << ": \x0D\x0A  " << message << "\x0D\x0A\x0D\x0A";
+				//sprintf(buffer,"(mkv parser) %s: \n  %s\n\n",cat,message);
 			} else {
-				sprintf(buffer,"%s: %s\n",cat,message);
+				sstrResult << cat << ": " << message << "\x0D\x0A";
+				//sprintf(buffer,"%s: %s\n",cat,message);
 			}
 		} else {
 			char cPos[30]; cPos[0]=0; QW2Str(pos, cPos, 1);
 			if (bLongMessages) {
-				sprintf(buffer,"(mkv parser) %s: \n  pos. %s: %s\n\n", cat, cPos, message);
+				sstrResult << "(mkv parser) " << cat << ": \x0D\x0A  pos. " << cPos << ": " << message << "\x0D\x0A\x0D\x0A"; 
+				//sprintf(buffer,"(mkv parser) %s: \n  pos. %s: %s\n\n", cat, cPos, message);
 			} else {
-				sprintf(buffer," %s: %sB: %s\n\n", cat, cPos, message);
+				sstrResult << " " << cat << ": " << cPos << "B: " << message << "\x0D\x0A\x0D\x0A";
+				//sprintf(buffer," %s: %sB: %s\n\n", cat, cPos, message);
 			}
 		}
-		fprintf(warn_output,buffer);
+
+		fprintf(warn_output,sstrResult.str().c_str());
 	}
 }
 

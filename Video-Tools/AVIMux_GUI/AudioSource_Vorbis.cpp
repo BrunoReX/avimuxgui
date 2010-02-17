@@ -676,9 +676,9 @@ int VORBISFROMOGG::GetName(char* lpDest)
 	return GetSource()->GetName(lpDest);
 }
 
-int VORBISFROMOGG::GetLanguageCode(char* lpDest)
+int VORBISFROMOGG::GetLanguageCode(std::string& result)
 {
-	return GetSource()->GetLanguageCode(lpDest);
+	return GetSource()->GetLanguageCode(result);
 }
 
 
@@ -797,9 +797,9 @@ int VORBISPACKETSFROMMATROSKA::GetName(char* lpDest)
 	return GetSource()->GetName(lpDest);
 }
 
-int VORBISPACKETSFROMMATROSKA::GetLanguageCode(char* lpDest)
+int VORBISPACKETSFROMMATROSKA::GetLanguageCode(std::string& result)
 {
-	return GetSource()->GetLanguageCode(lpDest);
+	return GetSource()->GetLanguageCode(result);
 }
 
 
@@ -938,10 +938,11 @@ int VORBISPACKETSFROMAVI::GetName(char *lpDest)
  	return GetSource()->GetStreamName(stream, lpDest);
 }
 
-int VORBISPACKETSFROMAVI::GetLanguageCode(char* lpDest)
+int VORBISPACKETSFROMAVI::GetLanguageCode(std::string& result)
 {
-	if (lpDest)
-		*lpDest = 0;
+//	if (lpDest)
+//		*lpDest = 0;
 
+	result = "";
 	return 0;
 }

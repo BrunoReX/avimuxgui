@@ -97,7 +97,7 @@ void CDynIntArray::DeleteAll()
 	}
 }
 
-CHashIntArray::CHashIntArray()
+/*CHashIntArray::CHashIntArray()
 {
 	iElementSize = sizeof(CDynIntArray*);
 }
@@ -116,4 +116,4 @@ void CHashIntArray::DeleteAll()
 		delete pData[i];
 	}
 	if (pData) delete pData;
-}
+}*/

@@ -8,6 +8,7 @@
 #include "..\UnicodeCalls.h"
 #include "languages.h"
 #include "..\FileStream.h"
+#include "MessageBoxHelper.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -39,14 +40,25 @@ int CChapterSegmentUIDEdit::VerifyElement()
 int CChapterSegmentUIDEdit::Validate()
 {
 	memset(cUID,0,sizeof(cUID));
-	char t[64]; memset(t,0,sizeof(t));
+
+//	char t[64]; memset(t,0,sizeof(t));
 	bValid = false;
 
-	GetWindowText(t, 64);
-	if (!_stricmp(t, "N/A"))
+//	GetWindowText(t, 64);
+
+	DWORD textSize = GetWindowTextLength();
+	std::vector<TCHAR> text(textSize+1);
+	GetWindowText(&text[0], textSize+1);
+
+	CUTF8 utf8Text(&text[0]);
+	std::string sText = utf8Text;
+
+	//if (!_stricmp(t, "N/A"))
+	//	return 1;
+	if (sText == "N/A")
 		return 1;
 
-	if (bValid = !!hex2int128(t, cUID))
+	if (bValid = !!hex2int128(sText.c_str(), cUID))
 		return 1;
 	else
 		return 0;
@@ -131,7 +143,7 @@ void CChapterSegmentUIDEdit::OnDropFiles(HDROP hDropInfo)
 		toUTF8(temp, lpcName);
 
 		CFileStream* f = new CFileStream;
-		if (f->Open(lpcName, STREAM_READ)==STREAM_OK) {
+		if (f->Open(lpcName, StreamMode::Read)==STREAM_OK) {
 			MATROSKA* m = new MATROSKA;
 			if (m->Open(f, MMODE_READ)== MOPEN_OK) {
 				if (m->GetSegmentCount() == 1) {
@@ -139,10 +151,13 @@ void CChapterSegmentUIDEdit::OnDropFiles(HDROP hDropInfo)
 					if (m->GetSegmentUID())
 						__int128hex(m->GetSegmentUID(), c, 1);
 					else
-						MessageBox(LoadString(STR_ERR_NOSEGMENTUID), LoadString(IDS_ERROR),
-							MB_OK | MB_ICONERROR);
+						MessageBoxHelper::ShowByID(*this, IDS_ERROR, STR_ERR_NOSEGMENTUID, MB_OK | MB_ICONERROR);
+//						MessageBox(LoadString(STR_ERR_NOSEGMENTUID), 
+//							LoadString(IDS_ERROR), MB_OK | MB_ICONERROR);
 					fSegDuration = (double)m->GetSegmentDuration() * m->GetTimecodeScale();
-					SetWindowText(c);
+
+					CUTF8 utf8c(c);
+					SetWindowText(utf8c.TStr());
 				}
 				m->Close();
 			}

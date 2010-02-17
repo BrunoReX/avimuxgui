@@ -27,12 +27,12 @@ class SILENCE: public AUDIOSOURCE
 		SILENCE_DESCRIPTOR		sdDesiredFormat;
 		int						iCompatibleSource;
 		int						iNbrOfDescs;
-		int						SetDescriptor(char* lpcName,DWORD dwSize,DWORD dwFormat,DWORD dwChannels,DWORD dwFreq,
+		int						SetDescriptor(const std::string& lpcName, DWORD dwSize,DWORD dwFormat,DWORD dwChannels,DWORD dwFreq,
 			                                  float fBitrate,SILENCE_DESCRIPTOR* lpSD);
 	public:
 		SILENCE();
 		~SILENCE();
-		int virtual Init(char* lpName=NULL);
+		int virtual Init(const char* lpName=NULL);
 		int virtual				Read(void*,DWORD,DWORD*,__int64*);
 		int virtual				Close(void);
 		int virtual				SetFormat(DWORD dwFormat,DWORD dwChannels,DWORD dwFreq,float fBitrate);

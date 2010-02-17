@@ -26,3 +26,8 @@
 // Microsoft Visual C++ fügt unmittelbar vor der vorhergehenden Zeile zusätzliche Deklarationen ein.
 
 #endif // !defined(AFX_STDAFX_H__C5108402_67A5_45CB_986F_585D796F4E3D__INCLUDED_)
+
+#include "../../Common/TextFiles.h"
+#include <vector>
+#include <string>
+#include <sstream>

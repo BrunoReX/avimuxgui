@@ -5,6 +5,9 @@
 #include "AVIMux_GUI.h"
 #include "MKVHeaderSizeEdit.h"
 
+#include <vector>
+#include <sstream>
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -25,10 +28,15 @@ CMKVHeaderSizeEdit::~CMKVHeaderSizeEdit()
 
 int CMKVHeaderSizeEdit::VerifyElement()
 {
-	char t[16]; memset(t, 0, sizeof(t));
+	DWORD textSize = GetWindowTextLength();
+	std::vector<TCHAR> text(textSize+1);
+	GetWindowText(&text[0], textSize+1);
 
-	GetWindowText(t, 16);
-	int j = atoi(t);
+	std::basic_string<TCHAR> sText(text.begin(), text.end());
+	std::basic_stringstream<TCHAR> strText;
+	strText << sText;
+	int j;
+	strText >> j;
 
 	if ((j<2 || j>1024) && j!=0)
 		return 0;

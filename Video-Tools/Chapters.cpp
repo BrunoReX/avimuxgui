@@ -104,7 +104,7 @@ int hval(char x)
 	return -1;
 }
 
-char* hex2int128(char* in, char* out)
+char* hex2int128(const char* in, char* out)
 {
 	int digit_count = 0;
 	char* o = out;

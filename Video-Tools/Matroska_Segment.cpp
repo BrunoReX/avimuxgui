@@ -579,7 +579,7 @@ void EBMLM_Segment::ParseCuePoints(CUES* cues, __int64 start, __int64 end, int m
 			if (cues->pCuePoints[i])
 				continue;
 			cue_point = cues->pCuePoints[i] = new CUE_POINT;
-			EBMLElement* e_CuePoint = (**e_CuePoints)(i);//->pElement[i];
+			EBMLElement* e_CuePoint = (**e_CuePoints)(static_cast<int>(i));//->pElement[i];
 
 			char* cp_search_ids[] = { (char*)MID_CU_CUETIME, (char*)MID_CU_CUETRACKPOSITIONS, NULL };
 			void* cp_targets[] = { &cue_point->qwTimecode, NULL, NULL };
@@ -1030,7 +1030,7 @@ int EBMLM_Segment::RetrieveInfo()
 
 	int				iChapCount = 0;
 	float			f;
-	int				k,l;
+	int				k;
 	size_t			i,j;
 	int				iMaxClusters = 0;
 	TRACK_INFO*		t;
@@ -1578,8 +1578,8 @@ int EBMLM_Segment::RetrieveInfo()
 				// go through tags and look for bitsps and framesps
 				while (e_next) {
 					e_old = e_next;
-					for (k=0;k<aTracks.size();k++) {
-						t = SegmentInfo->tracks->track_info[aTracks[k]];
+					for (size_t tracksIndex=0; tracksIndex<aTracks.size(); tracksIndex++) {
+						t = SegmentInfo->tracks->track_info[aTracks[tracksIndex]];
 						switch (e_old->GetType()) {
 							case ETM_TG_BITSPS: 
 								t->tags.iFlags |= TRACKTAGS_BITSPS;
@@ -1626,8 +1626,8 @@ int EBMLM_Segment::RetrieveInfo()
 					// Tag indicating the bitrate of something
 					if (!strcmp(cName, "BITSPS") || !strcmp(cName, "BPS")) {
 						__int64 iBPS = atoi(cString);
-						for (l=0;l<aTracks.size();l++) {
-							t = SegmentInfo->tracks->track_info[aTracks[l]];
+						for (size_t tracksIndex=0;tracksIndex<aTracks.size();tracksIndex++) {
+							t = SegmentInfo->tracks->track_info[aTracks[tracksIndex]];
 							t->tags.iFlags |= TRACKTAGS_BITSPS;
 							t->tags.iBitsPS = iBPS;
 						}

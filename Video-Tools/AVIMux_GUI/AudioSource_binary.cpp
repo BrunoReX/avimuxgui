@@ -1,7 +1,8 @@
 #include "stdafx.h"
 #include "audiosource_binary.h"
 #include "debug.h"
-
+#include "..\FormatTime.h"
+#include "..\FormatInt64.h"
 
 #ifdef DEBUG_NEW
 #ifdef _DEBUG
@@ -18,6 +19,7 @@ static char THIS_FILE[] = __FILE__;
 
 
 CBinaryAudioSource::CBinaryAudioSource()
+	: m_Open(false)
 {
 	source=NULL; 
 	dwResync_Range = 131072; 
@@ -29,6 +31,16 @@ CBinaryAudioSource::CBinaryAudioSource()
 CBinaryAudioSource::~CBinaryAudioSource()
 {
 	Close();
+}
+
+void CBinaryAudioSource::SetIsOpen(bool open)
+{
+	m_Open = open;
+}
+
+bool CBinaryAudioSource::GetIsOpen()
+{
+	return m_Open;
 }
 
 void CBinaryAudioSource::ReInit()
@@ -43,6 +55,7 @@ void CBinaryAudioSource::ReInit()
 int CBinaryAudioSource::Close()
 {
 	return doClose();
+	SetIsOpen(false);
 }
 
 int CBinaryAudioSource::Seek(__int64 qwPos)
@@ -223,6 +236,51 @@ int CBinaryAudioSource::GetOffset()
 bool CBinaryAudioSource::IsCBR()
 {
 	return false;
+}
+
+void CBinaryAudioSource::LogFrameHeaderReadingError()
+{
+	char cTime[64]; cTime[0]=0;
+	Millisec2Str(GetCurrentTimecode() * GetTimecodeScale() / 1000000, cTime);
+
+	char cCurrPos[64]; cCurrPos[0]=0;
+	QW2Str(GetSource()->GetPos(), cCurrPos, 0);
+
+	char cSize[64]; cSize[0]=0;
+	QW2Str(GetSource()->GetSize(), cSize, 0);
+
+	char cName[1024]; cName[0]=0;
+	GetName(cName);
+
+	char msg[2048]; msg[0]=0;
+	sprintf_s(msg, "Error reading frame header\nStream       : %s\nPosition     : %s\nTotal size   : %s\nLast timecode: %s",
+		cName, cCurrPos, cSize, cTime);
+
+	GetApplicationTraceFile()->Trace(TRACE_LEVEL_ERROR, "Bad input stream", msg);
+}
+
+void CBinaryAudioSource::LogFrameDataReadingError(__int64 errorPos, int sizeExpected)
+{
+	char cTime[64]; cTime[0]=0;
+	Millisec2Str(GetCurrentTimecode() * GetTimecodeScale() / 1000000, cTime);
+
+	char cCurrPos[64]; cCurrPos[0]=0;
+	QW2Str(errorPos, cCurrPos, 10);
+
+	char cSize[64]; cSize[0]=0;
+	QW2Str(GetSource()->GetSize(), cSize, 10);
+
+	char cName[1024]; cName[0]=0;
+	GetName(cName);
+
+	char cExpected[64]; cExpected[0]=0;
+	QW2Str(sizeExpected, cExpected, 10);
+
+	char msg[2048]; msg[0]=0;
+	sprintf_s(msg, "Error reading frame data\x0D\x0AStream       : %s\x0D\x0APosition     : %s\x0D\x0ATotal size   : %s\x0D\x0A%sExpected     : %s\x0D\x0ALast timecode: %s",
+		cName, cCurrPos, cSize, "", cExpected, cTime);
+
+	GetApplicationTraceFile()->Trace(TRACE_LEVEL_ERROR, "Bad input stream", msg);
 }
 
 	//////////////////////////////

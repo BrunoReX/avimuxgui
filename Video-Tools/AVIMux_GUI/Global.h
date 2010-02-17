@@ -3,8 +3,8 @@
 
 // shall somewhen be used for joblist stuff
 
-char* GlobalMuxSemaphoreName(int i = 0);
-char* GlobalMuxingStartedSemaphoreName(int i = 0);
+TCHAR* GlobalMuxSemaphoreName(int i = 0);
+TCHAR* GlobalMuxingStartedSemaphoreName(int i = 0);
 
 #define newz(a,b,c) c=new a[b]; ZeroMemory(c,b*sizeof(a))
 

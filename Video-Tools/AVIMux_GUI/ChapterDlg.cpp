@@ -417,10 +417,9 @@ void CChapterDlg::OnEndlabeleditTree1(NMHDR* pNMHDR, LRESULT* pResult)
 	
 	b = s;
 
-	m_Chapters.toUTF8(s, s);
+	m_Chapters.toUTF8(s, s, 1024);
 
 	DecomposeEntry(s,&iBegin,&iEnd,&cText);
-
 
 	if (!pCE->c->IsEdition(pCE->iIndex)) {
 		if (iBegin > -1)
@@ -560,7 +559,8 @@ void CChapterDlg::OnSaveas()
 	XMLNODE* xmlChapters = NULL;
 	XMLNODE* xmlTags = NULL;
 
-	char* f, *e;
+//	char* f;
+	const char* e;
 	char* t;
 
 	c->CreateXMLTree(&xml, &xmlChapters, &xmlTags);
@@ -638,10 +638,15 @@ void CChapterDlg::OnSaveas()
 		if (open) {
 
 			t = o.lpstrFile;
-			splitpathname(t, (char**)&f, (char**)&e, NULL);
+			//splitpathname(t, (char**)&f, (char**)&e, NULL);
+			std::string fileName;
+			std::string fileExtension;
+			std::string filePath;
+			splitpathname<char>(t, fileName, fileExtension, filePath);
+			e = fileExtension.c_str();			
 
 			CFileStream* f = new CFileStream;
-			if (f->Open(t, STREAM_WRITE) != STREAM_OK) {
+			if (f->Open(t, StreamMode::Write) != STREAM_OK) {
 				MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE), LoadString(IDS_ERROR), MB_OK);
 			} else {
 				if (!_stricmp(e, "amg")) {
@@ -659,7 +664,7 @@ void CChapterDlg::OnSaveas()
 					strcpy(c, t);
 					c[strlen(c)-4] = 0;
 					strcat(c, ".mkvmerge.chapters.xml");
-					if (f->Open(c, STREAM_WRITE) != STREAM_OK) {
+					if (f->Open(c, StreamMode::Write) != STREAM_OK) {
 						MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE), LoadString(IDS_ERROR), MB_OK);
 					} else {
 						f->WriteString((void*)txt_chp);
@@ -668,7 +673,7 @@ void CChapterDlg::OnSaveas()
 
 					c[strlen(c)-strlen(".mkvmerge.chapters.xml")] = 0;
 					strcat(c, ".mkvmerge.tags.xml");
-					if (f->Open(c, STREAM_WRITE) != STREAM_OK) {
+					if (f->Open(c, StreamMode::Write) != STREAM_OK) {
 						MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE), LoadString(IDS_ERROR), MB_OK);
 					} else {
 						f->WriteString((void*)txt_tag);
@@ -682,9 +687,9 @@ void CChapterDlg::OnSaveas()
 					m->Open(f, MMODE_WRITE);
 					m->SetInitialHeaderSize(2048 + c->GetSize(0));
 					m->BeginWrite();
-					char v[200]; v[0]=0;
-					ComposeVersionString(v);
-					m->SetAppName(v);
+					//char v[200]; v[0]=0;
+					std::basic_string<TCHAR> version = ComposeVersionString();
+					m->SetAppName(version.c_str());
 					m->SetChapters(c, -2);
 					m->SetSegmentDuration(0.0f);
 					m->Close();

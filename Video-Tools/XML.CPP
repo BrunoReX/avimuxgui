@@ -57,8 +57,9 @@ void xmlAddAttribute(XMLNODE* pNode, char* cName, char* cValue)
 
 	XMLNODEATTRIBUTE a;
 
-	strncpy(a.name, cName, sizeof(a.name));
-	strncpy(a.value, cValue, sizeof(a.value));
+	a.name[0]=0; a.value[0]=0;
+	strncpy_s(a.name, cName, sizeof(a.name));
+	strncpy_s(a.value, cValue, sizeof(a.value));
 
 	pNode->attributes.push_back(a);
 }
@@ -220,10 +221,15 @@ int xmlTreeToString(XMLNODE* pNode, std::string& pDest)
 
 	int result = xmlTreeToString_aux(pNode, pDest);
 
-	int len = pDest.size()-1;
-	while (pDest[len--] == 0x20)
-		pDest[len+1] = 0;
-
+	if (!pDest.empty()) {
+		size_t len = pDest.size()-1;
+		while (pDest[len] == 0x20) {
+			pDest[len] = 0;
+			if (!len)
+				break;
+			len--;
+		}
+	}
 	return result;
 }
 

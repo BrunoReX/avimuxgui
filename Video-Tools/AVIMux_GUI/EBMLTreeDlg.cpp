@@ -14,6 +14,8 @@
 #include "Languages.h"
 #include "OSVersion.h"
 #include "FileDialogs.h"
+#include "..\FileStream.h"
+#include "MessageBoxHelper.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -317,15 +319,31 @@ DWORD WINAPI AddChildren_Thread(void* pData)
 	return 1;
 }
 
+void _stdcall EBMLItemDeleter(EBMLITEM_DESCRIPTOR* d)
+{
+	if (d) {
+		d->pElement->Delete();
+		delete d->pElement;
+		d->pElement = NULL;
+		delete d;
+	}
+}
 
 void CEBMLTreeDlg::CleanChildren(HTREEITEM hParent)
 {
+/*	TreeItemDeleter<EBMLITEM_DESCRIPTOR> deleter(&EBMLItemDeleter);
+	m_EBMLTree.PrepareDeleteAllItems(0, deleter, &CUnicodeTreeCtrl::GetItemData);
+	deleter();
+*/
+	
 	HTREEITEM hItem = m_EBMLTree.GetChildItem(hParent);
 	HTREEITEM hNext;
 
 	while (hItem) {
 		EBMLITEM_DESCRIPTOR* d = (EBMLITEM_DESCRIPTOR*)m_EBMLTree.GetItemData(hItem);
 		m_EBMLTree.Expand(hItem,TVE_COLLAPSE);
+		m_EBMLTree.SetItemData(hItem, NULL);
+
 		if (d) {
 			d->pElement->Delete();
 			delete d->pElement;
@@ -342,6 +360,7 @@ void CEBMLTreeDlg::CleanChildren(HTREEITEM hParent)
 		
 		hItem = hNext;
 	}
+	
 }
 
 void CEBMLTreeDlg::RecreateTreeFont()
@@ -634,48 +653,26 @@ void CEBMLTreeDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	CResizeableDialog::OnSysCommand(nID, lParam);
 }
 
-bool OpenOutputFileUTF8(char* name, FILE** pFile)
-{
-	FILE* f = fopenutf8(name, "wb", DoesOSSupportUnicode());
-	if (!f) {
-		*pFile = NULL;
-		char c[65536]; c[0]=0;
-		_snprintf(c, sizeof(c), LoadString(STR_ERR_COULDNOTOPENWRITE),
-			name);
-		char* title = LoadString(STR_GEN_ERROR, LOADSTRING_UTF8);
-
-		char* wname = NULL;
-		char* wtitle = NULL;
-		fromUTF8(c, &wname);
-		fromUTF8(c, &wtitle);
-
-		(*UMessageBox())(NULL, wname, wtitle, MB_OK | MB_ICONERROR);
-
-		free(wname);
-		free(wtitle);
-		return false;
-	} else {
-		*pFile = f;
-		return true;
-	}
-}
-
 typedef struct
 {
 	int* depth;
 	HWND hButton;
 	bool* pbDoClose;
-	FILE* target_file;
+	STREAM* target_file;
+	CACHE* cache;
 	CEBMLTree* tree;
 } SAVETREETHREAD_DATA;
 
-void SaveTreeNode(CEBMLTree* tree, FILE* f, HTREEITEM hItem, int depth, 
+void SaveTreeNode(CEBMLTree* tree, STREAM* f, HTREEITEM hItem, int depth, int total,
 				  int* total_item_counter, HWND hButton, bool* close)
 {
 	char c[1024];
 	memset(c, 32, 2*depth);
 	c[2*depth]=0;
-	fprintf(f, c);
+
+	size_t indentLength = strlen(c);
+	f->Write(c, indentLength);
+//	fprintf(f, c);
 
 	char item_text[1024];
 	TVITEM tvitem;
@@ -696,20 +693,25 @@ void SaveTreeNode(CEBMLTree* tree, FILE* f, HTREEITEM hItem, int depth,
 	char* uitem_text = NULL;
 	toUTF8(item_text, &uitem_text);
 
-	fprintf(f, uitem_text);
+	size_t text_len = strlen(uitem_text);
+	f->Write(uitem_text, text_len);
+//	fprintf(f, uitem_text);
 	free(uitem_text);
-	fprintf(f, "\x0D\x0A");
+	//fprintf(f, "\x0D\x0A");
+	char newline[] = { 13, 10 };
+	f->Write(newline, 2);
+
 
 	(*total_item_counter)++;
 
 	char item_counter_string[32];
-	sprintf(item_counter_string, "%dk", *total_item_counter / 1000);
+	sprintf(item_counter_string, "%dk/%dk", *total_item_counter / 1000, total/1000);
 	if ((*total_item_counter % 1000) == 0)
 		SendMessage(hButton, WM_SETTEXT, 0, (LPARAM)item_counter_string);
 
 	HTREEITEM hChild = tree->GetChildItem(hItem);
 	while (hChild && !*close) {
-		SaveTreeNode(tree, f, hChild, depth + 1, total_item_counter, hButton, close);
+		SaveTreeNode(tree, f, hChild, depth + 1, total, total_item_counter, hButton, close);
 		hChild = tree->GetNextSiblingItem(hChild);
 	}
 
@@ -719,17 +721,22 @@ DWORD WINAPI SaveTree_Thread(void* pData)
 {
 	SAVETREETHREAD_DATA* std = (SAVETREETHREAD_DATA*)pData;
 	::EnableWindow(std->hButton, false);
-	fwrite(cUTF8Hdr, 3, 1, std->target_file);
+	//fwrite(cUTF8Hdr, 3, 1, std->target_file);
+	std->target_file->Write(cUTF8Hdr, 3);
 	int total_item_count = std->tree->GetCount();
 	int current_item = 0;
 	HTREEITEM hItem = std->tree->GetRootItem();
 	while (hItem && !*std->pbDoClose)  {
-		SaveTreeNode(std->tree, std->target_file, hItem, 0, &current_item,
+		SaveTreeNode(std->tree, std->cache, hItem, 0, total_item_count, &current_item,
 			std->hButton, std->pbDoClose);
 		hItem = std->tree->GetNextSiblingItem(hItem);
 	}
 
-	fclose(std->target_file);
+	std->cache->Close();
+	delete std->cache;
+	//fclose(std->target_file);
+	std->target_file->Close();
+	delete std->target_file;
 	::EnableWindow(std->hButton, true);
 
 	::SendMessage(std->hButton, WM_SETTEXT, 0, (LPARAM)"Save");
@@ -745,19 +752,30 @@ void CEBMLTreeDlg::OnBnClickedSaveTree()
 
 	PrepareSimpleDialog(&ofn, *this, "*.txt");
 	ofn.lpstrFilter = "Text files (*.txt)|*.txt||";
+	ofn.Flags |= OFN_OVERWRITEPROMPT;
+
 	if (!GetOpenSaveFileNameUTF8(&ofn, false)) 
 		return;
 
-	FILE* f = NULL;
-	if (OpenOutputFileUTF8(ofn.lpstrFile, &f)) {
+	CFileStream* destFile = new CFileStream();
+	if (STREAM_OK == destFile->Open(ofn.lpstrFile, StreamMode::Write))
+	{
+		CACHE* cache = new CACHE(4, 1<<18);
+		cache->Open(destFile, CACHE_OPEN_WRITE);
+
 		SAVETREETHREAD_DATA* std = new SAVETREETHREAD_DATA;
 		std->depth = &iDepth;
 		std->hButton = *GetDlgItem(IDC_SAVE_TREE);
-		std->target_file = f;
+		std->target_file = destFile;
+		std->cache = cache;
 		std->pbDoClose = &bDoClose;
- 		std->tree = &m_EBMLTree;
+		std->tree = &m_EBMLTree;
 		DWORD dwID;
 		iDepth++;
 		CreateThread(NULL, 1<<20, SaveTree_Thread, std, NULL, &dwID);
+	}
+	else
+	{
+		MessageBoxHelper::CouldNotOpenFileForWrite(ofn.lpstrFile);
 	}
 }

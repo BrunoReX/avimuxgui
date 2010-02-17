@@ -81,7 +81,8 @@ int WAVEFILE::Open(STREAM* lpStream,DWORD _dwAccess)
 		}
 		dwStreamSize=chhdr.dwLength;
 		dwDataStart=(DWORD)(GetSource()->GetPos());
-		dwAccess=WAVE_OPEN_ERROR;
+		//dwAccess=WAVE_OPEN_ERROR;
+		dwAccess = _dwAccess;
 	}
 
 	return WAVE_GENERIC_OK;

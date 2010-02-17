@@ -2,7 +2,7 @@
 #include "version.h"
 #include "resource.h"
 
-char* GetAMGVersionString(char* buffer, int buf_len)
+/*char* GetAMGVersionString(char* buffer, int buf_len)
 {
 	CString c;
 	c.LoadString(IDS_VERSION_INFO);
@@ -11,21 +11,44 @@ char* GetAMGVersionString(char* buffer, int buf_len)
 	buffer[buf_len-1] = 0;
 
 	return buffer;	
+}*/
+
+#ifdef _UNICODE
+std::wstring GetAMGVersionStringW()
+{
+	CString c;
+	c.LoadString(IDS_VERSION_INFO);
+
+	std::wstring result = c.GetBuffer(64);
+	return result;	
+}
+#else
+std::string GetAMGVersionStringA()
+{
+	CString c;
+	c.LoadString(IDS_VERSION_INFO);
+
+	std::string result = c.GetBuffer(64);
+	return result;	
+}
+#endif
+
+std::basic_string<TCHAR> GetAMGVersionDate()
+{
+	return CUTF8(__DATE__).TStr();
 }
 
-char* GetAMGVersionDate()
+std::basic_string<TCHAR> GetAMGVersionTime()
 {
-	return __DATE__;
+	return CUTF8(__TIME__).TStr();
 }
 
-char* GetAMGVersionTime()
+std::basic_string<TCHAR> ComposeVersionString()
 {
-	return __TIME__;
-}
-
-void ComposeVersionString(char* buffer)
-{
-	char ver[32];
+	std::basic_ostringstream<TCHAR> sstrResult;
+	sstrResult << _T("AVI-Mux GUI ") << GetAMGVersionString() << _T(", ") << GetAMGVersionDate() << GetAMGVersionTime();
+/*	char ver[32];
 	sprintf(buffer,"AVI-Mux GUI %s, %s  %s", GetAMGVersionString(ver, 32),
-		__DATE__, __TIME__);
+		__DATE__, __TIME__);*/
+	return sstrResult.str();
 }

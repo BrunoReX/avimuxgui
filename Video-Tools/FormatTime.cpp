@@ -1,5 +1,6 @@
 #include "formattime.h"
 #include "stdafx.h"
+#include "stdio.h"
 
 void Millisec2HMSF(__int64 qwMillisec,int* lpdwH,int* lpdwM,int* lpdwS,int* lpdwF)
 {

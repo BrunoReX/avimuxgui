@@ -16,17 +16,17 @@
    a filename in UNC form, so that CreateFileW allows opening
    it even if the filename is long 
 */
-int Filename2LongFilename(char* in, char* out, int out_buf_len);
+//int Filename2LongFilename(char* in, char* out, int out_buf_len);
 
 /* input: a filename with extension and folder name
    output: the filename without extension and without the folder name
 */
-void FilenameKeepName(char* in_out);
+//void FilenameKeepName(char* in_out);
 
 /* replaces characters that cannot occur in a filename with
    the replacement character
 */
-void FilenameRemoveIllegalCharactersUTF8(char* in_out, char replacement);
+//void FilenameRemoveIllegalCharactersUTF8(char* in_out, char replacement);
 
 
 #endif

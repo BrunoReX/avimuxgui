@@ -10,6 +10,8 @@
 /////////////////////////////////////////////////////////////////////////////
 // Dialogfeld AddSplitPointDlg 
 
+#include <string>
+
 class AddSplitPointDlg : public CDialog
 {
 private:
@@ -18,7 +20,7 @@ private:
 public:
 	AddSplitPointDlg(CWnd* pParent = NULL);   // Standardkonstruktor
 	void SetSplitPos(DWORD dwSplitPos);
-	char		Buffer[50];
+	std::basic_string<TCHAR> Buffer;
 	DWORD		GetSplitPos();
 // Dialogfelddaten
 	//{{AFX_DATA(AddSplitPointDlg)

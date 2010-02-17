@@ -221,6 +221,6 @@ class CChapters: public MULTIMEDIASOURCE
 
 void __int642hex(__int64 value, char* cDest, int min_len = 4, int group_size = 8, int space = 1);
 void __int128hex(char* value, char* cDest, int group_size, int space = 1);
-char* hex2int128(char* in, char* out);
+char* hex2int128(const char* in, char* out);
 
 #endif

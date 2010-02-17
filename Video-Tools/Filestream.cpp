@@ -2,6 +2,7 @@
 #include "FileStream.h"
 #include "Filenames.h"
 #include "UTF-8.h"
+#include "../Common/Path.h"
 #include "UnicodeCalls.h"
 
 #ifndef _ASSERT
@@ -12,12 +13,12 @@
 #endif
 #endif
 
-struct QWORD
+/*static struct QWORD
 {
 	long	lLo;
 	long    lHi;
 } *LPQWORD;
-
+*/
 __int64 round(double x)
 {
 	if ((x-(__int64)x)>0.5) 
@@ -30,20 +31,21 @@ __int64 round(double x)
 	}
 }
 
-bool SetFilePointer64 (HANDLE hFile, __int64 qwPos)
+static bool SetFilePointer64 (HANDLE hFile, __int64 qwPos)
 {
 	SetFilePointer(hFile,((QWORD*)&qwPos)->lLo,&(((QWORD*)&qwPos)->lHi),FILE_BEGIN);
 	return true;
 }
 
-bool GetFilePointer64 (HANDLE hFile,__int64* qwPos)
+static bool GetFilePointer64 (HANDLE hFile,__int64* qwPos)
 {
 	*qwPos=0;
 	((QWORD*)qwPos)->lLo=SetFilePointer(hFile,0,&(((QWORD*)qwPos)->lHi),FILE_CURRENT);
 	return true;
 }
 
-bool GetFileSize64 (HANDLE hFile,__int64* qwSize)
+
+static bool GetFileSize64 (HANDLE hFile,__int64* qwSize)
 {
 	*qwSize=0;
 	((QWORD*)qwSize)->lLo=GetFileSize(hFile,(DWORD*)&(((QWORD*)qwSize)->lHi));
@@ -143,9 +145,9 @@ DWORD WINAPI DataTransfer_Thread(void* pData)
 	/* this should not happen, but did due to a bug */
 	if (dttd->currently_buffered) {
 		char c[1024];
-		sprintf(c, "dttd->currently_buffered != 0:\n\n  dttd->currently_buffered = %d\n  jobs left: %d",
+		sprintf_s(c, "dttd->currently_buffered != 0:\n\n  dttd->currently_buffered = %d\n  jobs left: %d",
 			dttd->currently_buffered, dttd->jobs.size());
-		MessageBoxA(0, c, "Internal Error", MB_OK | MB_ICONERROR);
+		//MessageBoxA(0, c, "Internal Error", MB_OK | MB_ICONERROR);
 	}
 
 	ReleaseSemaphore(dttd->hTerminatedSignal, 1, NULL);
@@ -175,7 +177,7 @@ CFileStream::~CFileStream(void)
 
 const int iOutCacheSize = 1<<21;
 
-int CFileStream::Open(char* _lpFilename,DWORD _dwMode)
+int CFileStream::Open(const char* _lpFilename,StreamMode::StreamModes _dwMode)
 {
 	int open_mode = 0;
 	bCanRead = false;
@@ -183,14 +185,14 @@ int CFileStream::Open(char* _lpFilename,DWORD _dwMode)
 	bOverlapped = false;
 	bThreaded = false;
 
-	char* lpFilename = _lpFilename;
-	int dealloc_lpfilename = 0;
+	const char* lpFilename = _lpFilename;
 
-	unsigned short* lpwFilename = (unsigned short*)calloc(1, 32768);
+	int lpwFileNameLength = 32768;
+	wchar_t* lpwFilename = (wchar_t*)calloc(2, lpwFileNameLength);
 
-	if ((_dwMode & STREAM_WRITE) == STREAM_WRITE) {
+	if ((_dwMode & StreamMode::Write) == StreamMode::Write) {
 
-		if ((_dwMode & STREAM_READ) == STREAM_READ) {
+		if ((_dwMode & StreamMode::Read) == StreamMode::Read) {
 			open_mode = OPEN_ALWAYS;
 		} else {
 			open_mode = CREATE_ALWAYS;
@@ -198,24 +200,27 @@ int CFileStream::Open(char* _lpFilename,DWORD _dwMode)
 		bCanWrite = true;
 	}
 
-	if ((_dwMode & STREAM_OVERLAPPED) == STREAM_OVERLAPPED) {
+	if ((_dwMode & StreamMode::Overlapped) == StreamMode::Overlapped) {
 		bOverlapped = 1;
 	}
 
-	if ((_dwMode & STREAM_UNBUFFERED) == STREAM_UNBUFFERED) {
+	if ((_dwMode & StreamMode::Unbuffered) == StreamMode::Unbuffered) {
 		bBuffered = 0;
 	}
 
-	if ((_dwMode & STREAM_THREADED) == STREAM_THREADED) {
+	if ((_dwMode & StreamMode::Threaded) == StreamMode::Threaded) {
 		bThreaded = 1;
 		bOverlapped = 0;
-		_dwMode &=~ STREAM_OVERLAPPED;
+		//_dwMode &=~ StreamMode::Overlapped;
+		_dwMode = _dwMode & (~StreamMode::Overlapped);
 	}
 
-	if (_dwMode & STREAM_WRITE_OPEN_EXISTING) {
+	if (_dwMode & StreamMode::WriteOpenExisting) {
 		open_mode = OPEN_EXISTING;
-		_dwMode &=~ STREAM_WRITE_OPEN_EXISTING;
-		_dwMode |= STREAM_WRITE;
+		//_dwMode &=~ StreamMode::WriteOpenExisting;
+		_dwMode = _dwMode & (~StreamMode::WriteOpenExisting);
+		_dwMode |= StreamMode::Write;
+		//_dwMode = _dwMode | StreamMode::Write;
 	}
 
 	DWORD	dwNoBuffering = ((bBuffered)?0:FILE_FLAG_NO_BUFFERING);
@@ -225,27 +230,31 @@ int CFileStream::Open(char* _lpFilename,DWORD _dwMode)
 	hFile=NULL;
 	STREAM::Open(_dwMode);
 
-	char cLongFN[65536];
-	Filename2LongFilename(lpFilename, (char*)cLongFN, 32768);
+//	char cLongFN[65536];
+//	Filename2LongFilename(lpFilename, (char*)cLongFN, 32768);
+	std::string longFileName = CPath::GetLongFilename<char>(lpFilename);
 
-	fromUTF8(cLongFN, lpwFilename);
+	//fromUTF8(cLongFN, lpwFilename);
+	//fromUTF8(longFileName.c_str(), lpwFilename);
+	CUTF8 utf8LongFileName(longFileName.c_str());
+	wcscpy_s(lpwFilename, lpwFileNameLength, utf8LongFileName.WStr());
 	
-	if (GetMode() & STREAM_READ && !(GetMode() & STREAM_WRITE)) {
-		hFile=(*UCreateFile())(lpwFilename,GENERIC_READ,FILE_SHARE_READ,
-			NULL,OPEN_EXISTING,dwNoBuffering | dwOverlapped,NULL);
+	if (GetMode() & StreamMode::Read && !(GetMode() & StreamMode::Write)) {
+		hFile=CreateFileW(lpwFilename,GENERIC_READ,FILE_SHARE_READ,
+			NULL, OPEN_EXISTING, dwNoBuffering | dwOverlapped,NULL);
 		bCanRead = 1;
 	}
 
-	if (GetMode() & STREAM_WRITE) {
+	if (GetMode() & StreamMode::Write) {
 		DWORD new_mode = dwNoBuffering | dwOverlapped;
 		if (dwNoBuffering)
 			new_mode |= FILE_FLAG_WRITE_THROUGH;
-		hFile=(*UCreateFile())(lpwFilename,GENERIC_WRITE | GENERIC_READ,0,
-			NULL,open_mode, new_mode,NULL);
+		hFile=CreateFileW(lpwFilename, GENERIC_WRITE | GENERIC_READ, 0,
+			NULL, open_mode, new_mode, NULL);
 
 		if (hFile == INVALID_HANDLE_VALUE || !hFile) {
-			hFile=(*UCreateFile())(lpwFilename,GENERIC_WRITE | GENERIC_READ,0,
-				NULL,open_mode,dwNoBuffering | dwOverlapped,NULL);
+			hFile=CreateFileW(lpwFilename, GENERIC_WRITE | GENERIC_READ, 0,
+				NULL, open_mode, dwNoBuffering | dwOverlapped, NULL);
 		}
 	}
 
@@ -255,13 +264,11 @@ int CFileStream::Open(char* _lpFilename,DWORD _dwMode)
 		return STREAM_ERR;
 	}
 
-	cFilename = new char[1+strlen(lpFilename)];
-	strcpy(cFilename, lpFilename);
+	size_t bufLen = 1+strlen(lpFilename);
+	cFilename = new char[bufLen];
+	strcpy_s(cFilename, bufLen, lpFilename);
 	iCurrPos = 0;
 	iFilesize = GetSize();
-
-	if (dealloc_lpfilename)
-		free(lpFilename);
 
 	free(lpwFilename);
 
@@ -282,10 +289,23 @@ int CFileStream::Open(char* _lpFilename,DWORD _dwMode)
 	return ((hFile!=INVALID_HANDLE_VALUE)?STREAM_OK:STREAM_ERR);
 }
 
-int CFileStream::Open(wchar_t* lpFileName, DWORD _dwMode)
+int CFileStream::GetName(char* pDest, uint32 buf_len)
+{
+	if (!buf_len)
+		return 1 + static_cast<int>(strlen(cFilename));
+
+	int BytesToCopy = static_cast<int>(max(buf_len-1, strlen(cFilename)));
+
+	memcpy(pDest, cFilename, BytesToCopy);
+	pDest[BytesToCopy]=0;
+
+	return BytesToCopy;
+}
+
+int CFileStream::Open(const wchar_t* lpFileName, StreamMode::StreamModes _dwMode)
 {
 	char* utf8 = NULL;
-	WStr2UTF8((char*)lpFileName, &utf8);
+	WStr2UTF8((const char*)lpFileName, &utf8);
 	int res = Open(utf8, _dwMode);
 	free(utf8);
 	return res;
@@ -318,12 +338,12 @@ int CFileStream::Seek(__int64 qwPos)
 		iPossibleAlignedReadCount = 0;
 	}
 */	if (qwPos < 0) {
-		MessageBoxA(0,"Fatal seek error: qwPos < 0 !","Error",MB_OK | MB_ICONERROR);
+		//MessageBoxA(0,"Fatal seek error: qwPos < 0 !","Error",MB_OK | MB_ICONERROR);
 	}
 
-	if (!(GetMode() && STREAM_WRITE) && 
+	if (!(GetMode() && StreamMode::Write) && 
 		qwPos + GetOffset() >= GetSize() && 
-		(GetMode() & STREAM_READ))
+		(GetMode() & StreamMode::Read))
 			qwPos = GetSize() - GetOffset();
 
 	if (GetPos()!=qwPos && !bThreaded) 
@@ -464,7 +484,7 @@ int CFileStream::Read(void* lpDest,DWORD dwBytes)
 	DWORD	dwRead;
 	BYTE*	lpbDest=(BYTE*)lpDest;
 
-	_ASSERT(GetMode() & STREAM_READ);
+//	_ASSERT(GetMode() & STREAM_READ);
 	_ASSERT(hFile);
 	
 	if (bThreaded) {
@@ -526,7 +546,7 @@ int CFileStream::Write(void* lpSource, DWORD dwBytes)
 
 	dwWritten = 0;
 	_ASSERT(hFile);
-	_ASSERT(GetMode() & STREAM_WRITE);
+//	_ASSERT(GetMode() & STREAM_WRITE);
 
 	if (bThreaded) {
 
@@ -631,7 +651,7 @@ int CFileStream::TruncateAt(__int64 iPosition)
 		Close();
 		bBuffered = 1;
 		bOverlapped = 0;
-		Open(cFilename, STREAM_WRITE_OPEN_EXISTING);
+		Open(cFilename, StreamMode::WriteOpenExisting);
 		TruncateAt(iPosition);
 	}
 

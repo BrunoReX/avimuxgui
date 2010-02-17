@@ -89,19 +89,19 @@ int AUDIOSOURCEFROMMATROSKA::Open(MATROSKA* matroska, int iStream)
 		
 		c_codecid += 6;
 		if (!strncmp(c_codecid, "LC", 2)) {
-			info.aac.iProfile = AAC_ADTS_PROFILE_LC;
+			info.aac.iProfile = AACSOURCE::AdtsProfile::LC;
 			c_codecid += 3;
 		} else
 		if (!strncmp(c_codecid, "MAIN", 4)) {
-			info.aac.iProfile = AAC_ADTS_PROFILE_MAIN;
+			info.aac.iProfile = AACSOURCE::AdtsProfile::Main;
 			c_codecid += 3;
 		} else
 		if (!strncmp(c_codecid, "SSR", 3)) {
-			info.aac.iProfile = AAC_ADTS_PROFILE_SSR;
+			info.aac.iProfile = AACSOURCE::AdtsProfile::SSR;
 			c_codecid += 3;
 		} else
 		if (!strncmp(c_codecid, "LTP", 3)) {
-			info.aac.iProfile = AAC_ADTS_PROFILE_LTP;
+			info.aac.iProfile = AACSOURCE::AdtsProfile::LTP;
 			c_codecid += 3;
 		} 
 
@@ -135,7 +135,7 @@ int AUDIOSOURCEFROMMATROSKA::Open(MATROSKA* matroska, int iStream)
 		}
 
 		BYTE* b = (BYTE*)info.m->GetCodecPrivate();
-		info.aac.iProfile = (*b++>>3)-1;
+		info.aac.iProfile = static_cast<AACSOURCE::AdtsProfile::AdtsProfiles>((*b++>>3)-1);
 //		SetProfile((*b++>>3)-1);
 		info.aac.iMPEGVersion = 4;
 //		SetMPEGVersion(4);
@@ -338,16 +338,17 @@ int AUDIOSOURCEFROMMATROSKA::GetName(char* lpDest)
 	}
 }
 
-int AUDIOSOURCEFROMMATROSKA::GetLanguageCode(char* lpDest)
+int AUDIOSOURCEFROMMATROSKA::GetLanguageCode(std::string& result)
 {
 	info.m->SetActiveTrack(info.iStream);
 	char* c=info.m->GetLanguage();
 	if (c && strcmp(c,"")) {
-		int l;
-		memcpy(lpDest,c,l=strlen(c));
-		return l;
+		result = c;
+//		memcpy(lpDest,c,l=strlen(c));
+		return result.size()+1;
 	} else {
-		*lpDest = 0;
+		result = "";
+//		*lpDest = 0;
 		return 0;
 	}
 }

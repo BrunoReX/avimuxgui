@@ -4,7 +4,7 @@
 #include "IncResource.h"
 #include "math.h"
 
-#define DEBUG_ON
+
 
 __int64 QW_div(__int64 x, __int64 y, char* lpName)
 {

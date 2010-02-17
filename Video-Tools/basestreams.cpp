@@ -17,14 +17,14 @@ static char THIS_FILE[] = __FILE__;
 #endif
 #endif
 
-
+/*
 int STREAM::GetOffset()
 {
 	 return iOffset;
 }
-
-int alignment_mask = 0x7FFF;
-
+*/
+static int alignment_mask = 0x7FFF;
+/*
 int STREAM::SetOffset(int iNewOffset)
 {
 	 iOffset = iNewOffset; 
@@ -55,7 +55,7 @@ bool STREAM::SetFlag(int flag, int value)
 {
 	return _Enable(flag, true, !!value);
 }
-
+*/
 STREAM_FILTER::STREAM_FILTER()
 {
 	source = NULL;

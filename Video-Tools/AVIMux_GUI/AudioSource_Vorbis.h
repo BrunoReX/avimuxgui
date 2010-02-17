@@ -122,7 +122,7 @@ class VORBISFROMOGG: public AUDIOSOURCE
 		__int64 virtual FormatSpecific(__int64 iCode, __int64 iValue = 0);
 		void    virtual ReInit();
 		int		virtual	GetName(char* lpDest);
-		int		virtual GetLanguageCode(char* lpDest);
+		int		virtual GetLanguageCode(std::string& result);
 };
 
 /* create input data which can be processed by VORBISFROMOGG
@@ -154,7 +154,7 @@ class VORBISPACKETSFROMMATROSKA: public PACKETIZER
 		int		virtual GetAvgBytesPerSec();
 		void	virtual ReInit();
 		int		virtual	GetName(char* lpDest);
-		int		virtual GetLanguageCode(char* lpDest);
+		int		virtual GetLanguageCode(std::string& result);
 };
 
 /* create input data which can be processed by VORBISFROMOGG
@@ -185,7 +185,7 @@ class VORBISPACKETSFROMAVI: public PACKETIZER
 		int		virtual GetAvgBytesPerSec();
 		void	virtual ReInit();
 		int		virtual	GetName(char* lpDest);
-		int		virtual GetLanguageCode(char* lpDest);
+		int		virtual GetLanguageCode(std::string& result);
 };
 
 

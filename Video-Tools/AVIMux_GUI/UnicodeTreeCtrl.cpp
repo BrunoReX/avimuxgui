@@ -124,10 +124,10 @@ void CUnicodeTreeCtrl::OnGetdispinfo(NMHDR* pNMHDR, LRESULT* pResult)
 	UNICODETREEITEM_DATA* data = (UNICODETREEITEM_DATA*)CTreeCtrl::GetItemData(hItem);
 	
 	if (pItem) {
-		char* cDest = pItem->pszText;
+		char* cDest = reinterpret_cast<char*>(pItem->pszText);
 		if (cDest && ((pItem->mask & TVIF_TEXT) == TVIF_TEXT)) {
 			if (data) {
-				if (data->cText != LPSTR_TEXTCALLBACK) {
+				if (data->cText != LPSTR_TEXTCALLBACKA) {
 					memset(cDest, 0, pItem->cchTextMax * (IsUnicode()?2:1));
 
 					/* the following utf8->target conversion seems to b0rk under
@@ -156,9 +156,9 @@ void CUnicodeTreeCtrl::OnGetdispinfo(NMHDR* pNMHDR, LRESULT* pResult)
 }
 
 
-HTREEITEM CUnicodeTreeCtrl::InsertItem(LPTVINSERTSTRUCT lpInsertStruct)
+HTREEITEM CUnicodeTreeCtrl::InsertItem(LPTVINSERTSTRUCTA lpInsertStruct)
 {
-	TVITEM* pItem = &lpInsertStruct->item;
+	TVITEMA* pItem = &lpInsertStruct->item;
 	UNICODETREEITEM_DATA* data = new UNICODETREEITEM_DATA;
 
 	ZeroMemory(data,sizeof(*data));
@@ -170,8 +170,14 @@ HTREEITEM CUnicodeTreeCtrl::InsertItem(LPTVINSERTSTRUCT lpInsertStruct)
 		if (!c) 
 			c = "";
 
-		if (c != LPSTR_TEXTCALLBACK) {
-			size_t slen = strlen(c);
+		if (c != LPSTR_TEXTCALLBACKA) {
+			CUTF8 utf8Text(c);
+			size_t utf8TextLen = strlen(utf8Text.UTF8());
+			data->cText = new char[1 + utf8TextLen];
+			strcpy_s(data->cText, 1+utf8TextLen, utf8Text.UTF8());
+			data->cText[utf8TextLen] = 0;
+			data->bAllocated = 1;
+			/*size_t slen = strlen(c);
 			size_t passed_len = pItem->cchTextMax;
 			size_t len = min(slen, passed_len);
 			_ASSERT(passed_len == slen);
@@ -180,20 +186,97 @@ HTREEITEM CUnicodeTreeCtrl::InsertItem(LPTVINSERTSTRUCT lpInsertStruct)
 			data->bAllocated = 1;
 			memcpy(data->cText, c, len);
 			data->cText[len] = 0;
-			pItem->cchTextMax = len;
+			pItem->cchTextMax = len;*/
 		} else {
 			data->cText = c;
 		}
 
-		pItem->pszText = LPSTR_TEXTCALLBACK;
+		pItem->pszText = LPSTR_TEXTCALLBACKA;
 	}
 	
+#ifndef _UNICODE
 	CTreeCtrl::SetItemData(r=CTreeCtrl::InsertItem(lpInsertStruct), (DWORD)data);
-
+#else
+	TVINSERTSTRUCTW newStruct;
+	newStruct.hParent = lpInsertStruct->hParent;
+	newStruct.hInsertAfter = lpInsertStruct->hInsertAfter;
+	newStruct.itemex.cChildren = lpInsertStruct->itemex.cChildren;
+	newStruct.itemex.cchTextMax = lpInsertStruct->itemex.cchTextMax;
+	newStruct.itemex.hItem = lpInsertStruct->itemex.hItem;
+	newStruct.itemex.iImage = lpInsertStruct->itemex.iImage;
+	newStruct.itemex.iIntegral = lpInsertStruct->itemex.iIntegral;
+	newStruct.itemex.iSelectedImage = lpInsertStruct->itemex.iSelectedImage;
+	newStruct.itemex.lParam = lpInsertStruct->itemex.lParam;
+	newStruct.itemex.mask = lpInsertStruct->itemex.mask;
+	newStruct.itemex.state = lpInsertStruct->itemex.state;
+	newStruct.itemex.stateMask = lpInsertStruct->itemex.stateMask;
+	newStruct.itemex.pszText = LPSTR_TEXTCALLBACKW;
+	CTreeCtrl::SetItemData(r=CTreeCtrl::InsertItem(&newStruct), (DWORD)data);
+#endif
 	return r;
 }
 
-void CUnicodeTreeCtrl::SetItem(TVITEM* pItem)
+HTREEITEM CUnicodeTreeCtrl::InsertItem(LPTVINSERTSTRUCTW lpInsertStruct)
+{
+	TVITEMW* pItem = &lpInsertStruct->item;
+	UNICODETREEITEM_DATA* data = new UNICODETREEITEM_DATA;
+
+	ZeroMemory(data,sizeof(*data));
+	HTREEITEM r;
+
+	if (pItem->mask & TVIF_TEXT) {
+		wchar_t* c = pItem->pszText;
+
+		if (!c) 
+			c = L"";
+
+		if (c != LPSTR_TEXTCALLBACKW) {
+			CUTF8 utf8Text(c);
+			size_t utf8TextLen = strlen(utf8Text.UTF8());
+			data->cText = new char[1 + utf8TextLen];
+			strcpy_s(data->cText, 1+utf8TextLen, utf8Text.UTF8());
+			data->cText[utf8TextLen] = 0;
+			data->bAllocated = 1;
+			/*size_t slen = strlen(c);
+			size_t passed_len = pItem->cchTextMax;
+			size_t len = min(slen, passed_len);
+			_ASSERT(passed_len == slen);
+				
+			data->cText = new char[1+len];
+			data->bAllocated = 1;
+			memcpy(data->cText, c, len);
+			data->cText[len] = 0;
+			pItem->cchTextMax = len;*/
+		} else {
+			data->cText = LPSTR_TEXTCALLBACKA;
+		}
+
+		pItem->pszText = LPSTR_TEXTCALLBACKW;
+	}
+	
+#ifdef _UNICODE
+	CTreeCtrl::SetItemData(r=CTreeCtrl::InsertItem(lpInsertStruct), (DWORD)data);
+#else
+	TVINSERTSTRUCTA newStruct;
+	newStruct.hParent = lpInsertStruct->hParent;
+	newStruct.hInsertAfter = lpInsertStruct->hInsertAfter;
+	newStruct.itemex.cChildren = lpInsertStruct->itemex.cChildren;
+	newStruct.itemex.cchTextMax = lpInsertStruct->itemex.cchTextMax;
+	newStruct.itemex.hItem = lpInsertStruct->itemex.hItem;
+	newStruct.itemex.iImage = lpInsertStruct->itemex.iImage;
+	newStruct.itemex.iIntegral = lpInsertStruct->itemex.iIntegral;
+	newStruct.itemex.iSelectedImage = lpInsertStruct->itemex.iSelectedImage;
+	newStruct.itemex.lParam = lpInsertStruct->itemex.lParam;
+	newStruct.itemex.mask = lpInsertStruct->itemex.mask;
+	newStruct.itemex.state = lpInsertStruct->itemex.state;
+	newStruct.itemex.stateMask = lpInsertStruct->itemex.stateMask;
+	newStruct.itemex.pszText = LPSTR_TEXTCALLBACKA;
+	CTreeCtrl::SetItemData(r=CTreeCtrl::InsertItem(&newStruct), (DWORD)data);
+#endif
+	return r;
+}
+
+void CUnicodeTreeCtrl::SetItem(TVITEMA* pItem)
 {
 	UNICODETREEITEM_DATA* data = (UNICODETREEITEM_DATA*)CTreeCtrl::GetItemData(pItem->hItem);
 
@@ -204,18 +287,26 @@ void CUnicodeTreeCtrl::SetItem(TVITEM* pItem)
 			data->cText = NULL;
 		}
 
-		if (pItem->pszText != LPSTR_TEXTCALLBACK) {
-			int len = min(strlen(pItem->pszText), pItem->cchTextMax);
-			data->cText = new char[len+1];
-			strncpy(data->cText, pItem->pszText, len);
-			data->cText[len] = 0;
+		if (pItem->pszText != LPSTR_TEXTCALLBACKA) {
+			CUTF8 utf8NewText(pItem->pszText);
+			int utf8TextLength = utf8NewText.Size();
+			data->cText = new char[1 + utf8TextLength];
+			strcpy_s(data->cText, utf8TextLength, utf8NewText.UTF8());
+			data->cText[utf8TextLength] = 0;
 			data->bAllocated = 1;
+
+			//int len = min(strlen(pItem->pszText), pItem->cchTextMax);
+			//data->cText = new char[len+1];
+			
+			//strncpy(data->cText, pItem->pszText, len);
+			//data->cText[len] = 0;
+			//data->bAllocated = 1;
 		} else {
 			data->cText = pItem->pszText;
 			data->bAllocated = 0;
 		}
 
-		pItem->pszText = LPSTR_TEXTCALLBACK;
+		pItem->pszText = LPSTR_TEXTCALLBACKA;
 	}
 
 	if ((pItem->mask & TVIF_PARAM) == TVIF_PARAM) {
@@ -223,7 +314,53 @@ void CUnicodeTreeCtrl::SetItem(TVITEM* pItem)
 	}; 
 
 	pItem->mask &=~ (TVIF_PARAM /*| TVIF_TEXT*/);
+
+#ifdef _UNICODE
+	// TVITEMA and TVITEMW have same size
+	CTreeCtrl::SetItem(reinterpret_cast<TVITEMW*>(pItem));
+#else
 	CTreeCtrl::SetItem(pItem);
+#endif
+}
+
+void CUnicodeTreeCtrl::SetItem(TVITEMW* pItem)
+{
+	UNICODETREEITEM_DATA* data = (UNICODETREEITEM_DATA*)CTreeCtrl::GetItemData(pItem->hItem);
+
+	if ((pItem->mask & TVIF_TEXT) == TVIF_TEXT) {
+		if (data->bAllocated) {
+			delete[] data->cText;
+			data->bAllocated = 0;
+			data->cText = NULL;
+		}
+
+		if (pItem->pszText != LPSTR_TEXTCALLBACKW) {
+			CUTF8 utf8NewText(pItem->pszText);
+			int utf8TextLength = utf8NewText.Size();
+			data->cText = new char[1 + utf8TextLength];
+			strcpy_s(data->cText, utf8TextLength, utf8NewText.UTF8());
+			data->cText[utf8TextLength] = 0;
+			data->bAllocated = 1;
+		} else {
+			data->cText = LPSTR_TEXTCALLBACKA;
+			data->bAllocated = 0;
+		}
+
+		pItem->pszText = LPSTR_TEXTCALLBACKW;
+	}
+
+	if ((pItem->mask & TVIF_PARAM) == TVIF_PARAM) {
+		data->dwUserData = pItem->lParam;
+	}; 
+
+	pItem->mask &=~ (TVIF_PARAM /*| TVIF_TEXT*/);
+
+#ifdef _UNICODE
+	CTreeCtrl::SetItem(pItem);
+#else
+	// TVITEMA and TVITEMW have same size
+	CTreeCtrl::SetItem(reinterpret_cast<TVITEMA*>(pItem));
+#endif
 }
 
 bool CUnicodeTreeCtrl::SetItemText(HTREEITEM hItem, LPCTSTR lpszItem)
@@ -240,8 +377,10 @@ bool CUnicodeTreeCtrl::SetItemText(HTREEITEM hItem, LPCTSTR lpszItem)
 	}
 
 	if (lpszItem != LPSTR_TEXTCALLBACK) {
-		data->cText = new char[1+strlen(lpszItem)];
-		strcpy(data->cText, lpszItem);
+		CUTF8 utf8NewText(lpszItem);
+		size_t utf8NewTextLength = utf8NewText.Size();
+		data->cText = new char[utf8NewTextLength + 1];
+		strcpy(data->cText, utf8NewText.UTF8());
 		data->bAllocated = 1;
 	} else {
 		data->cText = (char*)lpszItem;
@@ -282,7 +421,7 @@ void CUnicodeTreeCtrl::SetItemData(HTREEITEM hItem, DWORD dwData)
 	InvalidateRect(&r);
 }
 
-DWORD_PTR CUnicodeTreeCtrl::GetItemData(HTREEITEM hItem)
+DWORD_PTR CUnicodeTreeCtrl::GetItemData(HTREEITEM hItem) const
 {
 	if (!hItem) return NULL;
 	UNICODETREEITEM_DATA* data = (UNICODETREEITEM_DATA*)CTreeCtrl::GetItemData(hItem);
@@ -320,6 +459,9 @@ bool CUnicodeTreeCtrl::DeleteItem(HTREEITEM hItem)
 	return true;
 }
 
+
+
+
 char* CUnicodeTreeCtrl::GetItemText(HTREEITEM hItem)
 {
 	UNICODETREEITEM_DATA* data = (UNICODETREEITEM_DATA*)CTreeCtrl::GetItemData(hItem);
@@ -327,10 +469,28 @@ char* CUnicodeTreeCtrl::GetItemText(HTREEITEM hItem)
 	if (!data)
 		return "";
 
-	if (data->cText != LPSTR_TEXTCALLBACK) 
+	if (data->cText != (char*)LPSTR_TEXTCALLBACK) 
 		return data->cText;
 
 	return NULL;
+}
+
+
+
+
+
+void _stdcall DeleteItemData(UNICODETREEITEM_DATA* data)
+{
+	if (data && data->bAllocated) {
+		delete[] data->cText;
+		data->bAllocated = 0;
+		data->cText = NULL;
+	}
+
+	if (data) {
+		delete data;
+		data = NULL;
+	}
 }
 
 bool CUnicodeTreeCtrl::DeleteAllItems(HTREEITEM hRoot)
@@ -338,11 +498,18 @@ bool CUnicodeTreeCtrl::DeleteAllItems(HTREEITEM hRoot)
 	if (!hRoot) {
 		hRoot = GetRootItem();
 		if (!hRoot)
-			return false;
+			return true;
 	}
+		/*TreeItemDeleter<UNICODETREEITEM_DATA> deleter(&DeleteItemData);
+		PrepareDeleteAllItems(hRoot, deleter, &CTreeCtrl::GetItemData);
+		deleter();
+
+		return true;
+		/*if (!hRoot)
+			return false;*/
+	/*} else {*/
 
 	HTREEITEM hCurrent, hNext;
-
 	hCurrent = hRoot;
 
 	do {
@@ -352,6 +519,7 @@ bool CUnicodeTreeCtrl::DeleteAllItems(HTREEITEM hRoot)
 	} while (hNext);
 
 	return true;
+	
 }
 
 void CUnicodeTreeCtrl::OnKeydown(NMHDR* pNMHDR, LRESULT* pResult) 
@@ -403,48 +571,53 @@ int CUnicodeTreeCtrl::GetRButtonDown()
 	return b_rdown;
 }
 
-int CUnicodeTreeCtrl::RenderItem(HTREEITEM hItem, char* cDest, int iDepth)
+int CUnicodeTreeCtrl::RenderItem(HTREEITEM hItem, std::string& dest, int iDepth)
 {
-	char* cText = cDest;
 	int isize = 0;
 
 	if (hItem) {
+		if (iDepth > 1) {
+			dest.push_back('|');
+		}
+
 		for (int i=0;i<iDepth;i++) {
 			isize+=2;
-			*cText++=32;*cText++=32;
+			dest.push_back(32);
+			dest.push_back(32);
 		}
 	
 		UNICODETREEITEM_DATA* uti = (UNICODETREEITEM_DATA*)CTreeCtrl::GetItemData(hItem);
 		if (uti->cText) {
-			strcpy(cText, uti->cText);
+			dest.append(uti->cText);
 			isize+=strlen(uti->cText);
 		} else {
-			CString s = GetItemText(hItem);
-			strcpy(cText, s);
+			char* s = GetItemText(hItem);
+			dest.append(s);
 			isize+=strlen(s);
 		}
-		cText = cText + strlen(cText);
-		*cText++ = 13;
-		*cText++ = 10;
+		dest.push_back(13);
+		dest.push_back(10);
 		isize+=2;
-		isize+=RenderItem(GetChildItem(hItem), cText, iDepth+1);
-		cText += strlen(cText);
-		isize+=RenderItem(GetNextSiblingItem(hItem), cText, iDepth);
+		isize += RenderItem(GetChildItem(hItem), dest, iDepth+1);
+		isize += RenderItem(GetNextSiblingItem(hItem), dest, iDepth);
 	}
 
 
 	return isize;
 }
 
-int CUnicodeTreeCtrl::Render2Buffer(char* cDest)
+int CUnicodeTreeCtrl::Render2Buffer(std::string& dest)
 {
 	HTREEITEM hItem = GetRootItem();
 
-	*cDest++ = (char)0xEF;
-	*cDest++ = (char)0xBB;
-	*cDest++ = (char)0xBF;
+#pragma warning(push)
+#pragma warning(disable: 4309)
+	dest.push_back(static_cast<char>(0xEF));
+	dest.push_back(static_cast<char>(0xBB));
+	dest.push_back(static_cast<char>(0xBF));
+#pragma warning(pop)
 
-	return RenderItem(hItem, cDest, 0);;
+	return RenderItem(hItem, dest, 0);;
 }
 
 void CUnicodeTreeCtrl::OnReturn(NMHDR* pNMHDR, LRESULT* pResult) 

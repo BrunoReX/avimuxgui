@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "audiosource_list.h"
 #include "..\matroska.h"
-#include "TraceFile.h"
 #include "..\FormatTime.h"
 
 #ifdef _DEBUG
@@ -39,8 +38,10 @@ int AUDIOSOURCELIST::Append(AUDIOSOURCE* pNext)
 		GetTitleSet()->Import(pNext->GetTitleSet());
 
 		ZeroMemory(cBuffer,sizeof(cBuffer));
-		pNext->GetLanguageCode(cBuffer);
-		SetLanguageCode(cBuffer);
+		
+		std::string languageCode;
+		pNext->GetLanguageCode(languageCode);
+		SetLanguageCode(languageCode);
 		SetTimecodeScale(1000);
 		SetDefault(pNext->IsDefault());
 	}
@@ -85,6 +86,11 @@ int AUDIOSOURCELIST::GetGranularity()
 int AUDIOSOURCELIST::GetChannelCount()
 {
 	return info.active_source->GetChannelCount();
+}
+
+std::string AUDIOSOURCELIST::GetChannelString()
+{
+	return info.active_source->GetChannelString();
 }
 
 int AUDIOSOURCELIST::GetAvgBytesPerSec()

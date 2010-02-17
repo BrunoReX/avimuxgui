@@ -2,7 +2,11 @@
 #define I_OSVERSION
 
 bool DoesOSSupportUnicode();
-bool GetOSVersionString(char* buf, int buf_len);
+
+bool GetOSVersionString(std::string& result);
+bool GetOSVersionString(std::wstring& result);
+std::basic_string<TCHAR> GetOperatingSystemByAvailableAPIFunctions();
+
 bool IsOSWin2kplus();
 
 #endif

@@ -1,21 +1,34 @@
 #ifndef I_LANGUAGES
 #define I_LANGUAGES
 
+#include "../../Common/UTF-8.h"
+#include <map>
+
 typedef struct
 {
-	char*	lpcName;
-	char**	lplpStrings;
-	char**  lplpStringsUTF8;
-	DWORD*	lpdwIndices;
-	DWORD	dwEntries;
+	CUTF8	name;
+//	char**	lplpStrings;
+//	char**  lplpStringsUTF8;
+//	wchar_t**  lplpStringsUTF16;
+	std::map<DWORD, CUTF8> items;
+
+//	DWORD*	lpdwIndices;
+//	DWORD	dwEntries;
 } LANGUAGE_DESCRIPTOR;
 
 const int LOADSTRING_ANSI = 0x01;
 const int LOADSTRING_UTF8 = 0x02;
+const int LOADSTRING_UTF16 = 0x03;
+#ifndef _UNICODE
+const int LOADSTRING_TCHAR = LOADSTRING_ANSI;
+#else
+const int LOADSTRING_TCHAR = LOADSTRING_UTF16;
+#endif
+
 
 void				 SetCurrentLanguage(LANGUAGE_DESCRIPTOR* lpNewLanuage);
-LANGUAGE_DESCRIPTOR* LoadLanguageFile(char* lpcName);
-char*				 LoadString(DWORD dwID, int charset = LOADSTRING_ANSI);
+LANGUAGE_DESCRIPTOR* LoadLanguageFile(const char* lpcName);
+char*				 LoadString(DWORD dwID, int charset = LOADSTRING_TCHAR);
 void				 UnloadLanguageFile(LANGUAGE_DESCRIPTOR* lpLD);
 LANGUAGE_DESCRIPTOR* GetCurrentLanguage(void);
 

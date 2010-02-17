@@ -19,6 +19,7 @@ public:
 	int		virtual Close() = NULL;
 	int		virtual Seek(__int64 qwPos) = NULL;
 	int		virtual GetBitPos() = NULL;
+	__int64 virtual GetPos() = NULL;
 	void	virtual SetBitPos(int pos) = NULL;
 	void    virtual FlushInputBuffer() = NULL;
 	int		virtual ReadBits(int n, int iFlag = 0) = NULL;

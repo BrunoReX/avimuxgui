@@ -2,6 +2,10 @@
 #define I_AUDIOSOURCE_GENERIC
 
 #include "windows.h"
+#include "..\..\Common\TraceFiles\TraceFile.h"
+
+#include <string>
+#include <sstream>
 
 const int MMSGFS_MPEG_LAYERVERSION	= 0x0000000000000001;
 const int MMSGFS_MPEG_VERSION		= 0x0000000000000020;
@@ -75,7 +79,7 @@ class AUDIOSOURCE: public MULTIMEDIASOURCE
 		int		virtual GetChannelCount();
 
 		/* returns the channels like "2" or "2.0" or "5.1" */
-		char	virtual *GetChannelString();
+		std::string	virtual GetChannelString();
 
 		/* the format tag that would be used when storing this stream in
 		   an AVI file */
@@ -120,7 +124,8 @@ class AUDIOSOURCE: public MULTIMEDIASOURCE
 		int		virtual Read(void* lpDest,DWORD dwMicrosecDesired,DWORD* lpdwMicrosecRead,
 							__int64* lpqwNanosecRead,__int64* lpiTimeocde = NULL,
 							ADVANCEDREAD_INFO* lpAARI = NULL);
-	
+		int		virtual Read(MULTIMEDIA_DATA_PACKET** dataPacket);
+
 		/* Seek to the given position; this takes GetOffset() into account */
 		int		virtual Seek(__int64 iPos);
 

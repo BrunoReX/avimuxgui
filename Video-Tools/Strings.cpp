@@ -53,28 +53,63 @@ bool isposint(char* s)
 	return true;
 }
 
-// alloc only *path before!!!
-void splitpathname(char* p, char** f, char** e, char** path)
+template<>
+void splitpathname<char>(const std::string& fullPath,
+						  std::string& fileName,
+						  std::string& fileNameExtension,
+						  std::string& filePath)
 {
-	char* t1; char* t2;
-	if (!e) e = &t1;
-	if (!f) f = &t2;
-	*e = NULL; *f = NULL;
+	char pathSeperator = '\\';
+	char extensionSeperator = '.';
 
-	for (int i=(int)strlen(p);i>=0 && (!*e || !*f);i--) {
-		if (*(p+i)=='.' && !*e) *e = p+i+1;
-		if (*(p+i)=='\\' && !*f) *f = p+i+1;
+
+	size_t last_backslash_pos = fullPath.find_last_of(pathSeperator);
+	if (last_backslash_pos != std::string::npos)
+	{
+		filePath = fullPath.substr(0, last_backslash_pos);
+		fileName = fullPath.substr(last_backslash_pos + 1);
+		size_t last_dot_pos = fileName.find_last_of(extensionSeperator);
+		if (last_dot_pos != std::string::npos)
+		{
+			fileNameExtension = fileName.substr(last_dot_pos + 1);
+		}
+		else
+		{
+			fileNameExtension = "";
+		}
 	}
-
-	if (path) {
-		strcpy(*path,p);
-		int i=(int)strlen(p)-1;
-		while (*(p+i) != '\\' && i) i--;
-		(*path)[i]=0;
-	}
-
 }
 
+template<>
+void splitpathname<wchar_t>(const std::wstring& fullPath,
+						  std::wstring& fileName,
+						  std::wstring& fileNameExtension,
+						  std::wstring& filePath)
+{
+	wchar_t pathSeperator = L'\\';
+	wchar_t extensionSeperator = L'.';
+
+
+	size_t last_backslash_pos = fullPath.find_last_of(pathSeperator);
+	if (last_backslash_pos != std::wstring::npos)
+	{
+		filePath = fullPath.substr(0, last_backslash_pos);
+		fileName = fullPath.substr(last_backslash_pos + 1);
+		size_t last_dot_pos = fileName.find_last_of(extensionSeperator);
+		if (last_dot_pos != std::wstring::npos)
+		{
+			fileNameExtension = fileName.substr(last_dot_pos + 1);
+		}
+		else
+		{
+			fileNameExtension = L"";
+		}
+	}
+}
+
+
+/** \brief Splits a full path into components.
+ */
 int split_string(char* in, char* separator, std::vector<char*>& dest)
 {
 	char* c = (char*)calloc(sizeof(char), 1+strlen(in));
@@ -107,21 +142,3 @@ void DeleteStringVector(std::vector<char*>& v)
 	for (; iter != v.end(); delete (*iter++));
 }
 
-CASCIIString::CASCIIString(char* source)
-{
-	SetData(source);
-}
-
-CASCIIString::CASCIIString(const CUTF8String& source)
-{
-	char temp[16384];
-	UTF82Str((char*)source.Data().c_str(), temp, sizeof(temp));
-	SetData(temp);
-}
-
-CUTF8String::CUTF8String(const CASCIIString& source)
-{
-	char temp[16384];
-	Str2UTF8((char*)source.Data().c_str(), temp, sizeof(temp));
-	m_data = temp;
-}

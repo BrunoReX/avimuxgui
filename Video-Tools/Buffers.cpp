@@ -399,6 +399,7 @@ void CStringBuffer::Prepare(int iFormat)
 				b[0]->SetData(d);
 				bASCII = true;
 				free(d);
+				d = NULL;
 			}
 			if (bUTF8) {
 				UTF82Str(b[1]->AsString(), &d);
@@ -406,6 +407,7 @@ void CStringBuffer::Prepare(int iFormat)
 				b[0]->SetData(d);
 				bASCII = true;
 				free(d);
+				d = NULL;
 			}
 			break;
 		case CSB_UTF8:
@@ -415,6 +417,7 @@ void CStringBuffer::Prepare(int iFormat)
 				b[1]->SetData(d);
 				bUTF8 = true;
 				free(d);
+				d = NULL;
 			}
 			break;
 	}

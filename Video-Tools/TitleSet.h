@@ -30,7 +30,7 @@ public:
 	bool DeleteTitle(size_t index);
 
 	/* remove the title in a given language */
-	bool DeleteTitle(char* language);
+	bool DeleteTitle(const char* language);
 
 	/* remove all titles */
 	void DeleteAllTitles();
@@ -39,7 +39,7 @@ public:
 	size_t GetTitleCount(void);
 
 	/* determine index unter which the title in a given languge is stored */
-	bool GetLanguageIndex(char* language, size_t* index);
+	bool GetLanguageIndex(const char* language, size_t* index);
 
 	/* get language of a title at a certain index */
 	bool GetTitleLanguage(size_t index, char** pLanguage);

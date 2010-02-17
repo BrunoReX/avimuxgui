@@ -4,6 +4,7 @@
 #include "Compression.h"
 #include "TitleSet.h"
 #include <vector>
+#include <string>
 
 #define INT64_MAX 0x7FFFFFFFFFFFFFFF
 
@@ -77,6 +78,7 @@ typedef struct
 	   be free()ed */
 	int			usageCounter;
 
+//	std::vector<unsigned char> data;
 	/* raw data */
 	union {
 		void*		data;
@@ -147,7 +149,7 @@ class MULTIMEDIASOURCE : public CHasTitles
 		__int64 accumulatedDelay;
 	protected:
 		char*				lpcName;
-		char*				lpcLangCode;
+		std::string			m_languageCode;
 		void		virtual AddSizeData(float f, __int64 i);
 		bool		virtual CanAppend(MULTIMEDIASOURCE* pNext);
 		int			virtual doClose();
@@ -166,7 +168,7 @@ class MULTIMEDIASOURCE : public CHasTitles
 		int			virtual Enable(int bEnabled);
 		int			virtual GetCompressionAlgo();
 		int			virtual	GetName(char* lpDest);
-		int			virtual GetLanguageCode(char* lpDest);
+		int			virtual GetLanguageCode(std::string& result);
 		__int64		virtual GetBias(int iFlags = 0);
 		__int64		virtual	GetCurrentTimecode();
 		__int64		virtual GetDuration();
@@ -188,7 +190,7 @@ class MULTIMEDIASOURCE : public CHasTitles
 		void		virtual	SetName(char* _lpcName);
 		void		virtual SetCompressionAlgo(int algo);
 
-		void		virtual SetLanguageCode(char* _lpcName);
+		void		virtual SetLanguageCode(const std::string& languageCode);
 		void		virtual	SetBias(__int64 iBias, int iFlags = BIAS_ABSOLUTE);
 		void		virtual	SetMaxLength(__int64 iLength, int iFlags = 0);
 		void		virtual SetStretchFactor(double dFactor);

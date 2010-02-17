@@ -52,7 +52,7 @@ class VIDEOSOURCEFROMMATROSKA: public VIDEOSOURCE
 		virtual ~VIDEOSOURCEFROMMATROSKA();
 		int		virtual GetStrippableHeaderBytes(void* pBuffer, int max);
 		int		virtual	GetName(char* lpDest);
-		int		virtual GetLanguageCode(char* lpDest);
+		int		virtual GetLanguageCode(std::string& result);
 
 };
 

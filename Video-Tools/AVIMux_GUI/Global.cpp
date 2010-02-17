@@ -1,14 +1,14 @@
 #include "stdafx.h"
 #include "global.h"
 
-char cGlobalMuxSemaphoreName[30];
-char cGlobalMuxingStartedSemaphoreName[30];
+TCHAR cGlobalMuxSemaphoreName[30];
+TCHAR cGlobalMuxingStartedSemaphoreName[30];
 
-char* GlobalMuxSemaphoreName(int i) {
+TCHAR* GlobalMuxSemaphoreName(int i) {
 	return cGlobalMuxSemaphoreName+i;
 }
 
-char* GlobalMuxingStartedSemaphoreName(int i)
+TCHAR* GlobalMuxingStartedSemaphoreName(int i)
 {
 	return cGlobalMuxingStartedSemaphoreName+i;
 }

@@ -12,6 +12,7 @@
 // CAVIMux_GUIDlg Dialogfeld
 
 
+#include "..\..\Common\TraceFiles\TraceFile.h"
 #include "SplitPointsDlg.h"
 #include "SourceFileListbox.h"
 #include "SetStoreFileOptionsDlg.h"
@@ -34,7 +35,7 @@ int Thread_OnStart(void* pData);
 DWORD DetectFileType(STREAM* lpSource, void** pReturn = NULL);
 void SetDelay(AUDIO_STREAM_INFO* asi, int iDelay);
 __int64	GetLaceSetting(char* cName, CAttribs* settings, int iFlags = 0);
-void name_without_ext(char* lpcName, char* cNoExt);
+void name_without_ext(const char* lpcName, char* cNoExt);
 
 static HANDLE hGlobalMuxingStartedSemaphore;
 static HANDLE hGlobalMuxSemaphore;
@@ -60,11 +61,11 @@ private:
 	void			ApplyCurrentLanguageCode(void);
 
 	HANDLE			hLogFile;
-	char			cLogFileName[65536];
+	std::string		cLogFileName;
 	void			OnGetAudiodispinfo(NMHDR* pNMHDR, LRESULT* pResult);
 	CAttribs*		settings;
 	
-	char			lastjobfile[65536];
+	std::string		lastjobfile;
 	std::string		cfgfile;
 	std::string		guifile;
 	std::string		lngcodefile;
@@ -83,10 +84,13 @@ private:
 
 	std::vector<CFont*> additional_fonts;
 
+	CTraceFile*     traceFile;
+
 	// Konstruktion
 public:
 	void			UpdateProgressList();
 	CAVIMux_GUIDlg(CWnd* pParent = NULL);	// Standard-Konstruktor
+	virtual ~CAVIMux_GUIDlg();
 	void			AddFile (CFileDialog* cfd);
 	int				iCurrentView;
 	int				iButtonState;
@@ -105,7 +109,7 @@ public:
 	void			AddProtocolLine(CString lpcText,DWORD dwDebugLevel, int dwCC = APL_ASCII);
 	void			AddProtocol_Separator();
 	void			SetDebugLevel(int iLevel);
-	void			doSaveConfig(char* lpcFile, int clear = 1);
+	void			doSaveConfig(const char* lpcFile, int clear = 1);
 	CAttribs*		GetSettings();
 
 	DWORD			Clear(void);

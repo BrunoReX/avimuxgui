@@ -30,7 +30,7 @@ public:
 	FILE_INFO*		lpFI;
 	VIDEOSOURCE*	lpVS;
 	void			SetFile(FILE_INFO*	_lpFI);
-	void			SetVideoSource(VIDEOSOURCE* _lpVS);
+//	void			SetVideoSource(VIDEOSOURCE* _lpVS);
 	FILE_INFO*		GetFile();
 	VIDEOSOURCE*	GetVideoSource();
 	DWORD			GetKindOfSource();
@@ -61,9 +61,9 @@ protected:
 	DWORD	dwKinfOfSource;
 	bool	RenderChapters(CUnicodeTreeCtrl* cTree,HTREEITEM hParent,CHAPTERS* chapters);
 	void	AddTags(TAG_INDEX_LIST &pTags, HTREEITEM hParent);
-	bool	InitDialog_VideoSource();
+//	bool	InitDialog_VideoSource();
 	bool	InitDialog_Matroska();
-
+    HTREEITEM    Insert(const CUTF8& item, HTREEITEM hParent);
 	// Generierte Nachrichtenzuordnungsfunktionen
 	//{{AFX_MSG(CVideoInformationDlg)
 	virtual BOOL OnInitDialog();

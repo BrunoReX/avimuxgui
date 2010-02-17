@@ -6,14 +6,14 @@
 
 AVISTREAM::AVISTREAM(AVIFILEEX* avifile,int iStreamNbr)
 {
-	STREAM::Open(STREAM_READ);
+	STREAM::Open(StreamMode::Read);
 	AVIFile = avifile; 
 	dwStreamNbr = iStreamNbr;
 }
 
 int AVISTREAM::Open(AVIFILEEX* _AVIFile,DWORD _dwStreamNbr)
 {
-	STREAM::Open(STREAM_READ);
+	STREAM::Open(StreamMode::Read);
 
 	if (!_dwStreamNbr) return STREAM_ERR;
 	AVIFile=_AVIFile;
@@ -42,7 +42,7 @@ __int64 AVISTREAM::GetSize(void)
 
 int AVISTREAM::Read(void* lpDest,DWORD dwBytes)
 {
-	if (GetMode()!=STREAM_READ) return STREAM_ERR;
+	if (GetMode()!=StreamMode::Read) return STREAM_ERR;
 	return (AVIFile->LoadAudioData(dwStreamNbr,dwBytes,lpDest));
 }
 

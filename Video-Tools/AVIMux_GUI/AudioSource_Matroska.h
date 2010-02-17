@@ -3,12 +3,13 @@
 
 #include "..\matroska.h"
 #include "audiosource_generic.h"
+#include "AudioSource_AAC.h"
 
 // audio source from an matroska file
 
 typedef struct {
 	int	 iValid;
-	int	 iProfile;
+	AACSOURCE::AdtsProfile::AdtsProfiles iProfile;
 	int	 iMPEGVersion;
 	int	 iSBR;
 	int  iSRI[2];
@@ -74,7 +75,7 @@ class AUDIOSOURCEFROMMATROSKA: public AUDIOSOURCE
 		__int64 virtual GetFrameDuration();
 		int		virtual GetGranularity();
 		int		virtual	GetName(char* lpDest);
-		int		virtual GetLanguageCode(char* lpDest);
+		int		virtual GetLanguageCode(std::string& result);
 		char	virtual *GetCodecID();
 		int		virtual GetOffset();
 		__int64 virtual FormatSpecific(__int64 iCode, __int64 iValue);

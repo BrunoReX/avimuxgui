@@ -73,14 +73,16 @@ int VIDEOSOURCEFROMMATROSKA::GetStrippableHeaderBytes(void* pBuffer, int max)
 		return MMS_UNKNOWN;
 }
 
-int VIDEOSOURCEFROMMATROSKA::GetLanguageCode(char* lpDest)
+int VIDEOSOURCEFROMMATROSKA::GetLanguageCode(std::string& result)
 {
 	char* c = info.m->GetLanguage(info.iStream);
 	if (c && c[0]) {
-		strcpy(lpDest, c);
+		result = c;
+//		strcpy(lpDest, c);
 		return strlen(c);
 	} else {
-		*lpDest = 0;
+		result = "";
+//		*lpDest = 0;
 		return 0;
 	}
 }

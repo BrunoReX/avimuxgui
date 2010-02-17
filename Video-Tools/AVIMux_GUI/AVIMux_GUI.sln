@@ -1,21 +1,46 @@
-Microsoft Visual Studio Solution File, Format Version 8.00
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AVIMux_GUI", "AVIMux_GUI.vcproj", "{D666BA83-B94E-4FA1-80A2-5C5299AC38D4}"
-	ProjectSection(ProjectDependencies) = postProject
-	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CacheTest", "..\CacheTest\CacheTest.vcproj", "{925C59BD-8950-4EDD-94A5-0A5A8B66DD86}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AudioClassTests", "..\AudioClassTests\AudioClassTests.vcproj", "{A663D18F-44E6-42AC-9D39-7CFB86D8E225}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AVIMux_GUI.Test", "..\AVIMux_GUI.Test\AVIMux_GUI.Test.vcproj", "{CF150984-4A28-4112-9E70-345C15BFE80B}"
 EndProject
 Global
-	GlobalSection(SolutionConfiguration) = preSolution
-		Debug = Debug
-		Release = Release
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release - dynamic MFC|Win32 = Release - dynamic MFC|Win32
+		Release|Win32 = Release|Win32
 	EndGlobalSection
-	GlobalSection(ProjectConfiguration) = postSolution
-		{D666BA83-B94E-4FA1-80A2-5C5299AC38D4}.Debug.ActiveCfg = Debug|Win32
-		{D666BA83-B94E-4FA1-80A2-5C5299AC38D4}.Debug.Build.0 = Debug|Win32
-		{D666BA83-B94E-4FA1-80A2-5C5299AC38D4}.Release.ActiveCfg = Release|Win32
-		{D666BA83-B94E-4FA1-80A2-5C5299AC38D4}.Release.Build.0 = Release|Win32
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D666BA83-B94E-4FA1-80A2-5C5299AC38D4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D666BA83-B94E-4FA1-80A2-5C5299AC38D4}.Debug|Win32.Build.0 = Debug|Win32
+		{D666BA83-B94E-4FA1-80A2-5C5299AC38D4}.Release - dynamic MFC|Win32.ActiveCfg = Release - dynamic MFC|Win32
+		{D666BA83-B94E-4FA1-80A2-5C5299AC38D4}.Release - dynamic MFC|Win32.Build.0 = Release - dynamic MFC|Win32
+		{D666BA83-B94E-4FA1-80A2-5C5299AC38D4}.Release|Win32.ActiveCfg = Release|Win32
+		{D666BA83-B94E-4FA1-80A2-5C5299AC38D4}.Release|Win32.Build.0 = Release|Win32
+		{925C59BD-8950-4EDD-94A5-0A5A8B66DD86}.Debug|Win32.ActiveCfg = Debug|Win32
+		{925C59BD-8950-4EDD-94A5-0A5A8B66DD86}.Debug|Win32.Build.0 = Debug|Win32
+		{925C59BD-8950-4EDD-94A5-0A5A8B66DD86}.Release - dynamic MFC|Win32.ActiveCfg = Release - dynamic MFC|Win32
+		{925C59BD-8950-4EDD-94A5-0A5A8B66DD86}.Release - dynamic MFC|Win32.Build.0 = Release - dynamic MFC|Win32
+		{925C59BD-8950-4EDD-94A5-0A5A8B66DD86}.Release|Win32.ActiveCfg = Release|Win32
+		{925C59BD-8950-4EDD-94A5-0A5A8B66DD86}.Release|Win32.Build.0 = Release|Win32
+		{A663D18F-44E6-42AC-9D39-7CFB86D8E225}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A663D18F-44E6-42AC-9D39-7CFB86D8E225}.Debug|Win32.Build.0 = Debug|Win32
+		{A663D18F-44E6-42AC-9D39-7CFB86D8E225}.Release - dynamic MFC|Win32.ActiveCfg = Release - dynamic MFC|Win32
+		{A663D18F-44E6-42AC-9D39-7CFB86D8E225}.Release - dynamic MFC|Win32.Build.0 = Release - dynamic MFC|Win32
+		{A663D18F-44E6-42AC-9D39-7CFB86D8E225}.Release|Win32.ActiveCfg = Release|Win32
+		{A663D18F-44E6-42AC-9D39-7CFB86D8E225}.Release|Win32.Build.0 = Release|Win32
+		{CF150984-4A28-4112-9E70-345C15BFE80B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{CF150984-4A28-4112-9E70-345C15BFE80B}.Debug|Win32.Build.0 = Debug|Win32
+		{CF150984-4A28-4112-9E70-345C15BFE80B}.Release - dynamic MFC|Win32.ActiveCfg = Release|Win32
+		{CF150984-4A28-4112-9E70-345C15BFE80B}.Release - dynamic MFC|Win32.Build.0 = Release|Win32
+		{CF150984-4A28-4112-9E70-345C15BFE80B}.Release|Win32.ActiveCfg = Release|Win32
+		{CF150984-4A28-4112-9E70-345C15BFE80B}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-	EndGlobalSection
-	GlobalSection(ExtensibilityAddIns) = postSolution
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal

@@ -14,7 +14,7 @@ private:
 	STREAM* stream;
 	bool	bisrifflist;
 	__int64	first_pos;
-	__int64	bytes_per_line;
+	int     bytes_per_line;
 
 	__int64	red_begin;
 	__int64 red_end;

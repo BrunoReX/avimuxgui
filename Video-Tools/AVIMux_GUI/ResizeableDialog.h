@@ -41,6 +41,7 @@ protected:
 	CAttribs* GetAttribs() { return attribs; }
 	void	ReinitFont(CFont* f);
 	void	ReinitPosition();
+	void    ForceSize(int width, int height);
 #endif
 // Konstruktion
 public:

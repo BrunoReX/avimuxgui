@@ -20,6 +20,10 @@
 #include "ResizeableDialog.h"
 #include ".\videoinformationdlg.h"
 #include "Version.h"
+#include <sstream>
+#include <iomanip>
+#include "FileDialogs.h"
+#include "..\FileStream.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -213,8 +217,101 @@ void CVideoInformationDlg::AddTags(TAG_INDEX_LIST& tags, HTREEITEM hParent)
 
 bool mb(int i)
 {
-	MessageBox(NULL, "info", "info", MB_OK);
+	MessageBox(NULL, _T("info"), _T("info"), MB_OK);
 	return false;
+}
+
+class EntryFormatter
+{
+private:
+	std::streamsize m_titleWidth;
+
+public:
+	void FormatTitle(DWORD stringID, std::basic_ostringstream<TCHAR>& target)
+	{
+		target << std::setw(m_titleWidth) << std::left << 
+			CUTF8(LoadString(stringID, LOADSTRING_UTF8), CharacterEncoding::UTF8).TStr(); 
+		target << _T(": ");
+	}
+
+	void FormatTitle(const CUTF8& title, std::basic_ostringstream<TCHAR>& target)
+	{
+		target << std::setw(m_titleWidth) << std::left << title.TStr(); 
+		target << _T(": ");
+	}
+public:
+	EntryFormatter(std::streamsize titleWidth)
+	{
+		this->m_titleWidth = titleWidth;
+	}
+
+	void CurrentVersion(CUTF8& result)
+	{	
+		std::basic_ostringstream<TCHAR> sstrAmgVersionEntry;
+		FormatTitle(IDS_VERSION, sstrAmgVersionEntry);
+		sstrAmgVersionEntry << GetAMGVersionString() << _T(" ") << GetAMGVersionDate();
+		result = CUTF8(sstrAmgVersionEntry.str().c_str());
+	}
+
+	void Direct(CUTF8& result, const CUTF8& title, const CUTF8& value)
+	{
+		std::basic_ostringstream<TCHAR> sstrFileType;
+		FormatTitle(title, sstrFileType);
+		sstrFileType << value.UTF8();
+		result = CUTF8(sstrFileType.str().c_str());
+	}
+
+	CUTF8 Direct(const CUTF8& title, const CUTF8& value)
+	{
+		CUTF8 result;
+		std::basic_ostringstream<TCHAR> sstrFileType;
+		FormatTitle(title, sstrFileType);
+		sstrFileType << value.UTF8();
+		result = CUTF8(sstrFileType.str().c_str());
+		return result;
+	}
+
+	void Direct(CUTF8& result, const CUTF8& title, __int64 value)
+	{
+		std::basic_ostringstream<TCHAR> sstrFileType;
+		FormatTitle(title, sstrFileType);
+		sstrFileType << value;
+		result = CUTF8(sstrFileType.str().c_str());
+	}
+
+	CUTF8 Direct(const CUTF8& title, __int64 value)
+	{
+		CUTF8 result;
+		std::basic_ostringstream<TCHAR> sstrFileType;
+		FormatTitle(title, sstrFileType);
+		sstrFileType << value;
+		result = CUTF8(sstrFileType.str().c_str());
+		return result;
+	}
+
+	void Direct(CUTF8& result, const CUTF8& title, __int64 value, int valueSize)
+	{
+		std::basic_ostringstream<TCHAR> sstrFileType;
+		FormatTitle(title, sstrFileType);
+		sstrFileType << std::setw(valueSize) << value;
+		result = CUTF8(sstrFileType.str().c_str());
+	}
+
+	CUTF8 Direct(const CUTF8& title, __int64 value, int valueSize)
+	{
+		CUTF8 result;
+		std::basic_ostringstream<TCHAR> sstrFileType;
+		FormatTitle(title, sstrFileType);
+		sstrFileType << std::setw(valueSize) << value;
+		result = CUTF8(sstrFileType.str().c_str());
+		return result;
+	}
+};
+
+HTREEITEM CVideoInformationDlg::Insert(const CUTF8& item, HTREEITEM hParent = NULL)
+{
+	HTREEITEM result = Tree_Insert(&m_Tree, item.UTF8(), hParent);
+	return result;
 }
 
 bool CVideoInformationDlg::InitDialog_Matroska()
@@ -229,7 +326,9 @@ bool CVideoInformationDlg::InitDialog_Matroska()
 	memset(size, 0, sizeof(size));
 
 	m_Tree.InitUnicode();
-	SetWindowText(LoadString(STR_VID_TITLE_FILE));
+
+	CUTF8 utf8WindowTitle(LoadString(STR_VID_TITLE_FILE, LOADSTRING_UTF8));
+	SetWindowText(utf8WindowTitle.TStr()); // LoadString(STR_VID_TITLE_FILE));
 	(CButton*)GetDlgItem(IDC_APPLYREPAIRS)->EnableWindow(false);
 
 //	m_BuildRIFFTree.SetWindowText("EBML-Tree");
@@ -240,52 +339,48 @@ bool CVideoInformationDlg::InitDialog_Matroska()
 	CVideoInformationDlgListbox*	clb;
 	clb=&m_VideoInformationDlgListbox;
 
-	char version[32];
-	GetAMGVersionString(version, sizeof(version));
-	sprintf(buffer,"%-20s: %s, %s",LoadString(IDS_VERSION), version, GetAMGVersionDate());
-	Tree_Insert(&m_Tree,buffer,NULL);
+	EntryFormatter formatter(20);
 
-	sprintf(buffer,"%-20s: %s","file type","matroska");
-	Tree_Insert(&m_Tree,buffer);
+	CUTF8 utf8VersionString;
+	formatter.CurrentVersion(utf8VersionString);
+	Insert(utf8VersionString);
 
-	FormatSize(size,mkvfile->GetSize());
-	sprintf(buffer,"%-20s: %s","file size",size);
-	Tree_Insert(&m_Tree,buffer);
+	Insert(formatter.Direct(CUTF8("File type"), CUTF8("Matroska")));
 
-	sprintf(buffer,"%-20s: %d","number of segments",mkvfile->GetSegmentCount());
-	hSegments=Tree_Insert(&m_Tree,buffer);
+	FormatSize(size, mkvfile->GetSize());
+	Insert(formatter.Direct(CUTF8("File size"), CUTF8(size)));
+
+	hSegments = Insert(formatter.Direct(CUTF8("Number of segments"), 
+		mkvfile->GetSegmentCount()));
 
 	int active_seg = mkvfile->GetActiveSegment();
 
 	for (i=0;i<mkvfile->GetSegmentCount();i++) {
 		mkvfile->SetActiveSegment(i);
-		sprintf(buffer,"segment %d",i);
-		hSegment = Tree_Insert(&m_Tree,buffer,hSegments);
+		std::basic_ostringstream<TCHAR> sstrSegment;
+		sstrSegment << _T("Segment #") << i;
+		CUTF8 utf8Segment(sstrSegment.str().c_str());
+		hSegment = Insert(utf8Segment,hSegments);
 
 		Millisec2Str(mkvfile->GetSegmentDuration()*mkvfile->GetTimecodeScale()/1000000,size);
-		sprintf(buffer,"%-20s: %s","duration",size);
-		Tree_Insert(&m_Tree,buffer,hSegment);
+		Insert(formatter.Direct(CUTF8("Duration"), CUTF8(size)), hSegment);
 
 		char* WritingApp = mkvfile->GetSegmentWritingApp();
-		if (strcmp(WritingApp,"")) {
-			sprintf(buffer,"%-20s: %s","writing app",WritingApp);
-		} else {
-			sprintf(buffer,"%-20s: %s","writing app","n/a !!!");
-		}
-		Tree_Insert(&m_Tree,buffer,hSegment);
+		if (!WritingApp || !WritingApp[0])
+			WritingApp = "<n/a>";
+		Insert(formatter.Direct(CUTF8("Writing app"), 
+			CUTF8(WritingApp, CharacterEncoding::UTF8)), hSegment);
 
 		char* MuxingApp = mkvfile->GetSegmentMuxingApp();
-		if (strcmp(MuxingApp,"")) {
-			sprintf(buffer,"%-20s: %s","muxing app",MuxingApp);
-		} else {
-			sprintf(buffer,"%-20s: %s","muxing app","n/a !!!");
-		}
-		Tree_Insert(&m_Tree,buffer,hSegment);
+		if (!MuxingApp || !MuxingApp[0])
+			MuxingApp = "<n/a>";
+		Insert(formatter.Direct(CUTF8("Muxing app"), 
+			CUTF8(MuxingApp, CharacterEncoding::UTF8)), hSegment);
 
 		char* SegmentTitle = mkvfile->GetSegmentTitle();
 		if (SegmentTitle && strcmp(SegmentTitle,"")) {
-			sprintf(buffer,"%-20s: %s","segment title",SegmentTitle);
-			Tree_Insert(&m_Tree,buffer,hSegment);
+			Insert(formatter.Direct(CUTF8("Segment title"), 
+				CUTF8(SegmentTitle, CharacterEncoding::UTF8)), hSegment);
 		}
 
 		for (int uid_type = 0; uid_type < 4; uid_type++) {
@@ -299,41 +394,39 @@ bool CVideoInformationDlg::InitDialog_Matroska()
 		}
 
 		QW2Str(mkvfile->GetTimecodeScale(), size, 1);
-//		sprintf(size, "%d", mkvfile->GetTimecodeScale()*100);
-//		MessageBox(size, "Info", MB_OK);
-		sprintf(buffer,"%-20s: %s","Timecode Scale",size);
-//		MessageBox(buffer, "Info", MB_OK);
-		Tree_Insert(&m_Tree,buffer,hSegment);
+		Insert(formatter.Direct(CUTF8("Timecode scale"), CUTF8(size)), hSegment);
 
-
-		sprintf(buffer,"%-20s: %d","number of tracks",mkvfile->GetTrackCount());
-		hTracks = Tree_Insert(&m_Tree,buffer,hSegment);
+		hTracks = Insert(formatter.Direct("number of tracks", 
+			mkvfile->GetTrackCount()), hSegment);
 
 //		return 0;
 		for (j=0;j<mkvfile->GetTrackCount();j++) {
 			mkvfile->SetActiveTrack(j);
-			sprintf(buffer,"track %d",mkvfile->GetTrackNumber());
-			hTrack = Tree_Insert(&m_Tree,buffer,hTracks);
 
-			sprintf(buffer,"%-20s: %s", "track type",MSTRT_names[mkvfile->GetTrackType()]);
-			hTrackType = Tree_Insert(&m_Tree,buffer,hTrack);
+			std::basic_ostringstream<TCHAR> sstrTrackNumber;
+			sstrTrackNumber << "track #" << mkvfile->GetTrackNumber();
+			hTrack = Insert(sstrTrackNumber.str().c_str(), hTracks);
+
+			hTrackType = Insert(formatter.Direct(
+				"track type", MSTRT_names[mkvfile->GetTrackType()]), hTrack);
 
 			__int64 duration = mkvfile->GetTrackDuration(j);
 			if (duration != TIMECODE_UNKNOWN) duration = duration * mkvfile->GetTimecodeScale() / 1000000;
 			if (duration == TIMECODE_UNKNOWN) {
-				sprintf(buffer,"%-20s: %s", "duration","not determined (no cuepoint found for this track)");
+				Insert(formatter.Direct("duration", "not determined (no cuepoint found for this track)"), hTrack);
 			} else {
 				Millisec2Str(duration, size);
-				sprintf(buffer,"%-20s: %s", "duration",size);
+				Insert(formatter.Direct("duration", size), hTrack);
 			}
-			Tree_Insert(&m_Tree,buffer,hTrack);
 
 			char* CodecID = mkvfile->GetCodecID();
 			if (strcmp(CodecID,"")) {
-				sprintf(buffer,"%-20s: %s","CodecID",CodecID);
-				hCodecID = Tree_Insert(&m_Tree,buffer,hTrackType);
+				CUTF8 utf8CodecIDEntry;
+				
+				hCodecID = Insert(formatter.Direct(CUTF8("CodecID"), 
+					CUTF8(CodecID)), hTrackType);
 
-				if (!strcmp(CodecID,"V_MS/VFW/FOURCC")) {
+				if (!strcmp(CodecID, "V_MS/VFW/FOURCC")) {
 					BITMAPINFOHEADER* bmi = (BITMAPINFOHEADER*)mkvfile->GetCodecPrivate();
 					char	FourCC[5];
 					*(int*)FourCC = bmi->biCompression;
@@ -351,27 +444,26 @@ bool CVideoInformationDlg::InitDialog_Matroska()
 					Tree_Insert(&m_Tree,buffer,hCodecID);
 
 					QW2Str(wfe->nAvgBytesPerSec,size,9);
-					sprintf(buffer,"%-20s: %s","nAvgBytesPerSec",size);
-					Tree_Insert(&m_Tree,buffer,hCodecID);
+					Insert(formatter.Direct("nAvgBytesPerSec", size), hCodecID);
 
 					if (wfe->wBitsPerSample) {
-						sprintf(buffer,"%-20s: %9d","wBitsPerSample",wfe->wBitsPerSample);
-						Tree_Insert(&m_Tree,buffer,hCodecID);
+						Insert(formatter.Direct("wBitsPerSample", 
+							wfe->wBitsPerSample, 9), hCodecID);
 					}
 
 					if (wfe->nSamplesPerSec) {
-						sprintf(buffer,"%-20s: %9d","nSamplesPerSec",wfe->nSamplesPerSec);
-						Tree_Insert(&m_Tree,buffer,hCodecID);
+						Insert(formatter.Direct("nSamplesPerSec", 
+							wfe->nAvgBytesPerSec, 9), hCodecID);
 					}
 
 					if (wfe->nChannels) {
-						sprintf(buffer,"%-20s: %9d","nChannels",wfe->nChannels);
-						Tree_Insert(&m_Tree,buffer,hCodecID);
+						Insert(formatter.Direct("nChannels", 
+							wfe->nChannels, 9), hCodecID);
 					}
 
 					if (wfe->nBlockAlign) {
-						sprintf(buffer,"%-20s: %9d","nBlockAlign",wfe->nBlockAlign);
-						Tree_Insert(&m_Tree,buffer,hCodecID);
+						Insert(formatter.Direct("nBlockAlign",
+							wfe->nBlockAlign, 9), hCodecID);
 					}
 				}
 
@@ -401,21 +493,18 @@ bool CVideoInformationDlg::InitDialog_Matroska()
 					}
 			
 					if (mkvfile->GetChannelCount()) {
-						sprintf(buffer,"%-20s: %d","channels",(int)mkvfile->GetChannelCount());
-						Tree_Insert(&m_Tree,buffer,hTrackType);
+						Insert(formatter.Direct("channels", mkvfile->GetChannelCount()), hTrackType);
 					}
 
 					if (mkvfile->GetBitDepth()) {
-						sprintf(buffer,"%-20s: %d","bit depth",(int)mkvfile->GetBitDepth());
-						Tree_Insert(&m_Tree,buffer,hTrackType);
+						Insert(formatter.Direct("bit depth", mkvfile->GetBitDepth()), hTrackType);
 					}
 					break;
 			}
 
 			char* track_name = mkvfile->GetTrackName();
 			if (strcmp(track_name,"")) {
-				sprintf(buffer,"%-20s: %s","name",track_name);
-				Tree_Insert(&m_Tree,buffer,hTrack);
+				Insert(formatter.Direct("name", CUTF8(track_name, CharacterEncoding::UTF8)), hTrack);
 			}
 
 
@@ -524,7 +613,7 @@ bool CVideoInformationDlg::InitDialog_Matroska()
 	return 0;
 }
 
-bool CVideoInformationDlg::InitDialog_VideoSource()
+/*bool CVideoInformationDlg::InitDialog_VideoSource()
 {
 	CVideoInformationDlgListbox*	clb;
 	CString	cStr[5];
@@ -533,9 +622,12 @@ bool CVideoInformationDlg::InitDialog_VideoSource()
 	DWORD	dwFourCC,dwChunkCount,dwMillisec;
 	double	framerate1,dSeconds;
 	char	buffer[200];
-	
 
-	SetWindowText(LoadString(STR_VID_TITLE_VIDEOSOURCE));
+	EntryFormatter formatter(30);
+
+	CUTF8 utf8Title(LoadString(STR_VID_TITLE_VIDEOSOURCE, LOADSTRING_UTF8));
+	SetWindowText(utf8Title.TStr());
+
 	(CButton*)GetDlgItem(IDC_APPLYREPAIRS)->EnableWindow(false);
 	m_Tree.ShowWindow(SW_HIDE);
 	m_VideoInformationDlgListbox.ShowWindow(SW_SHOW);
@@ -543,17 +635,25 @@ bool CVideoInformationDlg::InitDialog_VideoSource()
 	lpDest=new char[10240];
 	clb=&m_VideoInformationDlgListbox;
 	cStr[0]=LoadString(IDS_VERSION);
-	
+
 	char version[32];
 	GetAMGVersionString(version, sizeof(version));
-	sprintf(lpDest,"%s: %s, %s",cStr[0].GetBuffer(255), version,
-		GetAMGVersionDate());
-	clb->AddString(lpDest);
+	std::basic_ostringstream<TCHAR> sstrAmgVersionEntry;
+	sstrAmgVersionEntry << CUTF8(LoadString(IDS_VERSION, LOADSTRING_UTF8), CHARACTER_ENCODING_UTF8).TStr(); 
+	sstrAmgVersionEntry << _T(": ") << CUTF8(version).TStr() << _T(" ") << CUTF8(GetAMGVersionDate()).TStr();
+	clb->AddString(sstrAmgVersionEntry.str().c_str());
+//	sprintf(lpDest,"%s: %s, %s",cStr[0].GetBuffer(255), version,
+//		GetAMGVersionDate());
+//	clb->AddString(lpDest);
 
-	cStr[0]=LoadString(IDS_VI_RESOLUTION);
+	std::basic_ostringstream<TCHAR> sstrResolution;
+	CUTF8 strResolution;
+	//cStr[0]=LoadString(IDS_VI_RESOLUTION);
 	lpVS->GetResolution(&x,&y);
-	sprintf(lpDest,"%-30s: %dx%d",cStr[0].GetBuffer(255),x,y);
-	clb->AddString(lpDest);
+	sstrResolution << x << _T('x') << y;
+	formatter.Direct(strResolution, LoadString(IDS_VI_RESOLUTION), sstrResolution.str().c_str());
+//	sprintf(lpDest,"%-30s: %dx%d",cStr[0].GetBuffer(255),x,y);
+	clb->AddString(strResolution.TStr());
 
 	dwFourCC=lpVS->GetFourCC();
 	sprintf(lpDest,"%-30s: %c%c%c%c","FourCC",(dwFourCC)&0xFF,(dwFourCC>>8)&0xFF,(dwFourCC>>16)&0xFF,(dwFourCC>>24)&0xFF);
@@ -600,7 +700,7 @@ bool CVideoInformationDlg::InitDialog_VideoSource()
 	delete lpDest;
 
 	return true;
-}
+}*/
 
 BOOL CVideoInformationDlg::OnInitDialog() 
 {
@@ -626,6 +726,7 @@ BOOL CVideoInformationDlg::OnInitDialog()
 	bool	bNeeddwDurationRepair=false;
 	DWORD	dw1,dw2;
 
+	EntryFormatter formatter(30);
 
 	WAVEFORMATEX* strf;
 	AVIStreamHeader* strh;
@@ -633,8 +734,8 @@ BOOL CVideoInformationDlg::OnInitDialog()
 	CResizeableDialog::OnInitDialog();
 	m_BuildRIFFTree.ShowWindow(SW_HIDE);
 
-	m_OK.SetWindowText(LoadString(STR_GEN_OK));
-	m_Apply_Changes.SetWindowText(LoadString(STR_VID_APPLYCHANGES));
+	m_OK.SetWindowText((TCHAR*)LoadString(STR_GEN_OK));
+	m_Apply_Changes.SetWindowText((TCHAR*)LoadString(STR_VID_APPLYCHANGES));
 
 	AttachWindow(m_OK, ATTB_BOTTOM, m_hWnd, -10);
 	AttachWindow(m_Apply_Changes, ATTB_BOTTOM, m_OK.m_hWnd);
@@ -658,20 +759,20 @@ BOOL CVideoInformationDlg::OnInitDialog()
 	AttachWindow(m_Tree.m_hWnd, ATTB_LEFTRIGHT, m_VideoInformationDlgListbox);
 
 
-	if (dwKinfOfSource==KOS_VIDEOSOURCE)	{
+	/*if (dwKinfOfSource==KOS_VIDEOSOURCE)	{
 		return InitDialog_VideoSource();
-	}
+	}*/
 	if (dwKinfOfSource==KOS_MATROSKA) {
 		return InitDialog_Matroska();
 		m_SaveTree_Button.ShowWindow(1);
 	}
 
 	m_SaveTree_Button.ShowWindow(0);
-	m_BuildRIFFTree.SetWindowText("RIFF-Tree");
+	m_BuildRIFFTree.SetWindowText(_T("RIFF-Tree"));
 	m_Tree.ShowWindow(SW_HIDE);
 	m_VideoInformationDlgListbox.ShowWindow(SW_SHOW);
 
-	SetWindowText(LoadString(STR_VID_TITLE_FILE));
+	SetWindowText((TCHAR*)LoadString(STR_VID_TITLE_FILE));
 	(CButton*)GetDlgItem(IDC_APPLYREPAIRS)->EnableWindow(true);
 
 	ZeroMemory(dwChunkSizes,sizeof(dwChunkSizes));
@@ -680,15 +781,23 @@ BOOL CVideoInformationDlg::OnInitDialog()
 
 	clb->SetFile(avifile);
 	
-	cStr[0]=LoadString(IDS_VERSION);
-	
-	char version[32];
-	GetAMGVersionString(version, sizeof(version));
-	sprintf(lpDest,"%s: %s, %s",cStr[0].GetBuffer(255), version,
-		GetAMGVersionDate());
-	clb->AddString(lpDest);
-	clb->AddString("-----------------------------------------------");
+//	cStr[0]=LoadString(IDS_VERSION);
+	CUTF8 utf8VersionTitle(LoadString(IDS_VERSION));
 
+	//char version[32];
+	//GetAMGVersionString(version, sizeof(version));
+	std::basic_string<TCHAR> strVersion = GetAMGVersionString();
+	std::basic_string<TCHAR> strVersionDate = GetAMGVersionDate();
+
+	{
+		std::basic_ostringstream<TCHAR> sstrEntry;
+		formatter.FormatTitle(IDS_VERSION, sstrEntry);
+		sstrEntry << strVersion << _T(", ") << strVersionDate;
+		std::basic_string<TCHAR> strEntry = sstrEntry.str();
+		//sprintf(lpDest,"%s: %s, %s", utf8VersionTitle.Str(), version, GetAMGVersionDate());
+		clb->AddString(strEntry.c_str());
+		clb->AddString(_T("-----------------------------------------------"));
+	}
 	cStr[0]=LoadString(IDS_VI_AVITYPE);
 	cStr[1]=LoadString(IDS_VI_STANDARD);
 	cStr[2]=LoadString(IDS_VI_OPENDML);
@@ -698,15 +807,15 @@ BOOL CVideoInformationDlg::OnInitDialog()
 		(avifile->IsIdx1Present()?cStr[3].GetBuffer(255):cStr[2].GetBuffer(255)));
 	clb->AddString(lpDest);
 
-	if (lstrlen(avifile->GetWritingAppName())) {
+	if (strlen(avifile->GetWritingAppName())) {
 		sprintf(lpDest, "%-30s: %s", "Writing-App", avifile->GetWritingAppName());
 	} else {
 		sprintf(lpDest, "%-30s: %s", "Writing-App", "n/a");
 	}
 	clb->AddString(lpDest);
 
-	if (lstrlen(avifile->GetTitle())) {
-		sprintf(lpDest, "%-30s: %s", "Title", avifile->GetTitle());
+	if (avifile->GetTitle().size()) {
+		sprintf(lpDest, "%-30s: %s", "Title", avifile->GetTitle().c_str());
 	} else {
 		sprintf(lpDest, "%-30s: %s", "Title", "n/a");
 	}
@@ -1056,13 +1165,14 @@ void CVideoInformationDlg::OnApplyrepairs()
 	clb=(CVideoInformationDlgListbox*)GetDlgItem(IDE_VIDEOINFORMATION);
 	CHANGEAVIHEADER*	lpcahRepairs=clb->GetRepairs();
 	CHANGEAVIHEADER*	lpcahCurr=lpcahRepairs;
-	char				lpcFilename[500];
+//	char				lpcFilename[500];
 	HANDLE				hFile;
 	DWORD				dwWritten;
 	CString				cStr[2];
 	CAVIMux_GUIDlg*		cMainDlg = (CAVIMux_GUIDlg*)GetParent();
 
-	lstrcpy(lpcFilename,lpFI->lpcName);
+//	lstrcpy(lpcFilename,lpFI->Name.TStr());
+	std::basic_string<TCHAR> fileName = lpFI->Name.TStr();
 
 	if (lpcahCurr->dwValid!=1)
 	{
@@ -1072,12 +1182,13 @@ void CVideoInformationDlg::OnApplyrepairs()
 	}
 	else
 	{
-		cMainDlg->SendDlgItemMessage(IDC_SOURCEFILELIST,WM_COMMAND,IDM_REMOVE,0);
+		cMainDlg->SendDlgItemMessage(IDC_SOURCEFILELIST, WM_COMMAND, IDM_REMOVE, 0);
 		cStr[0]=LoadString(IDS_APPLYREPAIRS);
 		cStr[1]=LoadString(IDS_INFORMATION);
 		MessageBox(cStr[0],cStr[1],MB_OK | MB_ICONINFORMATION);
 
-		hFile=CreateFile(lpcFilename,GENERIC_READ | GENERIC_WRITE,FILE_SHARE_READ,NULL,OPEN_EXISTING,NULL,NULL);
+		hFile=CreateFile(fileName.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL,
+			OPEN_EXISTING, NULL, NULL);
 		if (hFile==INVALID_HANDLE_VALUE)
 		{
 			cStr[0]=LoadString(IDS_COULDNOTOPENOUTPUTFILE);
@@ -1130,13 +1241,13 @@ FILE_INFO* CVideoInformationDlg::GetFile()
 {
 	return lpFI;
 }
-
+/*
 void CVideoInformationDlg::SetVideoSource(VIDEOSOURCE* _lpVS)
 {
 	lpVS=_lpVS;
 	dwKinfOfSource=KOS_VIDEOSOURCE;
 }
-
+*/
 void CVideoInformationDlg::OnRIFFChunkTree() 
 {
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
@@ -1183,19 +1294,33 @@ BOOL CVideoInformationDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 void CVideoInformationDlg::OnSavetree() 
 {
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
-	char* cBuffer = (char*)calloc(1,1<<20);
-	CFileDialog* dlg;
+/*	std::auto_ptr<CFileDialog> dlg(new CFileDialog(false, _T("txt"), _T(""), OFN_OVERWRITEPROMPT,
+		NULL));
+*/	
+	OPENFILENAME o;
+	PrepareSimpleDialog(&o, m_hWnd, "UTF-8 Text file (*.txt)|*.txt||");
+	o.Flags |= OFN_OVERWRITEPROMPT;
+	o.lpstrDefExt = _T("txt");
+	int open = GetOpenSaveFileNameUTF8(&o, 0);
 	
-	dlg= new CFileDialog(false,"txt","",OFN_OVERWRITEPROMPT,"UTF-8 Text file (*.txt)|*.txt||",NULL);
-	if (dlg->DoModal()==IDOK)
+	if (open)
 	{
-		m_Tree.Render2Buffer(cBuffer);
-		FILE* f = fopen(dlg->GetPathName().GetBuffer(1024), "wb");
-		fwrite(cBuffer, 1, strlen(cBuffer), f);
-		fclose(f);
+		std::string target;
+		m_Tree.Render2Buffer(target);
+		
+		CFileStream targetTextFile;
+		if (STREAM_OK != targetTextFile.Open(o.lpstrFile, StreamMode::Write))
+		{
+			std::basic_string<TCHAR> titleError = (TCHAR*)LoadString(STR_GEN_ERROR);
+			std::basic_string<TCHAR> messageCouldNotOpen = (TCHAR*)LoadString(IDS_COULDNOTOPENOUTPUTFILE);
+			MessageBox(messageCouldNotOpen.c_str(), titleError.c_str(), MB_OK | MB_ICONERROR);
+		}
+		else
+		{
+			targetTextFile.Write((void*)(target.c_str()), target.size());
+			targetTextFile.Close();
+		}
 	}
-
-	delete cBuffer;
 }
 
 

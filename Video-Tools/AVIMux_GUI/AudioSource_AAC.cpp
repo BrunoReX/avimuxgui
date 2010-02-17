@@ -3,6 +3,7 @@
 // #include "silence.h"
 #include "audiosource_aac.h"
 #include "../BitStreamFactory.h"
+#include <sstream>
 
 #ifdef DEBUG_NEW
 #ifdef _DEBUG
@@ -18,11 +19,7 @@ static char THIS_FILE[] = __FILE__;
 
 #pragma pack(push,1)
 
-const int AAC_PACKTYPE_ADTS = 1;
-const int AAC_PACKTYPE_ADIF = 2;
 
-const int AAC_ADTS_ID_MPEG2 = 1;
-const int AAC_ADTS_ID_MPEG4 = 0;
 
 
 const int AAC_SAMPLESPERFRAME = 1024;
@@ -80,10 +77,10 @@ void AACSOURCE::ReadADTSHeader(ADTSHEADER* h)
 	bitsource->FlushInputBuffer();
 	ZeroMemory(h,sizeof(*h));
 	h->syncword = bitsource->ReadBits(12);
-	h->ID = bitsource->ReadBits(1);
+	h->ID = static_cast<AACSOURCE::MPEGID::MPEGIDs>(bitsource->ReadBits(1));
 	h->layer = bitsource->ReadBits(2);
-	h->protection_absend = bitsource->ReadBits(1);
-	h->profile = bitsource->ReadBits(2);
+	h->protection_absent = bitsource->ReadBits(1);
+	h->profile = static_cast<AACSOURCE::AdtsProfile::AdtsProfiles>(bitsource->ReadBits(2));
 	h->sampling_fequency_index = bitsource->ReadBits(4);
 	h->private_bit = bitsource->ReadBits(1);
 	h->channel_configuration = bitsource->ReadBits(3);
@@ -94,7 +91,53 @@ void AACSOURCE::ReadADTSHeader(ADTSHEADER* h)
 	h->frame_length = bitsource->ReadBits(13);
 	h->adts_buffer_fullness = bitsource->ReadBits(11);
 	h->number_of_data_blocks = bitsource->ReadBits(2)+1;
-	if (!h->protection_absend) h->crc16 = bitsource->ReadBits(16);
+	//if (!h->protection_absent) h->crc16 = bitsource->ReadBits(16);
+}
+
+bool AACSOURCE::AdtsFrameHeader::Read(IBitStream &bitsource)
+{
+	bitsource.FlushInputBuffer();
+	this->startPosition = bitsource.GetPos();
+	this->syncword = bitsource.ReadBits(12);
+	this->ID = static_cast<AACSOURCE::MPEGID::MPEGIDs>(bitsource.ReadBits(1));
+	this->layer = bitsource.ReadBits(2);
+	this->protection_absent = bitsource.ReadBits(1);
+	this->profile = static_cast<AACSOURCE::AdtsProfile::AdtsProfiles>(bitsource.ReadBits(2));
+	this->sampling_fequency_index = bitsource.ReadBits(4);
+	this->private_bit = bitsource.ReadBits(1);
+	this->channel_configuration = bitsource.ReadBits(3);
+	this->original_or_copy = bitsource.ReadBits(1);
+	this->home = bitsource.ReadBits(1);
+	this->copyright_identification_bit = bitsource.ReadBits(1);
+	this->copyright_identification_start = bitsource.ReadBits(1);
+	this->frame_length = bitsource.ReadBits(13);
+	this->adts_buffer_fullness = bitsource.ReadBits(11);
+	this->number_of_data_blocks = bitsource.ReadBits(2)+1;
+
+	if (!this->protection_absent)
+	{
+		if (this->number_of_data_blocks > 1)
+		{
+			for (int data_block_index=0; data_block_index<this->number_of_data_blocks; data_block_index++)
+			{
+				unsigned __int16 nextOffset = bitsource.ReadBits(16);
+				this->rawDataBlockOffsets.push_back(nextOffset);
+			}
+		}
+		else
+		{
+			this->rawDataBlockOffsets.push_back(9);
+		}
+
+		this->rawDataBlockOffsets.push_back(this->frame_length - 2);
+	}
+	else
+	{
+		this->rawDataBlockOffsets.push_back(7);
+		this->rawDataBlockOffsets.push_back(this->frame_length);
+	}
+
+	return true;
 }
 
 int AACSOURCE::GetSampleRateIndex(int bDouble)
@@ -116,6 +159,8 @@ int AACSOURCE::ReadFrame_ADTS(void* lpDest, DWORD* lpdwMicroSecRead, __int64* lp
 	ZeroMemory(&h, sizeof(h));
 	ReadADTSHeader(&h);
 	int header_size = 7; // size of ADTS header is known
+	if (!h.protection_absent)
+		header_size += 2;
 
 	if (h.syncword != 0xFFF) {
 		return AS_ERR;
@@ -126,8 +171,8 @@ int AACSOURCE::ReadFrame_ADTS(void* lpDest, DWORD* lpdwMicroSecRead, __int64* lp
 	SetProfile(h.profile);
 	SetChannelCount(h.channel_configuration);
 	switch (h.ID) {
-		case AAC_ADTS_ID_MPEG2: SetMPEGVersion(2); break;
-		case AAC_ADTS_ID_MPEG4: SetMPEGVersion(4); break;
+		case AACSOURCE::MPEGID::MPEG2: SetMPEGVersion(2); break;
+		case AACSOURCE::MPEGID::MPEG4: SetMPEGVersion(4); break;
 	}
 	
 	GetSource()->Seek(iPos + header_size);
@@ -147,6 +192,8 @@ int AACSOURCE::ReadFrame(MULTIMEDIA_DATA_PACKET** dataPacket)
 	ZeroMemory(&h, sizeof(h));
 	ReadADTSHeader(&h);
 	int header_size = 7;
+	if (!h.protection_absent)
+		header_size += 2;
 
 	if (h.syncword != 0xFFF) {
 		return AS_ERR;
@@ -157,8 +204,8 @@ int AACSOURCE::ReadFrame(MULTIMEDIA_DATA_PACKET** dataPacket)
 	SetProfile(h.profile);
 	SetChannelCount(h.channel_configuration);
 	switch (h.ID) {
-		case AAC_ADTS_ID_MPEG2: SetMPEGVersion(2); break;
-		case AAC_ADTS_ID_MPEG4: SetMPEGVersion(4); break;
+		case AACSOURCE::MPEGID::MPEG2: SetMPEGVersion(2); break;
+		case AACSOURCE::MPEGID::MPEG4: SetMPEGVersion(4); break;
 	}
 
 	char* data = (char*)malloc(h.frame_length - header_size);
@@ -179,12 +226,12 @@ int AACSOURCE::ReadFrame(MULTIMEDIA_DATA_PACKET** dataPacket)
 	if (IsEndOfStream())
 		(*dataPacket)->nextTimecode = TIMECODE_UNKNOWN;
 	else
-		(*dataPacket)->nextTimecode = (*dataPacket)->timecode + GetFrameDuration();
+		(*dataPacket)->nextTimecode = (*dataPacket)->timecode + GetFrameDuration() * h.number_of_data_blocks;
 
 	(*dataPacket)->flags = 0;
 	(*dataPacket)->compressionInfo.clear();
 
-	IncCurrentTimecode(GetFrameDuration());
+	IncCurrentTimecode(GetFrameDuration() * h.number_of_data_blocks);
 
 	return (*dataPacket)->totalDataSize;
 }
@@ -254,26 +301,28 @@ int AACSOURCE::GetProfile()
 	return aacinfo.dwProfile;
 }
 
-void AACSOURCE::GetProfileString(char* buf, int buf_len)
+bool AACSOURCE::GetProfileString(std::string& result)
 {
 	char* AAC_prof_name = NULL;
-
-	if (buf_len < 8)
-		return;
 
 	if ((int)FormatSpecific(MMSGFS_AAC_ISSBR)) 
 		AAC_prof_name = "HE";
 	else switch (FormatSpecific(MMSGFS_AAC_PROFILE)) {
-		case AAC_ADTS_PROFILE_LC: AAC_prof_name = "LC"; break;
-		case AAC_ADTS_PROFILE_LTP: AAC_prof_name = "LTP"; break;
-		case AAC_ADTS_PROFILE_MAIN: AAC_prof_name = "MAIN"; break;
-		case AAC_ADTS_PROFILE_SSR: AAC_prof_name = "SSR"; break;
+		case AACSOURCE::AdtsProfile::LC: AAC_prof_name = "LC"; break;
+		case AACSOURCE::AdtsProfile::LTP: AAC_prof_name = "LTP"; break;
+		case AACSOURCE::AdtsProfile::Main: AAC_prof_name = "MAIN"; break;
+		case AACSOURCE::AdtsProfile::SSR: AAC_prof_name = "SSR"; break;
 		default: AAC_prof_name = "unknown";
 	}
 
-	buf[0]=0;
-	_snprintf_s(buf, buf_len, buf_len, "%s-AAC", AAC_prof_name);
-	buf[buf_len - 1] = 0;
+//	buf[0]=0;
+//	_snprintf_s(buf, buf_len, buf_len, "%s-AAC", AAC_prof_name);
+//	buf[buf_len - 1] = 0;
+
+	std::ostringstream sstrResult;
+	sstrResult << AAC_prof_name << "-AAC";
+	result = sstrResult.str();
+	return true;
 }
 
 int AACSOURCE::GetMPEGVersion()
@@ -346,19 +395,14 @@ int AACSOURCE::IsCFR()
 	return aacinfo.iCFR;
 }
 
-int AACSOURCE::PerformCFRCheck(char** pSemaphore, DWORD* pStatus)
+int AACSOURCE::PerformCFRCheck(HANDLE* pSemaphore, DWORD* pStatus)
 {
 	GetSource()->Seek(0);
 
-	char* pS = new char[20];
-	*pSemaphore = pS;
-	pS[19]=0;
-	for (int i=0;i<19;i++) {
-		pS[i] = 'a'+rand()%26;
-	}
-
 	AAC_CFR_DATA* p = new AAC_CFR_DATA;
-	p->hSem = CreateSemaphore(NULL, 0, 1, pS);
+	p->hSem = CreateSemaphoreA(NULL, 0, 1, NULL);
+	if (pSemaphore)
+		*pSemaphore = p->hSem;
 	p->s = this;
 	p->pStatus = pStatus;
 

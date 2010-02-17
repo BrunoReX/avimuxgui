@@ -6,9 +6,12 @@ BITSTREAM   access to a stream bit by bit
 	
 */
 
-#ifndef I_BASESTREAMS
-#define I_BASESTREAMS
+#ifndef I_BASESTREAMS2
+#define I_BASESTREAMS2
 
+#include "../Common/stream.h"
+
+#ifdef NOT_DEFINED
 #define STREAM_OK		0x01
 #define STREAM_ERR		-0x010000
 
@@ -72,7 +75,8 @@ class STREAM
 		int			virtual	SetOffset(int iNewOffset);
 		int			virtual TruncateAt(__int64 iPosition);
 };
-
+*/
+#endif
 class STREAM_FILTER: public STREAM
 {
 	private:
@@ -93,6 +97,6 @@ class STREAM_FILTER: public STREAM
 __int64 round(double x);
 
 bool SetFilePointer64 (HANDLE hFile,_int64 qwPos);
-bool GetFileSize64 (HANDLE hFile,_int64* qwSize);
+
 
 #endif

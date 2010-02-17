@@ -15,7 +15,7 @@ SSA sources without wrapping a SUBTITLESOURCELIST around!
 #include "../basestreams.h"
 #include "file_info.h"
 #include "../multimedia_source.h"
-#include "textfiles.h"
+#include "../../Common/textfiles.h"
 
 const int SUBS_ERR = -0x01;
 const int SUBS_OK  = 0x01;
@@ -248,7 +248,7 @@ class SUBTITLESFROMMATROSKA: public SUBTITLESOURCE
 		int virtual		GetFormat() { return info.iFormat; };
 		bool	virtual IsEndOfStream();
 		int		virtual GetName(char* lpDest);
-		int		virtual GetLanguageCode(char* lpDest);
+		int		virtual GetLanguageCode(std::string& result);
 		char	virtual* GetCodecID();
 		__int64 virtual GetNextTimecode();
 		int		virtual Enable(int bEnabled);

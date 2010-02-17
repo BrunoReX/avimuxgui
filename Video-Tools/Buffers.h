@@ -7,9 +7,9 @@
 
 const int CBN_REF1	= 0x80;
 
-const int CSB_ASCII = CHARACTER_ENCODING_ANSI;
-const int CSB_UTF8  = CHARACTER_ENCODING_UTF8;
-const int CSB_UTF16 = CHARACTER_ENCODING_UTF16_LE;
+const int CSB_ASCII = CharacterEncoding::ANSI;
+const int CSB_UTF8  = CharacterEncoding::UTF8;
+const int CSB_UTF16 = CharacterEncoding::UTF16LE;
 
 const int CSB_FLAGS = CBN_REF1 |
 						CSB_ASCII |

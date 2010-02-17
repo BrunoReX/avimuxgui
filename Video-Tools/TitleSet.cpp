@@ -65,7 +65,7 @@ bool CTitleSet::DeleteTitle(size_t index)
 	return true;
 }
 
-bool CTitleSet::GetLanguageIndex(char* language, size_t* index)
+bool CTitleSet::GetLanguageIndex(const char* language, size_t* index)
 {
 	if (!language)
 		return false;
@@ -82,7 +82,7 @@ bool CTitleSet::GetLanguageIndex(char* language, size_t* index)
 	return false;
 }
 
-bool CTitleSet::DeleteTitle(char* language)
+bool CTitleSet::DeleteTitle(const char* language)
 {
 	size_t index = 0;
 	if (GetLanguageIndex(language, &index)) 

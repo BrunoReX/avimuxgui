@@ -1,8 +1,14 @@
-#ifndef I_UTF8
-#define I_UTF8
+#include "../Common/UTF-8.h"
+
+#ifndef I_UTF82
+#define I_UTF82
 
 void utf8_EnableRealUnicode(bool bEnabled);
 int  utf8_IsUnicodeEnabled();
+
+#endif
+
+/*
 
 int  _stdcall UTF82WStr(char* source, char* dest, int max_len = 16384);
 int  _stdcall UTF82WStr(char* source, char** dest);
@@ -40,3 +46,5 @@ int  UTF8CharLen(char in);
 int IsUTF8(const char* src, size_t max_source_len);
 
 #endif
+*/
+

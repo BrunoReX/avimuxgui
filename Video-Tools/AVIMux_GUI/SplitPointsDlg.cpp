@@ -139,7 +139,8 @@ BOOL CSplitPointsDlg::OnInitDialog()
 	}
 	m_SplitPointList.SetVideoSource(lpVideoSource);
 	
-	SetWindowText(LoadString(STR_SSP_TITLE));
+	CUTF8 title(LoadString(STR_SSP_TITLE));
+	SetWindowText(title.TStr());
 
 	SendDlgItemMessage(IDOK,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_GEN_OK));
 	SendDlgItemMessage(IDCANCEL,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_GEN_CANCEL));

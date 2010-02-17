@@ -1,8 +1,8 @@
 #ifndef I_UNICODE_BASE
 #define I_UNICODE_BASE
 
-typedef int(_stdcall *CONVERT_STRINGS)(char*, char*, int);
-typedef int(_stdcall *CONVERT_STRINGS_ALLOC)(char*, char**);
+typedef int(_stdcall *CONVERT_STRINGS)(const char*, char*, int);
+typedef int(_stdcall *CONVERT_STRINGS_ALLOC)(const char*, char**);
 
 class CUnicodeBase
 

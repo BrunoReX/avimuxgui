@@ -33,7 +33,7 @@ public:
 	virtual bool DeleteTitle(size_t index) = NULL;
 
 	/* remove the title in a given language */
-	virtual bool DeleteTitle(char* language) = NULL;
+	virtual bool DeleteTitle(const char* language) = NULL;
 
 	/* remove all titles */
 	virtual void DeleteAllTitles() = NULL;
@@ -42,7 +42,7 @@ public:
 	virtual size_t GetTitleCount(void) = NULL;
 
 	/* determine index unter which the title in a given languge is stored */
-	virtual bool GetLanguageIndex(char* language, size_t* index) = NULL;
+	virtual bool GetLanguageIndex(const char* language, size_t* index) = NULL;
 
 	/* get language of a title at a certain index */
 	virtual bool GetTitleLanguage(size_t index, char** pLanguage) = NULL;

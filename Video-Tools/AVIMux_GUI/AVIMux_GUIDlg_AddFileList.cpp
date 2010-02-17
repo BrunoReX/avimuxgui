@@ -31,10 +31,15 @@ bool _is_equal(char* c1, char* c2)
 	return !strcmp(c1, c2);
 }
 
+bool _is_equal(const std::string& c1, const std::string& c2)
+{
+	return (c1 == c2);
+}
+
 template <class T>bool CheckForEquality(int msg_index, 
 					  T v1, T v2, 
 					  int n1, int n2,
-					  char* f1, char* f2,
+					  const char* f1, const char* f2,
 					  int final, char* final_error_message)
 {
 	char c[65536];
@@ -78,34 +83,34 @@ template <class T>bool CheckForEquality(int msg_index,
 }
 
 bool CheckSampleRates(AUDIOSOURCE* a1, AUDIOSOURCE* a2, int n1, int n2,
-					  char* f1, char* f2, int final, char* fem)
+					  const char* f1, const char* f2, int final, char* fem)
 {
 	return CheckForEquality(STR_ERR_SAMPLERATESBAD, a1->GetFrequency(),
 		a2->GetFrequency(), n1, n2, f1, f2, final, fem);
 }
 
 bool CheckChannels(AUDIOSOURCE* a1, AUDIOSOURCE* a2, int n1, int n2,
-				   char* f1, char* f2, int final, char* fem)
+				   const char* f1, const char* f2, int final, char* fem)
 {
 	return CheckForEquality(STR_ERR_CHANNELCOUNTBAD, a1->GetChannelCount(),
 		a2->GetChannelCount(), n1, n2, f1, f2, final, fem);
 }
 
 bool CheckMPEGLayerVersion(MP3SOURCE* a1, MP3SOURCE* a2, int n1, int n2,
-						   char* f1, char* f2, int final, char* fem)
+						   const char* f1, const char* f2, int final, char* fem)
 {
 	return CheckForEquality(STR_ERR_BADLAYERVERSIONS, a1->GetLayerVersion(),
 		a2->GetLayerVersion(), n1, n2, f1, f2, final, fem);
 }
 
 bool CheckAACProfileVersion(AACSOURCE* a1, AACSOURCE* a2, int n1, int n2,
-							char* f1, char* f2, int final, char* fem)
+							const char* f1, const char* f2, int final, char* fem)
 {
-	char p1[16]; p1[0]=0;
-	char p2[16]; p2[0]=0;
-	a1->GetProfileString(p1, sizeof(p1));
-	a2->GetProfileString(p2, sizeof(p2));
-	return CheckForEquality(STR_ERR_BADAACPROFILES, p1, p2, n1, n2,
+	std::string p1;
+	std::string p2;
+	a1->GetProfileString(p1);
+	a2->GetProfileString(p2);
+	return CheckForEquality(STR_ERR_BADAACPROFILES, p1.c_str(), p2.c_str(), n1, n2,
 		f1, f2, final, fem);
 }
 /*bool CheckMPEGVersion(MP3SOURCE* a1, MP3SOURCE* a2, int n1, int n2,
@@ -116,7 +121,7 @@ bool CheckAACProfileVersion(AACSOURCE* a1, AACSOURCE* a2, int n1, int n2,
 }
 */
 template<class T>bool CheckMPEGVersion(T* a1, T* a2, int n1, int n2,
-					  char* f1, char* f2, int final, char* fem)
+					  const char* f1, const char* f2, int final, char* fem)
 {
 	return CheckForEquality(STR_ERR_BADMPEGVERSIONS, a1->GetMPEGVersion(),
 		a2->GetMPEGVersion(), n1, n2, f1, f2, final, fem);
@@ -220,7 +225,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 				char msg[1024]; msg[0] = 0;
 				char* c;
 				c = LoadString(STR_ERR_FILEINUSE, LOADSTRING_UTF8);
-				sprintf(msg, c, fi->lpcName);
+				sprintf(msg, c, fi->Name.UTF8());
 				MessageBoxUTF8(m_hWnd, msg, LoadString(STR_GEN_ERROR),
 					MB_OK | MB_ICONERROR);
 				return;
@@ -252,10 +257,14 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			bool bSuccess = true;
 			char errmsg[65536]; errmsg[0]=0;
 
-			bSuccess &= CheckMPEGVersion(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
-			bSuccess &= CheckSampleRates(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
-			bSuccess &= CheckChannels(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
-			bSuccess &= CheckMPEGLayerVersion(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 1, errmsg);
+			bSuccess &= CheckMPEGVersion(m1, m2, 1, i, fi1->Name.UTF8(), 
+				fi->Name.UTF8(), 0, errmsg);
+			bSuccess &= CheckSampleRates(m1, m2, 1, i, fi1->Name.UTF8(), 
+				fi->Name.UTF8(), 0, errmsg);
+			bSuccess &= CheckChannels(m1, m2, 1, i, fi1->Name.UTF8(), 
+				fi->Name.UTF8(), 0, errmsg);
+			bSuccess &= CheckMPEGLayerVersion(m1, m2, 1, i, fi1->Name.UTF8(), 
+				fi->Name.UTF8(), 1, errmsg);
 
 			if (!bSuccess)
 					return;
@@ -275,10 +284,14 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			bool bSuccess = true;
 			char errmsg[65536]; errmsg[0]=0;
 
-			bSuccess &= CheckMPEGVersion(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
-			bSuccess &= CheckSampleRates(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
-			bSuccess &= CheckChannels(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
-			bSuccess &= CheckAACProfileVersion(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 1, errmsg);
+			bSuccess &= CheckMPEGVersion(m1, m2, 1, i, fi1->Name.UTF8(), 
+				fi->Name.UTF8(), 0, errmsg);
+			bSuccess &= CheckSampleRates(m1, m2, 1, i, fi1->Name.UTF8(), 
+				fi->Name.UTF8(), 0, errmsg);
+			bSuccess &= CheckChannels(m1, m2, 1, i, fi1->Name.UTF8(),
+				fi->Name.UTF8(), 0, errmsg);
+			bSuccess &= CheckAACProfileVersion(m1, m2, 1, i, fi1->Name.UTF8(), 
+				fi->Name.UTF8(), 1, errmsg);
 
 			if (!bSuccess)
 					return;
@@ -299,8 +312,10 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			bool bSuccess = true;
 			char errmsg[65536]; errmsg[0]=0;
 
-			bSuccess &= CheckSampleRates(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 0, errmsg);
-			bSuccess &= CheckChannels(m1, m2, 1, i, fi1->lpcName, fi->lpcName, 1, errmsg);
+			bSuccess &= CheckSampleRates(m1, m2, 1, i, fi1->Name.UTF8(), 
+				fi->Name.UTF8(), 0, errmsg);
+			bSuccess &= CheckChannels(m1, m2, 1, i, fi1->Name.UTF8(),
+				fi->Name.UTF8(), 1, errmsg);
 
 			if (!bSuccess)
 					return;
@@ -450,7 +465,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 
 		char* cNoExt = new char[512]; cNoExt[0]=0;
 
-		name_without_ext(fi->lpcName, cNoExt);
+		name_without_ext(fi->Name.UTF8(), cNoExt);
 
 		// if source is set of AVIs
 		if (fi->dwType & FILETYPE_AVI) {
@@ -545,7 +560,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 			if (bDTS) a = fi->DTSFile;
 			if (bOVRB) a = fi->VRBFile;
 			lpASL[0]->Append(a);
-			name_without_ext(fi->lpcName, cNoExt);
+			name_without_ext(fi->Name.UTF8(), cNoExt);
 
 			if (dwNbrOfFiles > 1 && bChaptersFromFiles) {
 				edition->AddChapter(itc, -1, cNoExt);
@@ -559,7 +574,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 							time+=1000;
 							Millisec2Str(itc/1000000, cTime);
 							sprintf(cMessage, "processing %s, total position: %s",
-								fi->lpcName, cTime);
+								fi->Name.UTF8(), cTime);
 							m_StatusLine.SetWindowText(cMessage);
 							m_StatusLine.InvalidateRect(NULL);
 							m_StatusLine.UpdateWindow();
@@ -743,7 +758,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 						lpASL[j]->Append(lpAudiosources[j]);
 						break;
 					default:
-						sprintf(Buffer,LoadString(STR_ERR_AUDIOINCOMPATIBLE),fi->lpcName,j+1);
+						sprintf(Buffer,LoadString(STR_ERR_AUDIOINCOMPATIBLE),fi->Name.UTF8(),j+1);
 						MessageBox(Buffer,LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
 						return;
 						break;
@@ -801,7 +816,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 				lpAS->Open(fi->AVIFile,lpdwSubtitleList[i]);
 
 				subs[i-1]=new SUBTITLES;
-				subs[i-1]->Open(new CTextFile(STREAM_READ,lpAS,CHARACTER_ENCODING_UTF8));
+				subs[i-1]->Open(new CTextFile(StreamMode::Read,lpAS,CharacterEncoding::UTF8));
 
 				lpAS->Close();
 				delete lpAS;
@@ -814,7 +829,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 					lpAS=new AVISTREAM;
 					lpAS->Open(fi->AVIFile,lpdwSubtitleList[i]);
 					temp_subs=new SUBTITLES;
-					temp_subs->Open(new CTextFile(STREAM_READ,lpAS,CHARACTER_ENCODING_UTF8));
+					temp_subs->Open(new CTextFile(StreamMode::Read, lpAS, CharacterEncoding::UTF8));
 					if (!subs[i-1]->Merge(temp_subs,qwBias))
 					{
 						MessageBox(LoadString(IDS_COULDNTMERGESUBS),cstrError,MB_OK | MB_ICONERROR);
@@ -892,7 +907,7 @@ void CAVIMux_GUIDlg::OnAddFileList()
 						lpASL[j]->Append(a);
 						break;
 					default:
-						sprintf(Buffer,LoadString(STR_ERR_AUDIOINCOMPATIBLE),fi->lpcName,audio_streams->At(j));
+						sprintf(Buffer,LoadString(STR_ERR_AUDIOINCOMPATIBLE),fi->Name.UTF8(),audio_streams->At(j));
 						MessageBox(Buffer,LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
 						return;
 						break;
@@ -971,12 +986,12 @@ void CAVIMux_GUIDlg::OnAddFileList()
 						lpSSL[j]->Append(s);
 						break;
 					case MMSIC_COMPRESSION:
-						sprintf(Buffer,LoadString(STR_ERR_SUBCOMPRESSIONINCOMPATIBLE),fi->lpcName,subs->At(j));
+						sprintf(Buffer,LoadString(STR_ERR_SUBCOMPRESSIONINCOMPATIBLE),fi->Name.UTF8(),subs->At(j));
 						MessageBox(Buffer,LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
 						return;
 						break;
 					default:
-						sprintf(Buffer,LoadString(STR_ERR_SUBSINCOMPATIBLE),fi->lpcName,subs->At(j));
+						sprintf(Buffer,LoadString(STR_ERR_SUBSINCOMPATIBLE),fi->Name.UTF8(),subs->At(j));
 						MessageBox(Buffer,LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
 						return;
 				}

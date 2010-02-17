@@ -348,7 +348,7 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 		if (cd->type == CONTROL_MAPPEDCHECKBOX)
 		{
 			CButton* ctrl = ((CButton*)cd->control);
-			int attrValue = settings->GetInt(cd->attrib);
+			int attrValue = static_cast<int>(settings->GetInt(cd->attrib));
 			int mapLen = cd->value_list[0];
 			int* map = cd->value_list+1;
 
@@ -403,9 +403,11 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 	
 	char c[20]; c[0]=0;
 
-	if (sfoData.lpcNumbering)
+	//if (sfoData.lpcNumbering)
+	if (!sfoData.fileNumberingFormat.empty())
 	{
-		SendDlgItemMessage(IDC_FORMAT,WM_SETTEXT,0,(LPARAM)sfoData.lpcNumbering);
+		m_Format.SetWindowText(sfoData.fileNumberingFormat.c_str());
+		//SendDlgItemMessage(IDC_FORMAT,WM_SETTEXT,0,(LPARAM)sfoData.lpcNumbering);
 	}
 
 // Input: AVI/MP3
@@ -453,6 +455,7 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 	GetClientRect(&m_DlgRect);
 	RECT m_DlgWndRect;
 	GetWindowRect(&m_DlgWndRect);
+//	ScreenToClient(&m_DlgRect);
 
 	int borderHeight = m_DlgWndRect.bottom - m_DlgWndRect.top +
 		-(m_DlgRect.bottom - m_DlgRect.top);
@@ -463,13 +466,14 @@ void CSetStoreFileOptionsDlg::RefreshDlg()
 		m_CancelRect.right > m_DlgRect.right - m_DlgRect.left)
 	{
 		/* window-too-small-issue */
-		
 		m_DlgRect.bottom = m_DlgRect.top + m_CancelRect.bottom + 
 			+ 30 + borderHeight;
 		m_DlgRect.right = m_DlgRect.left + m_CancelRect.right +
 			+ 30 + borderWidth;
 
-		MoveWindow(&m_DlgRect, 1);
+//		MoveWindow(&m_DlgRect, true);
+		ForceSize(m_DlgRect.right - m_DlgRect.left, m_DlgRect.bottom - m_DlgRect.top);
+//		PostMessage(WM_SIZE, m_DlgRect.right - m_DlgRect.left, m_DlgRect.bottom - m_DlgRect.top);
 	}
 
 }
@@ -537,14 +541,15 @@ void CSetStoreFileOptionsDlg::UpdateData()
 	SendDlgItemMessage(IDC_MAXFILES,WM_GETTEXT,sizeof(buffer),(LPARAM)buffer);
 	sfoData.dwMaxFiles=atoi(buffer);
 
-	SendDlgItemMessage(IDC_FORMAT,WM_GETTEXT,sizeof(buffer),(LPARAM)buffer);
-	if (sfoData.lpcNumbering)
+	WindowHelper::GetWindowText(m_Format, sfoData.fileNumberingFormat);
+//	SendDlgItemMessage(IDC_FORMAT,WM_GETTEXT,sizeof(buffer),(LPARAM)buffer);
+/*	if (sfoData.lpcNumbering)
 	{
 		free(sfoData.lpcNumbering);
 	}
 	sfoData.lpcNumbering=(char*)malloc(lstrlen(buffer)+1);
 	lstrcpy(sfoData.lpcNumbering,buffer);
-
+*/
 	m_1stTimestamp.GetWindowText(s);
 	sfoData.i1stTimecode = atoi(s);
 	m_AC3FrameCount.GetWindowText(s);

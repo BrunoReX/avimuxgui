@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "..\..\Common\TraceFiles\TraceFile.h"
 #include "AVIMux_GUIDlg.h"
 #include "..\Basestreams.h"
 #include "..\FileStream.h"
@@ -8,11 +9,19 @@
 #include "ConfigScripts.h"
 #include "../strings.h"
 #include "../Finalizer.h"
+#include "MessageBoxHelper.h"
+#include <sstream>
 
-
+/** \brief Adds a file to the list of available files
+ *
+ * \param _lpcName UTF-8 encoded path of the file to add
+ *
+ */
 void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 								HANDLE hSemaphore)
 {
+	CLocalTracer trace(GetApplicationTraceFile(), _T("CAVIMux_GUIDlg::doAddFile(...)"));
+
 	char*	lpcExt;
 	int		i;
 	int				iIndex1;
@@ -37,7 +46,7 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 	FILE_INFO*		fi;
 	AUDIO_STREAM_INFO*	asi = NULL;
 	AVIFILEEX*		AVIFile;
-	HANDLE			hSem;
+//	HANDLE			hSem;
 
 	CString			cStr,cStr2;
 	DWORD			dwUseCache;
@@ -45,10 +54,18 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 	DWORD			dwFmtUpStr3;
 	SUBTITLE_STREAM_INFO*	lpssi;
 
-	char			Buffer[65536], cFmt[50];
-	memset(cFmt, 0, sizeof(cFmt));
-	DWORD			dwLength=lstrlen(_lpcName);
+	std::basic_string<TCHAR> messageBuffer;
+	std::basic_string<TCHAR> formatName;
+//	memset(cFmt, 0, sizeof(cFmt));
+	DWORD			dwLength=strlen(_lpcName);
 	CBuffer*		cb;
+
+	if (_lpcName)
+	{
+		std::ostringstream sstrMsg;
+		sstrMsg << _T("Opening file: ") << _lpcName;
+		trace.Trace(TRACE_LEVEL_INFO, _T("Opening file"), sstrMsg.str());
+	}
 
 	char lpcName[65536];
 	if (!strncmp(_lpcName, "\\\\?\\UNC\\", 8)) {
@@ -72,18 +89,18 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 		}
 		fclose(f);
 		doAddFile("temp_std_file");
-		DeleteFile("temp_std_file");
+		DeleteFile(_T("temp_std_file"));
 	}
 
 	bool			bUnbuffered = !!settings->GetInt("input/general/unbuffered");
 	bool			bOverlapped = !!settings->GetInt("input/general/overlapped");
 
 	DWORD			dwCacheOpenMode = CACHE_OPEN_READ | CACHE_OPEN_ATTACH;
-	DWORD			dwFileOpenMode = STREAM_READ;
+	StreamMode::StreamModes	dwFileOpenMode = StreamMode::Read;
 	if (bUnbuffered)
-		dwFileOpenMode |= STREAM_UNBUFFERED;
+		dwFileOpenMode |= StreamMode::Unbuffered;
 	if (bOverlapped)
-		dwFileOpenMode |= STREAM_OVERLAPPED;
+		dwFileOpenMode |= StreamMode::Overlapped;
 
 	for (i=dwLength;(i>=0)&&(lpcName[i]!='.');i--);
 
@@ -92,10 +109,10 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 	Finalizer<char, void, delete_array> lpExtFinalizer(lpcExt);
 
 	ZeroMemory(lpcExt,dwLength-i+2);
-	lstrcpy(lpcExt,&(lpcName[i+1]));
-	for (i=lstrlen(lpcExt)-1;i>=0;lpcExt[i--]|=((lpcExt[i]>=64)&&(lpcExt[i]<=90))?0x20:0);
+	strcpy(lpcExt,&(lpcName[i+1]));
+	for (i=strlen(lpcExt)-1;i>=0;lpcExt[i--]|=((lpcExt[i]>=64)&&(lpcExt[i]<=90))?0x20:0);
 
-		ZeroMemory(Buffer,sizeof(Buffer));
+//		ZeroMemory(Buffer,sizeof(Buffer));
 		dwUseCache=(settings->GetInt("input/general/use cache"))?1:0;
 		cb = new CBuffer;
 		cb->SetSize(sizeof(FILE_INFO));
@@ -114,7 +131,7 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 		fi->bAddedImmediately=1;
 		fi->bMP3VBF_forced=!!(int)settings->GetInt("input/avi/force mp3 vbr");//(ofOptions.dwFlags&SOFO_AVI_FORCEMP3VBR);
 		filesource=new CFileStream;
-		if (filesource->Open(lpcName,STREAM_READ)==STREAM_ERR) {
+		if (filesource->Open(lpcName,StreamMode::Read)==STREAM_ERR) {
 			DecBufferRefCount(&cb);
 			return;
 		}
@@ -125,7 +142,7 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 		m2f2source=new MODE2FORM2SOURCE;
 		if (m2f2source->Open(filesource)==STREAM_OK) {
 			/* don't open m2f2 files unbuffered */
-			dwFileOpenMode &=~ (STREAM_OVERLAPPED | STREAM_UNBUFFERED);
+			dwFileOpenMode &=~ (StreamMode::Overlapped | StreamMode::Unbuffered);
 			source=(STREAM*)m2f2source;
 			fi->dwType|=FILETYPE_M2F2;
 			fi->lpM2F2=m2f2source;
@@ -145,15 +162,16 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 
 		filesource = new CFileStream;
 		if (filesource->Open(lpcName, dwFileOpenMode) <= 0) {
-			if ((dwFileOpenMode & STREAM_UNBUFFERED) ||
-				(dwFileOpenMode & STREAM_OVERLAPPED)) {
+			if ((dwFileOpenMode & StreamMode::Unbuffered) ||
+				(dwFileOpenMode & StreamMode::Overlapped)) {
 				
-				dwFileOpenMode &=~ STREAM_UNBUFFERED | STREAM_OVERLAPPED;
-				MessageBox("Failed to open file in unbuffered and/or overlapped mode!",
-					"Error", MB_OK | MB_ICONERROR);
+				dwFileOpenMode &=~ (StreamMode::Unbuffered | StreamMode::Overlapped);
+				MessageBox(_T("Failed to open file in unbuffered and/or overlapped mode!"),
+					_T("Error"), MB_OK | MB_ICONERROR);
 			}
 			if (filesource->Open(lpcName, dwFileOpenMode) <= 0)
-				MessageBox("Weird: Could not open file again", "Error", MB_OK | MB_ICONERROR);
+				MessageBox(_T("Weird: Could not open file again"), _T("Error"), 
+					MB_OK | MB_ICONERROR);
 		};
 		fi->file = filesource;
 		if (fi->dwType & FILETYPE_M2F2) {
@@ -205,23 +223,23 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 				dwFmtUpStr3=AVIFile->GetFormatTag(0) & (0xffdfdfdf);
 				if (dwFmtUpStr3==MakeFourCC("DIV3"))
 				{
-					wsprintf(VideoFormat,"%s","divX 3.11 low motion");
+					sprintf(VideoFormat,"%s","divX 3.11 low motion");
 				}
 				else
 				if (dwFmtUpStr3==MakeFourCC("DIV4"))
 				{
-					wsprintf(VideoFormat,"%s","divX 3.11 fast motion");
+					sprintf(VideoFormat,"%s","divX 3.11 fast motion");
 				}
 				else
 				if (dwFmtUpStr==MakeFourCC("DIVX"))
 				{
 					if ( ((BITMAPINFOHEADER*)(AVIFile->GetStreamFormat(0)))->biCompression==MakeFourCC("DX50"))
 					{
-						wsprintf(VideoFormat,"%s","divX 5");
+						sprintf(VideoFormat,"%s","divX 5");
 					}
 					else
 					{
-						wsprintf(VideoFormat,"%s","divX 4");
+						sprintf(VideoFormat,"%s","divX 4");
 					}
 				}
 				else
@@ -247,11 +265,15 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 				AVIFile->SetProcessMode(SPM_SETALL,PM_DIRECTSTREAMCOPY);
 				fi->dwType|=FILETYPE_AVI;
 			// Infos anzeigen
-				sprintf(cFmt, "AVI");
+				//sprintf(cFmt, "AVI");
+				formatName = _T("AVI");
 			}
 			else
 			{
-				MessageBox (LoadString(STR_ERR_OPENAVIERROR));
+				MessageBoxHelper::ShowByID(NULL, STR_GEN_ERROR, STR_ERR_OPENAVIERROR,
+					MB_OK | MB_ICONERROR);
+					
+					//MessageBox (LoadString(STR_ERR_OPENAVIERROR));
 				filesource->Close();
 				fi->dwType=0;
 			}
@@ -406,7 +428,7 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 			lvitem.mask=LVIF_TEXT | LVIF_NORECOMPUTE;
 			lvitem.iItem=1;
 			lvitem.iSubItem=0;
-			lvitem.pszText=lpcName;
+			lvitem.pszText=_T(""); //lpcName;
 			iIndex_Enh=m_Enh_Filelist.InsertItem(&lvitem);
 			m_Enh_Filelist.SetItemData(iIndex_Enh,(DWORD)fi);
 
@@ -415,15 +437,20 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 			FormatSize(cSize,dwSize);
 		
 //			::SendMessage(m_SourceFiles, LB_ADDSTRING, NULL, (L
-			iIndex1=m_SourceFiles.AddString(lpcName);
+			CUTF8 utf8Name(lpcName, CharacterEncoding::UTF8);
+			// TODO: Do not pass utf8 here
+			// iIndex1=m_SourceFiles.AddString(utf8Name.TStr());
+			iIndex1=m_SourceFiles.AddString((LPCTSTR)lpcName);
+
 //			char test[1024];
 			//int res = m_SourceFiles.GetText(iIndex1, test);
 			//m_SourceFiles.GetText(iIndex1, s);
 //			::SendMessage(m_SourceFiles, LB_GETTEXT, iIndex1,
 //				(LPARAM)test);
 
-			fi->lpcName=new char[lstrlen(lpcName)+16];
-			lstrcpy(fi->lpcName,lpcName);
+			fi->Name = CUTF8(lpcName, CharacterEncoding::UTF8);
+//			fi->lpcName=new char[lstrlen(lpcName)+16];
+			//lstrcpy(fi->lpcName,lpcName);
 			fi->source=cachesource;
 			m_SourceFiles.SetItemData(iIndex1,(LPARAM)cb);
 			m_SourceFiles.InvalidateRect(NULL);
@@ -433,12 +460,14 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 			{
 				case FILETYPE_AVI:
 					{
-						m_Enh_Filelist.SetItemText(iIndex_Enh,2,"AVI");
+						m_Enh_Filelist.SetItemText(iIndex_Enh,2, _T("AVI"));
 					}
-					strcpy(cFmt, "AVI");
+					formatName = _T("AVI");
+					//strcpy(cFmt, "AVI");
 					break;
 				case FILETYPE_MKV:
-					sprintf(cFmt, "MKV");
+					//sprintf(cFmt, "MKV");
+					formatName = _T("MKV");
 					break;
 				case FILETYPE_MP3:
 					{
@@ -452,7 +481,9 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 							return;
 						}
 						fi->MP3File = mp3source;
-						sprintf(cFmt, "MP%d", mp3source->GetLayerVersion());
+						TCHAR cFmt[8]; cFmt[0]=0;
+						_stprintf_s(cFmt, _T("MP%d"), mp3source->GetLayerVersion());
+						formatName = cFmt;
 
 						if (bAddAS_immed) {
 							DWORD dwCheckVBR;
@@ -559,7 +590,8 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 								fi->VRBFile = vorbis;
 							}
 						}
-						sprintf(cFmt, "OGG/Vorbis");
+						//sprintf(cFmt, "OGG/Vorbis");
+						formatName = _T("OGG/Vorbis");
 					}
 					break;
 				case FILETYPE_AC3:
@@ -597,7 +629,8 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 							}
 							
 						}
-						sprintf(cFmt, "AC3");
+						//sprintf(cFmt, "AC3");
+						formatName = _T("AC3");
 					}
 					break;
 				case FILETYPE_DTS:
@@ -633,7 +666,7 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 							fi->bAddedImmediately = 0;
 							fi->DTSFile = dtssource;
 						}
-						sprintf(cFmt, "DTS");
+						formatName = _T("DTS");
 					}
 					break;
 				case FILETYPE_AAC:
@@ -651,31 +684,32 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 
 						if (bAddAS_immed) {
 							FillAAC_ASI(&asi, aacsource);
-							wsprintf(Buffer,"%s %d, AAC: Fr: %d, MPEG: %d",cStr.GetBuffer(255),iIndex1+1,
+							TCHAR Buffer[65536]; Buffer[0]=0;
+							_stprintf_s(Buffer, _T("%s %d, AAC: Fr: %d, MPEG: %d"),cStr.GetBuffer(255),iIndex1+1,
 								(DWORD)(asi->audiosource->GetSize()>>10),cStr2.GetBuffer(255),
 								aacsource->GetFrequency(), aacsource->FormatSpecific(MMSGFS_AAC_MPEGVERSION));
-						
-							m_Enh_Filelist.SetItemText(iIndex_Enh,2,"AAC");
+							messageBuffer = Buffer;
+							m_Enh_Filelist.SetItemText(iIndex_Enh,2, _T("AAC"));
 							asi->bNameFromFormatTag = true;
 
-							char* pSemName;
 							DWORD dwStatus;
-
-							aacsource->PerformCFRCheck(&pSemName, &dwStatus);
-							hSem = OpenSemaphore(SEMAPHORE_ALL_ACCESS, false, pSemName);
+							HANDLE hCheckSemaphore;
+							aacsource->PerformCFRCheck(&hCheckSemaphore, &dwStatus);
 
 							SetDialogState_Muxing();
 							m_Prg_Progress.SetRange32(0,1000);
-							while (WaitForSingleObject(hSem, 100) == WAIT_TIMEOUT){
+							while (WaitForSingleObject(hCheckSemaphore, 100) == WAIT_TIMEOUT){
 								m_Prg_Progress.SetPos(dwStatus);
 								UpdateWindow();
 							}
+
+							CloseHandle(hCheckSemaphore);
 	
 							SetDialogState_Config();
 
 							if (!aacsource->IsCFR()) {
-								MessageBox("It is not recommended to put this AAC file into an AVI file!",
-									LoadString(STR_GEN_WARNING),MB_OK | MB_ICONWARNING);
+								MessageBox(_T("It is not recommended to put this AAC file into an AVI file!"),
+									(TCHAR*)LoadString(STR_GEN_WARNING), MB_OK | MB_ICONWARNING);
 							}
 
 							fi->bAddedImmediately = 1;
@@ -689,7 +723,7 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 							fi->bAddedImmediately = 0;
 							fi->AACFile = aacsource;
 						}
-						sprintf(cFmt, "AAC");
+						formatName = _T("AAC");
 					}
 					break;
 				case FILETYPE_WAV:
@@ -721,24 +755,25 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 						}
 
 						cStr2=LoadString(STR_KBYTE);
-						wsprintf(Buffer,"%s %d: %d %s",cStr.GetBuffer(255),iIndex1+1,
+						TCHAR Buffer[65536]; Buffer[0]=0;
+						_stprintf(Buffer, _T("%s %d: %d %s"), cStr.GetBuffer(255), iIndex1+1,
 							(DWORD)(asi->audiosource->GetSize()>>10),cStr2.GetBuffer(255));
-						
-						m_Enh_Filelist.SetItemText(iIndex_Enh,2,"WAV");
+						messageBuffer = Buffer;
+						m_Enh_Filelist.SetItemText(iIndex_Enh,2, _T("WAV"));
 						asi->bNameFromFormatTag = true;
 
 						asi->lpdwFiles = new DWORD[2];
 						asi->lpdwFiles[0]=1;
 						asi->lpdwFiles[1]=fi->file_id;
 
-						sprintf(cFmt, "WAV");
+						formatName = _T("WAV");
 					}
 					break;
 				case FILETYPE_SUBS:
 					{
 						subs=new SUBTITLES;
-						subs->Open(new CTextFile(STREAM_READ, fi->source, 
-							CHARACTER_ENCODING_UTF8));
+						subs->Open(new CTextFile(StreamMode::Read, fi->source, 
+							CharacterEncoding::UTF8));
 
 						lpssi=new SUBTITLE_STREAM_INFO;
 						lpssi->lpfi=fi;
@@ -753,18 +788,17 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 						
 						cStr=LoadString(IDS_FILE);
 						cStr2=LoadString(STR_KBYTE);
-						char* e; char* f;
-						splitpathname(lpcName,&f,&e,NULL);
-						e=&f[strlen(f)-1];
-						while (*e-- != '.');
-						*(e+1)=0;
-			
+
+						char f[65536]; f[0]=0;
+						name_without_ext(lpcName, f); 			
+
 						lpssi->lpsubs->SetName(f);
 
+
 						if (subs->GetFormat() == SUBFORMAT_SRT)
-							sprintf(cFmt, "SRT");
+							formatName = _T("SRT");
 						if (subs->GetFormat() == SUBFORMAT_SSA)
-							sprintf(cFmt, "SSA");
+							formatName = _T("SSA");
 
 						AddSubtitleStream(lpssi);
 					}
@@ -778,39 +812,26 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 						} else
 						if (res == CHAP_IMPXML_NONUNIQUE_UID) {
 							MessageBox(
-								LoadString(STR_ERR_IMPCHAP_NONUNIQUEUID),
-								LoadString(IDS_ERROR), MB_OK | MB_ICONERROR);
+								(TCHAR*)LoadString(STR_ERR_IMPCHAP_NONUNIQUEUID),
+								(TCHAR*)LoadString(IDS_ERROR), MB_OK | MB_ICONERROR);
 						} else if (res == CHAP_IMPXML_NO_CHAPTER_FILE) {
 							settings->Import(xmlTree);
 							Attribs(settings->GetAttr("gui/main_window"));
-					//		ReinitFont(NULL);
 							ReinitPosition();
-					//		InvalidateStreamTreeFontBuffer();
 							m_SourceFiles.DeleteString(iIndex1);
 						}
 
 						filesource->Close();
 						delete filesource;
 						fi->file = NULL;
-						if (fi->lpcName)
-							free(fi->lpcName);
 						xmlDeleteNode(&xmlTree);
-						sprintf(cFmt, "XML");
+						formatName = _T("XML");
 
 					}
 					break;
 			}
-/*
-			if (cFmt[0] && m_SourceFiles.GetCount() == iIndex1 + 1) {
-				Buffer[0]=0;
-				m_SourceFiles.GetText(iIndex1, Buffer);
-				sprintf(Buffer2, "%s %s", cFmt, Buffer);
-				m_SourceFiles.DeleteString(iIndex1);
-				m_SourceFiles.AddString(Buffer2);
-				m_SourceFiles.SetItemData(iIndex1, (LPARAM)cb);
-			}
-*/
-			strcpy(fi->cFileformatString, cFmt);
+
+			strcpy(fi->cFileformatString, CUTF8(formatName.c_str()).Str());
 			RECT r;
 			m_SourceFiles.GetItemRect(iIndex1, &r);
 			m_SourceFiles.InvalidateRect(&r);
@@ -820,30 +841,31 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 			m_SourceFiles.DeleteString(iIndex1);
 			if (!LoadScript(_lpcName,m_hWnd,GetUserMessageID()))	{
 				cStr=LoadString(IDS_FILETYPENOTSUPPORTED);
-				sprintf(Buffer,cStr);
+				TCHAR Buffer[65536]; Buffer[0]=0;
+				_stprintf(Buffer,cStr);
 				MessageBox(Buffer,cstrError,MB_OK | MB_ICONERROR);
+				fi->file->Close();
+				delete fi->file;
+				fi->file = NULL;
 			} else {
 				fi->file->Close();
 				delete fi->file;
 				fi->file = NULL;
-				delete fi->lpcName;
 				DecBufferRefCount(&cb);
 			}
 		} else {
-			char cMsg[4096]; cMsg[0]=0;
-			sprintf(cMsg, " loaded file: %s", lpcName);
-			char u[4096]; u[0]=0;
+			std::basic_ostringstream<TCHAR> sstrMsg;
+			sstrMsg << " loaded file: " << CUTF8(lpcName).TStr();
+			std::basic_string<TCHAR> strMsg = sstrMsg.str();
+			const TCHAR* cMsg = strMsg.c_str();
 			m_StatusLine.SetWindowText(cMsg);
 			m_StatusLine.InvalidateRect(NULL);
 			m_StatusLine.UpdateWindow();
 		}
 		if (asi && asi->audiosource) {
-			char* e; char* f;
-			splitpathname(lpcName,&f,&e,NULL);
-			e=&f[strlen(f)-1];
-			while (*e-- != '.');
-			*(e+1)=0;
-			
+			char f[65536]; f[0]=0;
+			name_without_ext(lpcName, f);
+
 			asi->audiosource->SetName(f);
 			ucase(f, f);
 			char* cDelayPos = strstr(f,"DELAY");
@@ -856,11 +878,7 @@ void  CAVIMux_GUIDlg::doAddFile(char* _lpcName, int iFormat, int delete_file,
 		}
 		
 
-//	free(lpcExt);
 	if (m_SourceFiles.GetCount()) {
 		m_Add_Video_Source.EnableWindow(1);
 	}
-
-//	MessageBox("done", "info", MB_OK);
-
 }

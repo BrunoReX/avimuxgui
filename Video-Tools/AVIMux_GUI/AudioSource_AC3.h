@@ -50,7 +50,7 @@ class AC3SOURCE: public CBinaryAudioSource
 		int		virtual GetChannelCount();
 
 		/* returns the number of channels like "2.0" or "5.1" */
-		char	virtual *GetChannelString();
+		std::string	virtual GetChannelString();
 
 		/* returns the number of bits per second */
 		int		virtual	GetBitrate();

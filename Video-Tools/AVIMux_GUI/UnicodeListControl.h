@@ -22,10 +22,15 @@ public:
 	CUnicodeListCtrl();
 	void	InitUnicode();
 
-	int		InsertItem(LV_ITEM* pItem );
+	int		InsertItem(LV_ITEMA* pItem );
+	int		InsertItem(LV_ITEMW* pItem );
+	BOOL	SetItemText(int nItem, int nSubItem, LPCSTR lpszText);
+	BOOL	SetItemText(int nItem, int nSubItem, LPCWSTR lpszText);
+
 	BOOL	DeleteItem( int nItem );
 	BOOL	DeleteAllItems();
-	BOOL	SetItemText(int nItem, int nSubItem, LPTSTR lpszText);
+	
+	
 	void    GetItemText(int nItem, int nSubItem, char* cDest, int imax);
 	char*   GetItemText(int nItem, int nSubItem);
 	void	virtual GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult);

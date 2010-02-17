@@ -73,8 +73,7 @@ BOOL CUnicodeListCtrl::Create(LPCTSTR lpszClassName, LPCTSTR lpszWindowName, DWO
 
 typedef struct
 {
-	int iItemCount;
-	char** cText;
+	std::vector<std::string> texts;
 } UNICODELISTCONTROL_DATA;
 
 void CUnicodeListCtrl::InitUnicode()
@@ -84,22 +83,70 @@ void CUnicodeListCtrl::InitUnicode()
 	CUnicodeBase::InitUnicode(SendMessage(CCM_GETUNICODEFORMAT));
 }
 
-int CUnicodeListCtrl::InsertItem(LV_ITEM *pItem)
+int CUnicodeListCtrl::InsertItem(LV_ITEMA *pItem)
 {
-	char* c = pItem->pszText;
+	char* itemText = pItem->pszText;
 
+#ifdef _UNICODE
+	LV_ITEMW newItem;
+	newItem.mask = pItem->mask;
+	newItem.cchTextMax = pItem->cchTextMax;
+	newItem.cColumns = pItem->cColumns;
+	newItem.pszText = LPSTR_TEXTCALLBACKW;
+	newItem.state = pItem->state;
+	newItem.stateMask = pItem->stateMask;
+	newItem.puColumns = pItem->puColumns;
+	newItem.lParam = pItem->lParam;
+	int iIndex = CListCtrl::InsertItem(&newItem);	
+#else
 	pItem->pszText = LPSTR_TEXTCALLBACK;
 	int iIndex = CListCtrl::InsertItem(pItem);
-
+#endif
 	UNICODELISTCONTROL_DATA* data = new UNICODELISTCONTROL_DATA;
 
-	data->iItemCount = 1;
-	data->cText = (char**)calloc(data->iItemCount, sizeof(char*));
+//	data->iItemCount = 1;
+//	data->cText = (char**)calloc(data->iItemCount, sizeof(char*));
+	data->texts.push_back(std::string(itemText));
 
-	int k=1+strlen(c);
-	data->cText[0] = new char[k];
-	ZeroMemory(data->cText[0], k);
-	strcpy(data->cText[0], c);
+//	int k=1+strlen(c);
+//	data->cText[0] = new char[k];
+//	ZeroMemory(data->cText[0], k);
+//	strcpy(data->cText[0], c);
+
+	CListCtrl::SetItemData(iIndex, (LPARAM)data);
+
+	return iIndex;
+}
+
+int CUnicodeListCtrl::InsertItem(LV_ITEMW *pItem)
+{
+	wchar_t* text = pItem->pszText;
+#ifdef _UNICODE
+	pItem->pszText = LPSTR_TEXTCALLBACKW;
+	int iIndex = CListCtrl::InsertItem(pItem);
+#else
+	LV_ITEMA newItem;
+	newItem.mask = pItem->mask;
+	newItem.cchTextMax = pItem->cchTextMax;
+	newItem.cColumns = pItem->cColumns;
+	newItem.pszText = LPSTR_TEXTCALLBACKA;
+	newItem.state = pItem->state;
+	newItem.stateMask = pItem->stateMask;
+	newItem.puColumns = pItem->puColumns;
+	newItem.lParam = pItem->lParam;
+	int iIndex = CListCtrl::InsertItem(&newItem);
+#endif
+	UNICODELISTCONTROL_DATA* data = new UNICODELISTCONTROL_DATA;
+
+//	data->iItemCount = 1;
+//	data->cText = (char**)calloc(data->iItemCount, sizeof(char*));
+	CUTF8 utf8Text(text);
+	data->texts.push_back(std::string(utf8Text.UTF8()));
+
+//	int k=1+strlen(c);
+//	data->cText[0] = new char[k];
+//	ZeroMemory(data->cText[0], k);
+//	strcpy(data->cText[0], c);
 
 	CListCtrl::SetItemData(iIndex, (LPARAM)data);
 
@@ -115,13 +162,13 @@ BOOL CUnicodeListCtrl::DeleteItem(int nItem)
 	UNICODELISTCONTROL_DATA* data = (UNICODELISTCONTROL_DATA*)GetItemData(nItem);
 
 	if (data) {
-		for (int i = 0; i < data->iItemCount; i++) {
+		/*for (int i = 0; i < data->iItemCount; i++) {
 			if (data->cText[i]) {
 				delete[] data->cText[i];
 				data->cText[i] = 0;
 			}
-		}
-		free(data->cText);
+		}*/
+		//free(data->cText);
 	}
 
 	delete data;
@@ -138,33 +185,40 @@ BOOL CUnicodeListCtrl::DeleteAllItems()
 	return true;
 }
 
-int CUnicodeListCtrl::SetItemText(int nItem, int nSubItem, LPTSTR lpszText)
+int CUnicodeListCtrl::SetItemText(int nItem, int nSubItem, LPCSTR lpszText)
 {
+	if (nSubItem < 0)
+		return 0;
+
 	UNICODELISTCONTROL_DATA* data = (UNICODELISTCONTROL_DATA*)CListCtrl::GetItemData(nItem);
 	ASSERT(data);
-	int k;
 
 	if (data && (DWORD)data != LB_ERR) {
-		if (nSubItem >= data->iItemCount) {
-			if (!data->cText)
-				data->cText = (char**)calloc(sizeof(char*) * (1+nSubItem), 1);
-			else {
-				data->cText = (char**)realloc(data->cText, sizeof(char*) * (1+nSubItem));
-				for (int j=data->iItemCount;j<=nSubItem;j++)
-					data->cText[j] = NULL;
-			}
-			data->iItemCount = nSubItem+1;
+		size_t subItemIndex = static_cast<size_t>(nSubItem);
+		if (subItemIndex >= data->texts.size()) {
+			data->texts.resize(subItemIndex + 1);
 		}
+		data->texts[subItemIndex] = lpszText;
+	}
 
-		if (data->cText[nSubItem])
-			delete[] data->cText[nSubItem];
+	return 1;
+}
 
-		data->cText[nSubItem] = new char[k=strlen(lpszText)+1];
+int CUnicodeListCtrl::SetItemText(int nItem, int nSubItem, LPCWSTR lpszText)
+{
+	if (nSubItem < 0)
+		return 0;
 
-		ZeroMemory(data->cText[nSubItem], k);
+	UNICODELISTCONTROL_DATA* data = (UNICODELISTCONTROL_DATA*)CListCtrl::GetItemData(nItem);
+	ASSERT(data);
 
-		strcpy(data->cText[nSubItem], lpszText);
+	if (data && (DWORD)data != LB_ERR) {
 
+		size_t subItemIndex = static_cast<size_t>(nSubItem);
+		if (subItemIndex >= data->texts.size()) {
+			data->texts.resize(subItemIndex + 1);
+		}
+		data->texts[nSubItem] = CUTF8(lpszText).UTF8();
 	}
 
 	return 1;
@@ -174,7 +228,9 @@ void CUnicodeListCtrl::GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LV_DISPINFO* pDispInfo = (LV_DISPINFO*)pNMHDR;
 	LVITEM* item = &pDispInfo->item;
-	char* dest = item->pszText;  // <= write the output string here in UTF-8
+
+	// NOT SUPPORTED
+	TCHAR* dest = item->pszText;  // <= write the output string here in UTF-8
 	
 	*pResult = 0;
 }
@@ -184,15 +240,20 @@ void CUnicodeListCtrl::GetItemText(int nItem, int nSubItem, char* cDest, int ima
 {
 	UNICODELISTCONTROL_DATA* data = (UNICODELISTCONTROL_DATA*)CListCtrl::GetItemData(nItem);
 
-	strncpy(cDest, data->cText[nSubItem], imax);
+	strncpy(cDest, data->texts[nSubItem].c_str(), imax);
 }
 
 
 char* CUnicodeListCtrl::GetItemText(int nItem, int nSubItem)
 {
+	if (nSubItem < 0)
+		return NULL;
 	UNICODELISTCONTROL_DATA* data = (UNICODELISTCONTROL_DATA*)CListCtrl::GetItemData(nItem);
 
-	if (data && data->iItemCount > nSubItem) return data->cText[nSubItem];
+	size_t subItemIndex = static_cast<size_t>(nSubItem);
+	if (data && data->texts.size() > subItemIndex) 
+		return const_cast<char*>(data->texts[subItemIndex].c_str());
+	
 	return "";
 }
 
@@ -201,7 +262,7 @@ void CUnicodeListCtrl::OnGetdispinfo(NMHDR* pNMHDR, LRESULT* pResult)
 	LV_DISPINFO* pDispInfo = (LV_DISPINFO*)pNMHDR;
 	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
 	LVITEM* item = &pDispInfo->item;
-	char* dest = item->pszText;
+	char* dest = reinterpret_cast<char*>(item->pszText);
 	char* c = NULL;
 	bool	bAllocated = false;
 
@@ -210,19 +271,21 @@ void CUnicodeListCtrl::OnGetdispinfo(NMHDR* pNMHDR, LRESULT* pResult)
 		UNICODELISTCONTROL_DATA* data = (UNICODELISTCONTROL_DATA*)CListCtrl::GetItemData(item->iItem);
 
 		if (data) {
-			if (item->iSubItem >= data->iItemCount) {
+			if (item->iSubItem >= static_cast<int>(data->texts.size())) {
 				dest[0] = 0;
 				*pResult = 0;
 				return;
 			}
 
-			if (data->cText[item->iSubItem] != LPSTR_TEXTCALLBACK) {
+			/*if (data->cText[item->iSubItem] != LPSTR_TEXTCALLBACK) {
 				c = data->cText[item->iSubItem];
 			} else {
 				c = (char*)calloc(4096, sizeof(c));
 				bAllocated = true;
 				GetTextCallback(pNMHDR, pResult);
-			}
+			}*/
+
+			c = const_cast<char*>(data->texts[item->iSubItem].c_str());
 
 			if (c)
 				(fromUTF8)(c, dest);

@@ -6,7 +6,7 @@
 #include "AVIMux_GUI.h"
 #include "ChapterDlgTree.h"
 #include "languages.h"
-#include "textfiles.h"
+#include "../../Common/textfiles.h"
 #include "..\basestreams.h"
 #include "formattext.h"
 #include "version.h"
@@ -137,8 +137,8 @@ void CChapterDlgTree::OnDropFiles(HDROP hDropInfo)
 		toUTF8(u, &lpcName);
 
 		CFileStream* file = new CFileStream;
-		file->Open(lpcName,STREAM_READ);
-		CTextFile*	textfile = new CTextFile(STREAM_READ, file, CHARACTER_ENCODING_UTF8);
+		file->Open(lpcName, StreamMode::Read);
+		CTextFile*	textfile = new CTextFile(StreamMode::Read, file, CharacterEncoding::UTF8);
 
 		XMLNODE* xml = NULL;
 		CChapters* c = NULL;
@@ -167,15 +167,18 @@ void CChapterDlgTree::OnDropFiles(HDROP hDropInfo)
 
 		textfile->Seek(0);
 		// dvd maestro chapter text file
-		char t[1000];
-		textfile->ReadLine(t, sizeof(t));
+		char t[1000]; t[0]=0;
+		std::string textFileLine;
+		textfile->ReadLine(textFileLine);
+		strcpy(t, textFileLine.c_str());
 		if (!strcmp("$Spruce_IFrame_List",t)) {
 			CChapters* chapters = ((CChapterDlg*)GetParent())->GetChapters();
 			CChapters* edition;
 			chapters->AddEmptyEdition();
 			edition = chapters;
 			chapters = chapters->GetSubChapters(chapters->GetChapterCount()-1);
-			while (textfile->ReadLine(t, sizeof(t))>-1) {
+			while (textfile->ReadLine(textFileLine)>-1) {
+				t[0]=0; strcpy(t, textFileLine.c_str());
 				__int64 iTime = SONChapStr2Millisec(t)*1000000;
 				if (iTime>=0) {
 					char cName[20];

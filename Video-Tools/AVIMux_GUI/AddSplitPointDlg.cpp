@@ -6,6 +6,9 @@
 #include "AddSplitPointDlg.h"
 #include "Languages.h"
 
+#include <string>
+#include <sstream>
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -97,18 +100,25 @@ void AddSplitPointDlg::OnCancelMode()
 void AddSplitPointDlg::OnOK() 
 {
 	// TODO: Zusätzliche Prüfung hier einfügen
-    GetDlgItemText(IDC_NEWSPLITPOINT,Buffer,sizeof(Buffer));
+
+	const int bufSize = 128;
+	TCHAR temp[bufSize];
+	memset(temp, 0, sizeof(temp));
+	GetDlgItemText(IDC_NEWSPLITPOINT, temp, bufSize);
+
+	Buffer = temp;
+//    GetDlgItemText(IDC_NEWSPLITPOINT,Buffer,sizeof(Buffer));
 	CDialog::OnOK();
 }
 
 DWORD AddSplitPointDlg::GetSplitPos()
 {
-	return atoi(Buffer);
+	return _ttoi(Buffer.c_str());
 }
 
 BOOL AddSplitPointDlg::OnInitDialog() 
 {
-	char	Buffer[100];
+//	char	Buffer[100];
 
 	CDialog::OnInitDialog();
 	
@@ -116,14 +126,24 @@ BOOL AddSplitPointDlg::OnInitDialog()
 	GetDlgItem(IDC_NEWSPLITPOINT)->SetFocus();
 	if (dwSplitPos)
 	{
-		wsprintf(Buffer,"%d",dwSplitPos);
-		SetDlgItemText(IDC_NEWSPLITPOINT,Buffer);
+		std::basic_stringstream<TCHAR> sstrSplitPos;
+		sstrSplitPos << dwSplitPos;
+		std::basic_string<TCHAR> strSplitPos = sstrSplitPos.str();
+
+		SetDlgItemText(IDC_NEWSPLITPOINT, strSplitPos.c_str());
+		//wsprintf(Buffer,"%d",dwSplitPos);
+		//SetDlgItemText(IDC_NEWSPLITPOINT,Buffer);
 	}
 
 	SendDlgItemMessage(IDOK,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_GEN_OK));
 	SendDlgItemMessage(IDCANCEL,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_GEN_CANCEL));
 	SendDlgItemMessage(IDC_ASP_NEWPART,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_ASP_S_NEWPART));
-	SetWindowText(LoadString(STR_ASP_TITLE));
+	
+	CUTF8 utf8Title(LoadString(STR_ASP_TITLE, LOADSTRING_UTF8), 
+		CharacterEncoding::UTF8);
+
+	SetWindowText(utf8Title.TStr());
+	//SetWindowText(LoadString(STR_ASP_TITLE));
 
 	return false;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX-Eigenschaftenseiten sollten FALSE zurückgeben

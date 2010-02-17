@@ -187,7 +187,7 @@ BOOL CVideoInformationDlgListbox::OnCommand(WPARAM wParam, LPARAM lParam)
 	CSetFramerateDlg*		csfrd;
 	CSetMainAVIHeaderFlagsDlg*	csmahfd;
 	HANDLE					hFile;
-	BYTE					Buffer[200];
+//	BYTE					Buffer[200];
 	DWORD					dwNNSPF;
 	DWORD					dwNMSPF;
 	DWORD					dwKind;
@@ -220,11 +220,10 @@ BOOL CVideoInformationDlgListbox::OnCommand(WPARAM wParam, LPARAM lParam)
 			dwDone|=REPAIRS_FRAMERATE;
 			break;
 		case IDM_VILB_SAVEAS:
-			cfd=new CFileDialog(false,"txt");
+			cfd = new CFileDialog(false, _T("txt"), NULL, 4 | 2, _T("Text files (*.txt)|*.txt||"));
 			if (cfd->DoModal()==IDOK)
 			{
-				hFile=CreateFile(cfd->GetPathName().GetBuffer(512),GENERIC_WRITE,0,NULL,
-					CREATE_ALWAYS,0,NULL);
+				hFile=CreateFile(cfd->GetPathName().GetBuffer(512), GENERIC_WRITE, 0, NULL,	CREATE_ALWAYS, 0, NULL);
 				if (hFile==INVALID_HANDLE_VALUE)
 				{
 					cStr1=LoadString(IDS_ERROR);
@@ -235,10 +234,17 @@ BOOL CVideoInformationDlgListbox::OnCommand(WPARAM wParam, LPARAM lParam)
 				{
 					for (i=0;i<(DWORD)GetCount();i++)
 					{
-						GetText(i,(char*)Buffer);
-						j=GetTextLen(i);
-						Buffer[j]=13; Buffer[j+1]=10;
-						WriteFile(hFile,Buffer,j+2,&dwWritten,NULL);
+						int textLength = GetTextLen(i);
+						std::vector<TCHAR> textBuffer(textLength+3);
+						GetText(i, &textBuffer[0]);
+
+						textBuffer[textLength] = 13;
+						textBuffer[textLength+1] = 10;
+
+						CUTF8 utf8TextBuffer(&textBuffer[0]);
+						const char* utf8TextBufferPtr = utf8TextBuffer.UTF8();
+						int utf8TextBufferLength = strlen(utf8TextBufferPtr);
+						WriteFile(hFile, utf8TextBufferPtr, utf8TextBufferLength, &dwWritten, NULL);
 					}
 					CloseHandle(hFile);
 				}

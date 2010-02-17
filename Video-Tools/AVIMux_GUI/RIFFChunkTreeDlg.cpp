@@ -8,8 +8,11 @@
 #include "FormatText.h"
 #include "ResizeableDialog.h"
 #include ".\riffchunktreedlg.h"
-#include "../cache.h"
+#include "..\Cache.h"
 #include "HexViewListBox.h"
+#include "FileDialogs.h"
+#include "..\FileStream.h"
+#include "MessageBoxHelper.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -650,14 +653,32 @@ STREAM* CRIFFChunkTreeDlg::GetSource()
 	return source;
 }
 
-void CRIFFChunkTreeDlg::RenderItem(FILE* file, HTREEITEM _hItem, int iLevel)
+void CRIFFChunkTreeDlg::RenderItem(STREAM* file, HTREEITEM _hItem, int iLevel)
 {
 	HTREEITEM  hItem = _hItem;
 
+	std::string newLine;
+	newLine.push_back(0x0D);
+	newLine.push_back(0x0A);
+
+	std::string padding(2 * iLevel, ' ');
+	const char* ptrPadding = padding.c_str();
+
+	char textBuffer[1024];
+
 	while (hItem) {
-		CString s = m_Tree.GetItemText(hItem);
-		for (int j=0;j<2*iLevel;j++) fprintf(file, " ");
-		fprintf(file, "%s%c%c", s, 13, 10);
+		TVITEMEX item;
+		memset(textBuffer, 0, 1024);
+		memset(&item, 0, sizeof(item));
+		item.hItem = hItem;
+		item.cchTextMax = 1023;
+		item.pszText = textBuffer;
+		item.mask = TVIF_TEXT | TVIF_HANDLE;
+		TreeView_GetItem(m_Tree, &item);
+
+		file->Write(const_cast<char*>(ptrPadding), padding.size());
+		file->Write(const_cast<char*>(item.pszText), strlen(item.pszText));
+		file->Write(const_cast<char*>(newLine.c_str()), 2);
 		RenderItem(file, m_Tree.GetChildItem(hItem), iLevel+1);
 		hItem = m_Tree.GetNextSiblingItem(hItem);
 	}
@@ -665,15 +686,31 @@ void CRIFFChunkTreeDlg::RenderItem(FILE* file, HTREEITEM _hItem, int iLevel)
 
 void CRIFFChunkTreeDlg::OnSave() 
 {
-	// TODO: Code für die Behandlungsroutine der Steuerelement-Benachrichtigung hier einfügen
-	CFileDialog* dlg;
-	
-	dlg= new CFileDialog(false, "txt", "", OFN_OVERWRITEPROMPT, 
-		"Text file (*.txt)|*.txt||",NULL);
-	if (dlg->DoModal() == IDOK) {
-		FILE* file = fopen(dlg->GetPathName().GetBuffer(1024), "wb");
-		RenderItem(file, m_Tree.GetRootItem(), 0);
-		fclose(file);
+	OPENFILENAME ofn;
+
+	PrepareSimpleDialog(&ofn, *this, "*.txt");
+	ofn.lpstrFilter = "Text files (*.txt)|*.txt||";
+	ofn.Flags |= OFN_OVERWRITEPROMPT;
+	if (!GetOpenSaveFileNameUTF8(&ofn, false)) 
+		return;
+
+	CFileStream* destFile = new CFileStream();
+	if (STREAM_OK == destFile->Open(ofn.lpstrFile, StreamMode::Write))
+	{
+		CACHE* cache = new CACHE(4, 1<<18);
+		cache->Open(destFile, CACHE_OPEN_WRITE);
+		cache->Write(cUTF8Hdr, 3);
+
+		RenderItem(cache, m_Tree.GetRootItem(), 0);
+
+		cache->Close();
+		delete cache;
+		destFile->Close();
+		delete destFile;
+	}
+	else
+	{
+		MessageBoxHelper::CouldNotOpenFileForWrite(ofn.lpstrFile);
 	}
 }
 

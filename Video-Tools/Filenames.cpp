@@ -4,6 +4,7 @@
 
 
 /* the input buffer must allow write access ! */
+#ifdef _NOT_DEFINED
 int Filename2LongFilename(char* in, char* out, int out_buf_len)
 {
 	bool bUNC = false;
@@ -172,3 +173,5 @@ void FilenameRemoveIllegalCharactersUTF8(char* in_out, char replacement)
 		in_out += cl;
 	}
 }
+
+#endif

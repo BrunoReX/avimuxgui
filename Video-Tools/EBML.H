@@ -168,7 +168,7 @@ typedef struct
 {
 	size_t			iCount;
 	EBMLElement**	pElement;
-	EBMLElement* operator() (int index = NULL);	// return i-th element of that list
+	EBMLElement* operator() (size_t index = NULL);	// return i-th element of that list
 	__int64 operator[] (int index);				// return integer value of i-th element of that list
 	__int64 operator^ (__int64 _default);		// return value of 1st element in that list of default if there is none
 

@@ -1,9 +1,6 @@
 #include "stdafx.h"
 #include "bitstream.h"
-
-
-
-
+#include <stdexcept>
 
 int BITSTREAM::Open(STREAM* lpStream)
 {
@@ -94,29 +91,33 @@ CBitStream2::~CBitStream2()
 }
 
 
-void CBitStream2::LoadWord(void)
+bool CBitStream2::FillInputBuffer()
 {
-	if (GetSource())
+	if (!GetSource())
+		return false;
+
+	if (m_InputBuffer.empty())
 	{
-		if (m_InputBuffer.empty())
+		if (m_PrebufferSize > 64)
+			m_PrebufferSize = 64;
+
+		char buffer[64];
+		int result = GetSource()->Read(buffer, m_PrebufferSize);
+
+		for (int j=0; j<result; j++)
 		{
-			if (m_PrebufferSize > 64)
-				m_PrebufferSize = 64;
-
-			char buffer[64];
-			int result = GetSource()->Read(buffer, m_PrebufferSize);
-
-			for (int j=0; j<result; j++)
-			{
-				m_InputBuffer.push_back(buffer[j]);
-			}
+			m_InputBuffer.push_back(buffer[j]);
 		}
-
-		wData = (WORD) m_InputBuffer.front();
-		m_InputBuffer.pop_front();
-		dwCurrBitPos = 7;
 	}
 
+	if (m_InputBuffer.empty())
+		return false;
+
+	wData = (WORD) m_InputBuffer.front();
+	m_InputBuffer.pop_front();
+	dwCurrBitPos = 7;
+
+	return true;
 }
 
 int CBitStream2::Seek(__int64 qwPos)
@@ -147,15 +148,19 @@ __int64 CBitStream2::ReadBits64(int n, int iFlag)
 	if (dwCurrBitPos>7)
 	{
 		dwCurrBitPos=7;
-		LoadWord();
+		if (!FillInputBuffer())
+			return iRes;
+		//LoadWord();
 	}
 
 	if (n == 8 && dwCurrBitPos == 7)
 	{
 		iRes = wData;
-		LoadWord();
+		if (!FillInputBuffer())
+			return iRes;
+		//LoadWord();
 	} else
-	if (n <= dwCurrBitPos+1)
+	if (n <= static_cast<__int64>(dwCurrBitPos)+1)
 	{
 		int bitsLeftAfterwards = dwCurrBitPos - n + 1;
 		if (iFlag == 0)

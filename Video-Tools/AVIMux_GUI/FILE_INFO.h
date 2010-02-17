@@ -20,7 +20,8 @@ const int FILEINFO_FLAG0_DEEMPH       = 0x00000004;
 typedef struct
 {
 	DWORD				dwType; // 1 = AVI, 2 = MP3, 4 = AC3, 8 = WAV, 16 = M2F2, 32 = DTS
-	char*				lpcName;
+	//char*				lpcName;
+	CUTF8				Name;
 	char				cFileformatString[32];
 	STREAM*				file;
 	STREAM*				source;

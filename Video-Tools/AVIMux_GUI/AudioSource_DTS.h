@@ -50,7 +50,7 @@ class DTSSOURCE: public CBinaryAudioSource//CBRAUDIOSOURCE
 		int		virtual GetChannelCount();
 
 		/* returns the channels like "2" or "2.0" or "5.1" */
-		char	virtual *GetChannelString();
+		std::string	virtual GetChannelString();
 
 		/* returns the bitrate in bit/sec */
 		float	virtual	GetBitrate();

@@ -454,7 +454,7 @@ class AVIFILEEX : public RIFFFILE
 		FRAMETYPES			frametypes;
 		DWORD				dwHDRLBufferStart;
 		bool				bCreateLegacyIndexForODML;
-		char*				cFileTitle;
+		std::string			m_fileTitle;
 		DWORD				dwMaxAllowedChunkSize;
 		bool				bTryToRepairLargeChunks;
 		bool				bLowOverheadMode;
@@ -515,7 +515,7 @@ class AVIFILEEX : public RIFFFILE
 		int					strfSize(DWORD dwStreamNbr,void* strf);
 		DWORD				Open(STREAM* lpStream, DWORD dwAccess, AVITYPE atAVIType);
 		bool				Close(bool bCloseSource=true);
-		char				FileName[1024];
+		std::basic_string<TCHAR> m_fileName;
 // R/W
 		bool				DebugMsg (char* lpMsg);
 		DWORD				GetProcessMode(DWORD dwNbr);
@@ -565,7 +565,7 @@ class AVIFILEEX : public RIFFFILE
 		_int64				GetStreamPosOfChunk(DWORD,DWORD);
 		int					GetVideoChunk(DWORD dwChunkNbr,void*,DWORD* lpdwSize=NULL);
 		int					GetVideoResolution(int* lpWidth,int* lpHeight);
-		char*				GetTitle(void);
+		std::string			GetTitle(void);
 		bool				IsCBR(DWORD);
 		bool				IsEndOfStream(DWORD);
 		bool				IsKeyFrame(DWORD);
@@ -599,7 +599,7 @@ class AVIFILEEX : public RIFFFILE
 		int					SetStreamHeader(DWORD,AVIStreamHeader*);
 		int					SetStreamFormat(DWORD,void*);
 		int					SetStreamDefault(DWORD, bool);
-		void				SetTitle(char* cTitle);
+		void				SetTitle(const std::string& title);
 		void				MoveHDRL(bool bEnabled);
 		int					WriteStandardIndex(void);
 // write-only, OpenDML-only

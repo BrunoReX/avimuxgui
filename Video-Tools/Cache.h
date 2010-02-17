@@ -116,6 +116,8 @@ typedef struct {
 
 typedef std::map<DWORD, CACHE_THREAD_SPECIFIC*> CACHE_THREAD_SPECIFIC_MAP;
 
+#define CCache CACHE
+
 class CACHE : public STREAM_FILTER
 {
 private:

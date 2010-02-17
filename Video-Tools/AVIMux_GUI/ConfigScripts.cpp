@@ -9,12 +9,13 @@
 #include "windows.h"
 #include "../strings.h"
 #include "../basestreams.h"
-#include "textfiles.h"
+#include "../../Common/TextFiles.h"
 #include "AVIMux_GUI.h"
 #include "global.h"
 #include "../UnicodeCalls.h"
 #include "../Filenames.h"
 #include "../FileStream.h"
+#include "../../Common/Path.h"
 
  HANDLE hGlobalMuxingStartedSemaphore;
  HANDLE hGlobalMuxSemaphore;
@@ -47,10 +48,10 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 {
 
 	CFileStream* fs = new CFileStream;
-	fs->Open(lpcName,STREAM_READ);
+	fs->Open(lpcName, StreamMode::Read);
 	CTextFile* f = new CTextFile;
-	f->Open(STREAM_READ,fs);
-	f->SetOutputEncoding(CHARACTER_ENCODING_UTF8);
+	f->Open(StreamMode::Read,fs);
+	f->SetOutputEncoding(CharacterEncoding::UTF8);
 		
 	char*	buffer = NULL;
 	char*   entire_line = NULL;
@@ -64,10 +65,16 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 	int		withpos[10];
 	ZeroMemory(withpos,sizeof(withpos));
 	int		withpos_ind = 0;
-	char*   extension, *name, *path;
+	char*   path;
 
 	path = (char*)calloc(1,25600);
-	splitpathname(lpcName,&name,&extension,&path);
+	//splitpathname(lpcName,&name,&extension,&path);
+
+	std::string fileName;
+	std::string fileExtension;
+	std::string filePath;
+	splitpathname<char>(lpcName, fileName, fileExtension, filePath);
+	strcpy(path, filePath.c_str());
 
 	buffer = (char*)calloc(1,25600);
 	entire_line = (char*)calloc(1,25600);
@@ -76,8 +83,11 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 	line_old = line;
 	hGlobalMuxingStartedSemaphore = OpenSemaphore(SEMAPHORE_ALL_ACCESS, false, GlobalMuxingStartedSemaphoreName());
 	hGlobalMuxSemaphore = OpenSemaphore(SEMAPHORE_ALL_ACCESS, false, GlobalMuxSemaphoreName());
-	while (f->ReadLine(buffer)>=0)
+	
+	std::string textFileLine;
+	while (f->ReadLine(textFileLine)>=0)
 	{
+		buffer[0]=0; strcpy(buffer, textFileLine.c_str());
 /*	if (bWait) {
 			WaitForSingleObject(hGlobalMuxingStartedSemaphore, INFINITE);
 			ReleaseSemaphore(hGlobalMuxingStartedSemaphore, 1, NULL);
@@ -87,11 +97,11 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 	} 
 */		bError=false;
 		l = buffer;
-		i=lstrlen(buffer)-1;
+		i=strlen(buffer)-1;
 		if (buffer[i]==10) buffer[i]=0;
 		strcpy(line,buffer);
-		wsprintf(entire_line,"%s%s",with,l);
-		lstrcpy(l,entire_line);
+		sprintf(entire_line, "%s%s", with, l);
+		strcpy(l,entire_line);
 
 		v=getword(&line);
 		w=getword(&l);
@@ -111,20 +121,25 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 		else
 		if (!strcmp(w,"LOAD"))	{
 			cText = (char*)calloc(2, 32768);
-			char curr_dir[65536];
+
+			std::string fullPathToLoad = CPath::Combine(path, l);
+			CUTF8 utf8PathToLoad(fullPathToLoad.c_str());
+			wcscpy((wchar_t*)cText, utf8PathToLoad.WStr());
+/*			char curr_dir[65536];
 			(*UGetCurrentDirectory())(32768, curr_dir);
 			char* upath = NULL;
 			fromUTF8(path, &upath);
 			(*USetCurrentDirectory())(upath);
 			free(upath);
+*/
+//			char* l2 = _strdup(l);
+//			Filename2LongFilename(l2, cText, 32768);
+//			free(l2);
 
-			char* l2 = _strdup(l);
-			Filename2LongFilename(l2, cText, 32768);
-			free(l2);
-
-			(*USetCurrentDirectory())(curr_dir);		
+//			(*USetCurrentDirectory())(curr_dir);		
 
 			ProcessMsgQueue(hwnd);
+			strcpy(cText, utf8PathToLoad.UTF8());
 			PostMessage(hwnd,message,IDM_DOADDFILE,(LPARAM)cText);
 		}
 		else
@@ -220,7 +235,7 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 		if (!strcmp(w,"START"))
 		{
 			char*	lpcFile;
-			lpcFile = (char*)malloc(1+lstrlen(l));
+			lpcFile = (char*)malloc(1+strlen(l));
 			strcpy(lpcFile,buffer+6);
 			bWait = true;
 			PostMessage(hwnd,message,IDM_STARTMUXING,(LPARAM)lpcFile);
@@ -232,11 +247,16 @@ bool	LoadScript(char* lpcName,HWND hwnd,UINT message)
 		
 		if (bError)
 		{
-			char	msg[300];
-			msg[0]=0;
 			if (bFirstLine_OK) {
-				wsprintf(msg,LoadString(STR_LOAD_UNKNOWN),entire_line,w);
-				MessageBox (hwnd,msg,LoadString(STR_GEN_ERROR),MB_OK | MB_ICONERROR);
+				std::basic_string<TCHAR> strLoadUnknown = (TCHAR*)LoadString(STR_LOAD_UNKNOWN);
+				std::basic_string<TCHAR> strError = (TCHAR*)LoadString(STR_GEN_ERROR);
+				
+				std::basic_string<TCHAR>::size_type pos = strLoadUnknown.find(_T("%s"), 0);
+				strLoadUnknown.replace(pos, 2, entire_line);
+				pos = strLoadUnknown.find(_T("%s"), 0);
+				strLoadUnknown.replace(pos, 2, w);
+				
+				MessageBox (hwnd, strLoadUnknown.c_str(), strError.c_str(), MB_OK | MB_ICONERROR);
 			}
 			f->Close();
 			fs->Close();

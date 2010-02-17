@@ -18,6 +18,7 @@
 #include "ResizeableDialog.h"
 #include "..\Chapters.h"
 #include "..\Buffers.h"
+#include "WindowHelper.h"
 #include "afxwin.h"
 #include <deque>
 #include <vector>
@@ -83,7 +84,8 @@ typedef struct
 {
 	DWORD		dwUseManualSplitPoints;
 
-	char*		lpcNumbering;
+	//char*		lpcNumbering;
+	std::basic_string<TCHAR> fileNumberingFormat;
 	DWORD		dwFrames;
 	DWORD		dwUseMaxFiles;
 	DWORD		dwMaxFiles;

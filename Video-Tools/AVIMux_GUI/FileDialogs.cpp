@@ -17,14 +17,14 @@ char* reserve(const char* s)
 	return reserve((char*)s);
 }
 
-void PrepareSimpleDialog(void* lpofn, HWND m_hWnd, const char* cFilter)
+void PrepareSimpleDialog(void* lpofn, HWND m_hWnd, const TCHAR* cFilter)
 {
 	memset(lpofn, 0, sizeof(OPENFILENAME));
 
 	OPENFILENAME* o = (OPENFILENAME*)lpofn;
 
 	o->hwndOwner = m_hWnd;
-	o->lpstrDefExt = "avi";
+	o->lpstrDefExt = _T("avi");
 	o->lpstrFile = (char*)calloc(1,16384);
 	o->lpstrFilter = cFilter;
 

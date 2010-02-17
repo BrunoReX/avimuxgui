@@ -53,7 +53,7 @@ void CHexViewListBox::SetNewStartPos(__int64 new_pos)
 	else 
 		new_data_begin = 0;
 
-	if (abs((double)(new_data_begin - data_begin)) > 256.)
+	if (abs(static_cast<double>(new_data_begin) - static_cast<double>(data_begin)) > 256.)
 		data_begin = new_data_begin;
 
 	stream->Seek(data_begin);
@@ -120,7 +120,7 @@ void CHexViewListBox::SetRange(__int64 range)
 			DeleteString(GetCount()-1);
 	} else {
 		for (int i=GetCount(); i<range; i++)
-			AddString("xxx");
+			AddString(_T("xxx"));
 	}
 }
 
@@ -152,9 +152,9 @@ void CHexViewListBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	CDC	dc;
 	LPDRAWITEMSTRUCT d = lpDrawItemStruct;
 
-	char addr[32]; addr[0]=0;
+	TCHAR addr[32]; addr[0]=0;
 	__int64 i64addr = start_file_pos + bytes_per_line * lpDrawItemStruct->itemID;
-	_snprintf(addr, sizeof(addr), "0x %04X %08X  ", (__int32)(i64addr>>32), 
+	_sntprintf(addr, sizeof(addr), _T("0x %04X %08X  "), (__int32)(i64addr>>32), 
 		(__int32)((i64addr) & 0xFFFFFFFF));
 
 	int offset = (int)(bytes_per_line * lpDrawItemStruct->itemID);
@@ -189,7 +189,7 @@ void CHexViewListBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	dc.SetBkMode(TRANSPARENT);
 
 	CFont* used_font = new CFont();
-	strcpy(logfont.lfFaceName, "Courier New");
+	_tcscpy(logfont.lfFaceName, _T("Courier New"));
 //	logfont.lfWeight = FW_BOLD;
 
 	if (!used_font->CreateFontIndirect(&logfont)) {
@@ -220,15 +220,18 @@ void CHexViewListBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	d->rcItem.bottom++;
 	dc.Rectangle(&d->rcItem);
 
-	int addr_len = strlen(addr);
+	int addr_len = _tcslen(addr);
 	CSize size = dc.GetTextExtent(addr, addr_len);
 	int addr_width = size.cx;
 
-	size = dc.GetTextExtent("00 ", 3);
+	size = dc.GetTextExtent(_T("00 "), 3);
 	int byte_width = size.cx;
-	dc.TextOut(d->rcItem.left, d->rcItem.top, addr, strlen(addr));
 
-	size = dc.GetTextExtent("0", 1);
+	CUTF8 utf8Addr(addr);
+	const TCHAR* pszAddr = utf8Addr.TStr();
+	dc.TextOut(d->rcItem.left, d->rcItem.top, pszAddr, _tcslen(pszAddr));
+
+	size = dc.GetTextExtent(_T("0"), 1);
 	int char_width = size.cx;
 
 	for (int j=0; j<bytes_per_line && j + offset < data_present; j++) {
@@ -283,19 +286,23 @@ void CHexViewListBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 			dc.SetTextColor(normal_color);
 
 		_snprintf(bt, sizeof(bt), "%02X ", data[offset+j]);
+		CUTF8 utf8Bt(bt);
+		const TCHAR* pzBt = utf8Bt.TStr();
 		dc.TextOut(addr_width + 20 + byte_width * j +
 			(2 * byte_width/3 * !!(j>=8)) +
 			(byte_width/3 * !!(j>=4)) +
 			(byte_width/3 * !!(j>=12))
-			, d->rcItem.top, bt, 3);
+			, d->rcItem.top, utf8Bt.TStr(), 3);
 
 		if (data[offset+j] >= 32)
 			sprintf(bt, "%c", data[offset+j]);
 		else
 			sprintf(bt, ".");
 		
+		CUTF8 utf8Bt2(bt);
+		const TCHAR* pzBt2 = utf8Bt2.TStr();
 		dc.TextOut(addr_width + 20 + bytes_per_line * byte_width + j * (char_width)
-			+ 6 * char_width, d->rcItem.top, bt, 1);
+			+ 6 * char_width, d->rcItem.top, pzBt2, 1);
 	}
 	DeleteObject(brush);
 	DeleteObject(pen);

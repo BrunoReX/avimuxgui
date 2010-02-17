@@ -1,11 +1,8 @@
 /*
 
-    As libogg contains artifical limits that lack a real
-	purpose (like the limit of 4 kB per OGG page), I
-	don't want to use it.
-
-    Also, the code in OGGFile.c returns packets, not segments
-
+    The OGGFile class contains the following improvements over libogg:
+	 - no limit of 4 kB per OGG page 
+	 - reads segments instead of packets
 */
 
 
@@ -97,13 +94,13 @@ class PACKETIZER: public STREAM
 		void		SetDuration(__int64 i);
 		
 	public:
-		// *iTimestamp MUST stay unmodified if no timestamp is returned
+		// *iTimestamp MUST remain unmodified if no timestamp is returned
 		PACKETIZER();
 		int			virtual ReadPacket(BYTE* bDest, __int64* iTimestamp = NULL);
 		__int64		virtual GetUnstretchedDuration(void);
 		void        virtual ReInit();
 		int		virtual	GetName(char* lpDest);
-		int		virtual GetLanguageCode(char* lpDest);
+		int		virtual GetLanguageCode(std::string& result);
 };
 
 typedef struct

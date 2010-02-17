@@ -457,7 +457,7 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,17,8,0
+ FILEVERSION 1,17,8,3
  PRODUCTVERSION 1,0,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
@@ -474,7 +474,7 @@ BEGIN
         BLOCK "040704b0"
         BEGIN
             VALUE "FileDescription", "AVI-Mux GUI"
-            VALUE "FileVersion", "1, 17, 8, 0"
+            VALUE "FileVersion", "1, 17, 8, 3"
             VALUE "InternalName", "AVIMux_GUI"
             VALUE "LegalCopyright", "Copyright (C) 2002 - 2008"
             VALUE "OriginalFilename", "AVIMux_GUI.EXE"
@@ -846,7 +846,7 @@ BEGIN
     IDS_CANTOPENMP3         "Die MP3/AC3/DTS-Quelldatei konnte nicht geöffnet werden. Vermutlich ist der erste Frameheader fehlerhaft."
     IDS_VILB_SETMAHFLAGS    "MainAVIHeader.dwFlags ändern"
     IDS_VERSION             "Version"
-    IDS_VERSION_INFO        "1.17.8"
+    IDS_VERSION_INFO        "1.17.8.3"
     IDS_VILB_CHUNKSIZES     "Chunkgrößen"
     IDS_VILB_OVER           "über"
     IDS_VILB_UPTO           "bis zu"

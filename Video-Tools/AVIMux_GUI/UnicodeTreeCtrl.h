@@ -8,6 +8,7 @@
 //
 
 #include "UnicodeBase.h"
+#include "TreeItemDeleter.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // Fenster CUnicodeTreeCtrl 
@@ -15,9 +16,11 @@
 typedef struct
 {
 	char*	cText;
+	//std::string text;
 	bool	bAllocated;
 	DWORD_PTR dwUserData;
 } UNICODETREEITEM_DATA;
+
 
 class CUnicodeTreeCtrl : public CTreeCtrl, public CUnicodeBase
 {
@@ -27,24 +30,93 @@ protected:
 	int		mouse_x, mouse_y;
 	bool	b_rdown;
 	void	virtual	GetTextCallback(NMHDR* pNMHDR, LRESULT* pResult);
-	int		RenderItem(HTREEITEM hItem, char* cDest, int iDepth);
+	int		RenderItem(HTREEITEM hItem, std::string& dest, int iDepth);
 public:
 	CUnicodeTreeCtrl();
 	void	InitUnicode();
-	HTREEITEM InsertItem(LPTVINSERTSTRUCT lpInsertStruct);
+	HTREEITEM InsertItem(LPTVINSERTSTRUCTA lpInsertStruct);
+	HTREEITEM InsertItem(LPTVINSERTSTRUCTW lpInsertStruct);
 	HTREEITEM GetTopMostParentItem(HTREEITEM hItem);
+	
+	//bool   
+//	bool	PrepareDeleteItem(HTREEITEM hItem, TreeItemDeleter<UNICODETREEITEM_DATA>& deleter);
+
+protected:
+	typedef DWORD_PTR (CUnicodeTreeCtrl::*fnGetItemData)(HTREEITEM hItem) const;
+
+public:
+
+#ifdef NOT_DEFINED
+	template<class T>
+	bool PrepareDeleteItem(HTREEITEM hItem, TreeItemDeleter<T>& deleter, fnGetItemData getItemData)
+	{
+		HTREEITEM hChild; 
+
+		//CTreeCtrl::SetItemData(hItem, NULL);
+		if (hChild = GetChildItem(hItem)) {
+			PrepareDeleteAllItems(hChild, deleter, getItemData);
+		}
+
+		T* data = (T*)(this->*getItemData)(hItem); //CTreeCtrl::GetItemData(hItem);
+		deleter += data;
+
+	/*	CTreeCtrl::DeleteItem(hItem);
+
+		if (data && data->bAllocated) {
+			delete[] data->cText;
+			data->bAllocated = 0;
+			data->cText = NULL;
+		}
+
+		if (data) {
+			delete data;
+			data = NULL;
+		}
+	*/
+		return true;
+	}
+
+	template<class T>
+	bool PrepareDeleteAllItems(HTREEITEM hRoot, TreeItemDeleter<T>& deleter, fnGetItemData getItemData)
+	{
+		if (!hRoot) {
+			hRoot = GetRootItem();
+			if (!hRoot)
+				return false;
+		}
+
+		HTREEITEM hCurrent, hNext;
+
+		hCurrent = hRoot;
+
+		do {
+			hNext = GetNextSiblingItem(hCurrent);
+			PrepareDeleteItem(hCurrent, deleter, getItemData);
+			hCurrent = hNext;		
+		} while (hNext);
+
+		return true;
+	}
+#endif
+//	bool	PrepareDeleteAllItems(HTREEITEM hRoot, TreeItemDeleter<UNICODETREEITEM_DATA>& deleter);
+
+
 	bool	DeleteItem(HTREEITEM hItem);
-	bool	DeleteAllItems(HTREEITEM hRoot = NULL);
+	bool    DeleteAllItems(HTREEITEM hRoot = NULL);
+
 	void	SetItemData(HTREEITEM hItem, DWORD dwData);
-	DWORD_PTR GetItemData(HTREEITEM);
+	DWORD_PTR GetItemData(HTREEITEM) const;
 	char*	GetItemText(HTREEITEM);
-	void	SetItem(TVITEM* pItem);
+	void	SetItem(TVITEMA* pItem);
+	void	SetItem(TVITEMW* pItem);
 	bool	SetItemText(HTREEITEM hItem, LPCTSTR lpszItem);
 	void	ShowItemCheckBox(HTREEITEM, bool);
 	int		GetMouseX();
 	int		GetMouseY();
 	int		GetRButtonDown();
-	int		Render2Buffer(char* cDest);
+
+	// Renders the entire tree into a utf8 encoded string
+	int		Render2Buffer(std::string& dest);
 
 // Attribute
 public:

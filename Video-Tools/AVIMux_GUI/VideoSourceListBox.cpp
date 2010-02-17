@@ -95,7 +95,9 @@ void CVideoSourceListBox::OnRButtonUp(UINT nFlags, CPoint point)
 
 			if (bShowMenu) cmPopupMenu->AppendMenu(MF_SEPARATOR,0);
 			
-			cmPopupMenu->AppendMenu(MF_STRING,IDM_EXTRACT_BINARY,LoadString(STR_MAIN_A_EXTRBIN));
+			CUTF8 utf8Text(LoadString(STR_MAIN_A_EXTRBIN), CHARACTER_ENCODING_UTF8);
+			cmPopupMenu->AppendMenu(MF_STRING, IDM_EXTRACT_BINARY, //LoadString(STR_MAIN_A_EXTRBIN));
+				utf8Text.TStr());
 		}
 	}
 	
@@ -142,7 +144,9 @@ int ExtractThread(EXTRACT_THREAD_VIDEO_DATA*	lpETD)
 		f->Write(lpBuffer,dwSize);
 		if (GetTickCount()-iLastTime>100 || v->IsEndOfStream()) {
 			Millisec2Str((iTimecode * v->GetTimecodeScale() + iNS)/ 1000000,cTime);
-			lpETD->dlg->m_Prg_Frames.SetWindowText(cTime);
+			
+			CUTF8 utf8Time(cTime);
+			lpETD->dlg->m_Prg_Frames.SetWindowText(utf8Time.TStr());
 			iLastTime+=100;
 		}
 	}
@@ -172,7 +176,7 @@ BOOL CVideoSourceListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 //	CFileDialog*	cfd;
 	CAVIMux_GUIDlg*	cMainDlg = (CAVIMux_GUIDlg*)GetParent();
 	char cFilter[256];
-	char cDefExt[5];
+	std::basic_string<TCHAR> cDefExt;
 	int open = 0;
 	VIDEOSOURCE* v;
 	OPENFILENAME o; 
@@ -194,7 +198,7 @@ BOOL CVideoSourceListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 			break;
 		case IDM_EXTRACT_BINARY:
 			ZeroMemory(cFilter,sizeof(cFilter));
-			ZeroMemory(cDefExt,sizeof(cDefExt));
+//			ZeroMemory(cDefExt,sizeof(cDefExt));
 			
 			iIndex = GetCurSel();
 			if (iIndex == LB_ERR)
@@ -204,12 +208,12 @@ BOOL CVideoSourceListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 
 	
 			strcpy(cFilter,"*.raw|*.raw||");
-			strcpy(cDefExt,"mp3");
+			cDefExt = _T("mp3");
 			 
 
 			PrepareSimpleDialog(&o, m_hWnd, cFilter);
 			o.Flags |= OFN_OVERWRITEPROMPT;
-			o.lpstrDefExt = cDefExt;
+			o.lpstrDefExt = cDefExt.c_str();
 			open = GetOpenSaveFileNameUTF8(&o, 0);
 			
 			if (open) {
@@ -221,8 +225,13 @@ BOOL CVideoSourceListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 					cMainDlg->m_Prg_Dest_File.SetWindowText(o.lpstrFile);
 					thread=AfxBeginThread((AFX_THREADPROC)ExtractThread,lpETD);
 				} else {
-					MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE),LoadString(STR_GEN_ERROR),
-						MB_OK | MB_ICONERROR);
+					CUTF8 message(LoadString(IDS_COULDNOTOPENOUTPUTFILE));
+					CUTF8 title(LoadString(STR_GEN_ERROR));
+
+					MessageBox(message.TStr(), title.TStr(), MB_OK | MB_ICONERROR);
+
+					//MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE),LoadString(STR_GEN_ERROR),
+					//	MB_OK | MB_ICONERROR);
 				}
 			}
 			

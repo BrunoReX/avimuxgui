@@ -43,8 +43,28 @@ HINSTANCE GetInstance() {
 	return theApp.m_hInstance;
 }
 
+bool error = false;
+int nResponse;
+
+void RunStuff(CAVIMux_GUIDlg& dlg)
+{
+	__try
+	{
+		nResponse = dlg.DoModal();
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		error = true;
+	}
+}
+
 BOOL CAVIMux_GUIApp::InitInstance()
 {
+	CTraceFile* traceFile = GetApplicationTraceFile();
+	traceFile->IncRefCounter();
+	traceFile->SetTraceLevel(TRACE_LEVEL_INFO);
+	traceFile->Trace(TRACE_LEVEL_INFO, _T("Application launched"), _T("Application launched"));
+
 	AfxEnableControlContainer();
 
 	// Standardinitialisierung
@@ -61,7 +81,19 @@ BOOL CAVIMux_GUIApp::InitInstance()
 	CAVIMux_GUIDlg dlg;
 
 	m_pMainWnd = &dlg;
-	int nResponse = dlg.DoModal();
+	RunStuff(dlg);
+
+	if (!error)
+	{
+		traceFile->Trace(TRACE_LEVEL_INFO, _T("Application terminated"), _T("Application terminated normally"));
+	}
+	else
+	{
+		traceFile->Trace(TRACE_LEVEL_FATAL, "Application terminated", "Application terminated irregularly");
+		MessageBoxA(NULL, "Application terminated due to an exception.", "Fatal error", MB_OK | MB_ICONERROR);
+	}
+
+
 	if (nResponse == IDOK)
 	{
 		// ZU ERLEDIGEN: Fügen Sie hier Code ein, um ein Schließen des
@@ -72,6 +104,9 @@ BOOL CAVIMux_GUIApp::InitInstance()
 		// ZU ERLEDIGEN: Fügen Sie hier Code ein, um ein Schließen des
 		//  Dialogfelds über "Abbrechen" zu steuern
 	}
+
+	traceFile->Close();
+	delete traceFile;
 
 	// Da das Dialogfeld geschlossen wurde, FALSE zurückliefern, so dass wir die
 	//  Anwendung verlassen, anstatt das Nachrichtensystem der Anwendung zu starten.

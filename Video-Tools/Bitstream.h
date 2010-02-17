@@ -37,13 +37,22 @@ class CBitStream2 : public virtual BITSTREAM
 private:
 	std::deque<uint8> m_InputBuffer;
 	int m_PrebufferSize;
-	void	virtual LoadWord(void);
+
+	/** \brief Reads data into the input buffer
+	 *
+	 * This function reads as many bytes as indicated \a m_PrebufferSize into \a m_InputBuffer.
+	 * \returns 'true' if at least one byte was read, 'false' if no data could be read
+	 */
+	bool	virtual FillInputBuffer();
 public:
 	CBitStream2();
 	virtual ~CBitStream2();
 	int		virtual Seek(__int64	qwPos);
 	__int64	virtual	ReadBits64(int n, int iFlag = 0);
-	void    virtual FlushInputBuffer() { m_InputBuffer.clear(); }
+	void    virtual FlushInputBuffer() { 
+		m_InputBuffer.clear(); 
+		dwCurrBitPos = 16;
+	}
 };
 
 #endif

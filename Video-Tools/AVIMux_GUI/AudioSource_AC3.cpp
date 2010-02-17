@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "silence.h"
 #include "audiosource_ac3.h"
+#include "..\..\Common\UTF-8.h"
 
 #ifdef DEBUG_NEW
 #ifdef _DEBUG
@@ -206,6 +207,8 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 		if (GetSource()->Read(si,sizeof(AC3FRMHDR))!=sizeof(AC3FRMHDR)) {
 			GetSource()->Seek(qwOldPos);
 			if (GetSource()->Read(si,sizeof(AC3FRMHDR))!=sizeof(AC3FRMHDR)) {
+				if (GetIsOpen())
+					LogFrameHeaderReadingError();
 				return 0; 
 			}
 		}
@@ -225,6 +228,8 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 				}
 			}
 			if (dwCrapData==dwMaxGap) {
+				if (GetIsOpen())
+					LogFrameHeaderReadingError();
 				return 0;
 			}
 		/*	if (lpRCB) {
@@ -265,6 +270,8 @@ int AC3SOURCE::ReadFrame(void* lpDest, DWORD* lpdwMicroSecRead,
 
 	if (GetSource()->Read(si,sizeof(AC3FRMHDR))!=sizeof(AC3FRMHDR)) {
 		GetSource()->Seek(qwOldPos);
+		if (GetIsOpen())
+			LogFrameHeaderReadingError();
 		return 0; 
 	}
 
@@ -327,7 +334,10 @@ int AC3SOURCE::ReadFrame(MULTIMEDIA_DATA_PACKET** dataPacket)
 		return -1;
 
 	if (!ParseFrameHeader(&ac3info))
+	{
+		LogFrameHeaderReadingError();
 		return 0;
+	}
 
 	if (this->ac3info.dwChannels < 1)
 		memcpy(&this->ac3info, &ac3info, sizeof(ac3info));
@@ -443,12 +453,16 @@ int AC3SOURCE::Open(STREAM* lpStream)
 
 	_silence=new SILENCE;
 
-	char dir[5120];
-	GetModuleFileName(NULL, dir, 5120);	
-	silence->Init(dir);
+	TCHAR dir[32768];
+	GetModuleFileName(NULL, dir, 32768);
+
+	CUTF8 utf8Dir(dir);
+	//silence->Init(dir);
+	silence->Init(utf8Dir.Str());
 	bUseExternalSilence=(silence->SetFormat(AUDIOTYPE_AC3,ac3info.dwChannels,ac3info.dwFrequency,
 		(float)ac3info.dwBitrate)==SSF_SUCCEEDED);
 	SetResyncRange(dwOldRange);
+	SetIsOpen(true);
 	return iRes;
 }
 
@@ -462,12 +476,11 @@ int AC3SOURCE::GetChannelCount()
 	return ac3info.dwChannels;
 }
 
-char* AC3SOURCE::GetChannelString()
+std::string AC3SOURCE::GetChannelString()
 {
-	char cTemp[8]; cTemp[0]=0;
-	
-	_snprintf(cTemp, 8, "%d.%d", GetChannelCount()-ac3info.dwLFE, ac3info.dwLFE);
-	return _strdup(cTemp);
+	std::ostringstream sstrResult;
+	sstrResult << GetChannelCount()-ac3info.dwLFE << "." << ac3info.dwLFE;
+	return sstrResult.str();
 }
 
 int AC3SOURCE::GetBitrate()

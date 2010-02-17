@@ -2689,7 +2689,7 @@ bool MATROSKA::IsPrevClusterSizeEnabled()
 	return !!ws.bPrevClusterSize;
 }
 */
-void MATROSKA::SetAppName(char* cName)
+void MATROSKA::SetAppName(const char* cName)
 {
 	e_SegInfo->SetWritingApp(new CStringBuffer(cName));
 }

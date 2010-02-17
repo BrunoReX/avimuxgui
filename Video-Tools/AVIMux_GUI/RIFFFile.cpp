@@ -397,8 +397,8 @@ void* CHUNK::Store(void* lpDest,DWORD dwFlags)
 	*lpdwRes++=dwFourCC;
 	*lpdwRes++=dwSize;
 	if (lpData)	memcpy(lpdwRes,lpData,dwSize); else ZeroMemory(lpdwRes,dwSize);
-	lpdwRes=(DWORD*)((DWORD)lpdwRes+dwSize);
-	if (dwSize%2) lpdwRes=(DWORD*)((DWORD)lpdwRes+1);
+	lpdwRes=(DWORD*)((DWORD_PTR)lpdwRes+dwSize);
+	if (dwSize%2) lpdwRes=(DWORD*)((DWORD_PTR)lpdwRes+1);
 
 	return (dwFlags&LE_CHAIN)?(lpNext)?lpNext->Store((void*)lpdwRes,LE_CHAIN):lpdwRes:lpdwRes;
 }

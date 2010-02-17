@@ -5,7 +5,7 @@
 #include "windows.h"
 #include "..\UnicodeCalls.h"
 
-void PrepareSimpleDialog(void* lpopn, HWND m_hWnd, const char* cFilter);
+void PrepareSimpleDialog(void* lpopn, HWND m_hWnd, const TCHAR* cFilter);
 int GetOpenSaveFileNameUTF8(void* lpofn, int open);
 
 

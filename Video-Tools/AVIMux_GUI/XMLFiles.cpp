@@ -52,6 +52,7 @@ int FileIsXML(CTextFile* t)
 	return 0;
 }
 
+/*
 int Textfile2String(CTextFile* t, char* c)
 {
 	c[0]=0;
@@ -64,6 +65,7 @@ int Textfile2String(CTextFile* t, char* c)
 
 	return j;
 }
+*/
 
 char* Textfile2String(CTextFile* t)
 {
@@ -73,20 +75,25 @@ char* Textfile2String(CTextFile* t)
 	int totalSize = 0;
 	int sizeOfLine = 0;
 	__int64 position = t->GetPos();
-	char* pTemp;
+//	char* pTemp;
 
+	std::string completeFile;
 	do 
 	{
-		sizeOfLine = t->ReadLine(&pTemp);
+		std::string line;
+		sizeOfLine = t->ReadLine(line);
+		if (sizeOfLine >= 0)
+			completeFile.append(line);
 		if (sizeOfLine > 0)
 			totalSize += sizeOfLine;
-		free(pTemp);
+//		free(pTemp);
 	} while (sizeOfLine > -1);
 	
-	pTemp = (char*)malloc(totalSize+1);
+//	pTemp = (char*)malloc(totalSize+1);
 
-	t->Seek(position);
-	Textfile2String(t, pTemp);
+//	t->Seek(position);
+//	Textfile2String(t, pTemp);
 
-	return pTemp;
+	char* completeFilePtr = _strdup(completeFile.c_str());
+	return completeFilePtr;
 }

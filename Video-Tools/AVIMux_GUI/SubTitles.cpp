@@ -148,8 +148,13 @@ int SUBTITLESOURCELIST::Append(SUBTITLESOURCE* pNext)
 		GetTitleSet()->Import(pNext->GetTitleSet());
 
 		ZeroMemory(cBuffer,sizeof(cBuffer));
-		pNext->GetLanguageCode(cBuffer);
-		SetLanguageCode(cBuffer);
+		
+		//pNext->GetLanguageCode(cBuffer);
+		//SetLanguageCode(cBuffer);
+		std::string languageCode;
+		pNext->GetLanguageCode(languageCode);
+		SetLanguageCode(languageCode);
+		
 		info.active_source = pNext;
 		SetDefault(pNext->IsDefault());
 	} else {
@@ -499,16 +504,20 @@ int SUBTITLESFROMMATROSKA::GetName(char* lpDest)
 	}
 }
 
-int SUBTITLESFROMMATROSKA::GetLanguageCode(char* lpDest)
+int SUBTITLESFROMMATROSKA::GetLanguageCode(std::string& result)
 {
 	info.m->SetActiveTrack(info.iStream);
 	char* c=info.m->GetLanguage();
+	
 	if (c && strcmp(c,"")) {
-		int l;
-		memcpy(lpDest,c,l=strlen(c));
-		return l;
+//		int l;
+	//	memcpy(lpDest,c,l=strlen(c));
+		result = c;
+		return result.size();
+		//return l;
 	} else {
-		*lpDest = 0;
+		result = "";
+		//*lpDest = 0;
 		return 0;
 	}
 }
@@ -692,7 +701,7 @@ int SUBTITLES::ParseSRT()
 		iFirst = false;
 		dwNumber++;
 		ReadLine(cBuffer);
-		lpCurrSub->dwNoPos=(lstrlen(cBuffer)<57);
+		lpCurrSub->dwNoPos=(strlen(cBuffer)<57);
 		cBuffer[2]=0; cBuffer[5]=0; cBuffer[8]=0; cBuffer[12]=0;
 		cBuffer[19]=0; cBuffer[22]=0; cBuffer[25]=0; cBuffer[29]=0;
 		if (!lpCurrSub->dwNoPos)
@@ -741,9 +750,9 @@ int SUBTITLES::ParseSRT()
 
 		} while (iRead>0 && !bLineEmpty);
 
-		lpCurrSub->lpcText=new char[lstrlen(cBuffer)+1];
-		lstrcpy(lpCurrSub->lpcText,cBuffer);
-		lpCurrSub->iCharCoding = GetSource()->IsUTF8Out()?CHARACTER_ENCODING_UTF8:CHARACTER_ENCODING_ANSI;
+		lpCurrSub->lpcText=new char[strlen(cBuffer)+1];
+		strcpy(lpCurrSub->lpcText,cBuffer);
+		lpCurrSub->iCharCoding = GetSource()->IsUTF8Out()?CharacterEncoding::UTF8:CharacterEncoding::ANSI;
 
 		lpCurrSub->lpNext=new SUBTITLE_DESCRIPTOR;
 		i=sizeof(SUBTITLE_DESCRIPTOR);
@@ -759,11 +768,11 @@ int SUBTITLES::ParseSRT()
 
 int SUBTITLESOURCE::StoreSSAHeaderInfo(char* lpcName,char* lpcInfo,char** lplpDest)
 {
-	if (!_strnicmp(lpcInfo,lpcName,lstrlen(lpcName)))
+	if (!_strnicmp(lpcInfo,lpcName,strlen(lpcName)))
 	{
 		if (*lplpDest) delete (*lplpDest);
-		*lplpDest=new char[1+lstrlen(lpcInfo)-lstrlen(lpcName)];
-		lstrcpy(*lplpDest,lpcInfo+lstrlen(lpcName));
+		*lplpDest=new char[1+strlen(lpcInfo)-strlen(lpcName)];
+		strcpy(*lplpDest,lpcInfo+strlen(lpcName));
 		return true;
 	}
 	else
@@ -879,7 +888,7 @@ int SUBTITLESOURCE::ReadSSAStyles()
 
 	if (strncmp(cBuffer,"Format:",7)) return false;
 
-	for (i=7;i<lstrlen(cBuffer);dwAttribCount+=!!(cBuffer[i++]==','));
+	for (i=7;i<strlen(cBuffer);dwAttribCount+=!!(cBuffer[i++]==','));
 	dwAttribCount=min(dwAttribCount,18);
 		
 	lpMembers=new DWORD[dwAttribCount];
@@ -890,7 +899,7 @@ int SUBTITLESOURCE::ReadSSAStyles()
 	{
 		for (j=0;j<(int)dwAttribCount;j++)
 		{
-			if (!_strnicmp(RemoveBlanks(cBuffer+iPos),style_attribs[j],lstrlen(style_attribs[j])))
+			if (!_strnicmp(RemoveBlanks(cBuffer+iPos),style_attribs[j],strlen(style_attribs[j])))
 			{
 				lpMembers[i]=j;
 			}
@@ -904,7 +913,7 @@ int SUBTITLESOURCE::ReadSSAStyles()
 	styles=new SSA_STYLE*[1024];
 	ZeroMemory(styles, 1024*sizeof(void*));
 	dwStyleCount=0;
-	while ( ReadLine(cBuffer)>-1 && lstrcmp(cBuffer,"[Events]"))
+	while ( ReadLine(cBuffer)>-1 && strcmp(cBuffer,"[Events]"))
 	{
 		if (!strncmp(cBuffer,"Style:",6))
 		{
@@ -979,7 +988,7 @@ int SUBTITLESOURCE::ReadSSAEvents(void)
 
 	if (strncmp(cBuffer,"Format:",7)) return false;
 
-	for (i=7;i<lstrlen(cBuffer);dwAttribCount+=!!(cBuffer[i++]==','));
+	for (i=7;i<strlen(cBuffer);dwAttribCount+=!!(cBuffer[i++]==','));
 		
 	lpMembers=new DWORD[dwAttribCount];
 	ZeroMemory(lpMembers,4*dwAttribCount);
@@ -989,7 +998,7 @@ int SUBTITLESOURCE::ReadSSAEvents(void)
 	{
 		for (j=0;j<(int)dwAttribCount;j++)
 		{
-			if (!strncmp(RemoveBlanks(cBuffer+iPos),event_attribs[j],lstrlen(event_attribs[j])))
+			if (!strncmp(RemoveBlanks(cBuffer+iPos),event_attribs[j],strlen(event_attribs[j])))
 			{
 				lpMembers[i]=j;
 			}
@@ -1023,7 +1032,7 @@ int SUBTITLESOURCE::ReadSSAEvents(void)
 				if (i<(int)dwAttribCount-1) {
 					dwLen=strcspn(cBuffer+iPos,",");
 				} else {
-					dwLen=lstrlen(cBuffer+iPos);
+					dwLen=strlen(cBuffer+iPos);
 				}
 				lpCurrSub->lpSSA->lpcArray[lpMembers[i]]=new char[1+dwLen];
 				ZeroMemory(lpCurrSub->lpSSA->lpcArray[lpMembers[i]],1+dwLen);
@@ -1034,16 +1043,16 @@ int SUBTITLESOURCE::ReadSSAEvents(void)
 			lpCurrSub->qwBegin=SSATime2NanoSec(lpCurrSub->lpSSA->sesStruct.lpcBegin);
 			lpCurrSub->qwEnd=SSATime2NanoSec(lpCurrSub->lpSSA->sesStruct.lpcEnd);
 			lpCurrSub->dwX2=1;
-			lpCurrSub->iCharCoding = GetSource()->IsUTF8Out()?CHARACTER_ENCODING_UTF8:CHARACTER_ENCODING_ANSI;
+			lpCurrSub->iCharCoding = GetSource()->IsUTF8Out()?CharacterEncoding::UTF8:CharacterEncoding::ANSI;
 			lpCurrSub->dwNoPos=1;
 			for (i=0;i<(int)dwNbrOfStyles;i++)
 			{
-				if (!lstrcmp(lpCurrSub->lpSSA->sesStruct.lpcStyle,lplpSSAStyles[i]->sssStruct.lpcName))
+				if (!strcmp(lpCurrSub->lpSSA->sesStruct.lpcStyle,lplpSSAStyles[i]->sssStruct.lpcName))
 				{
 					free(lpCurrSub->lpSSA->sesStruct.lpcStyle);
 					lpCurrSub->lpSSA->sesStruct.lpsssStyle=&lplpSSAStyles[i]->sssStruct;
 				}
-				if (!lstrcmp(lpCurrSub->lpSSA->sesStruct.lpcStyle+1,lplpSSAStyles[i]->sssStruct.lpcName))
+				if (!strcmp(lpCurrSub->lpSSA->sesStruct.lpcStyle+1,lplpSSAStyles[i]->sssStruct.lpcName))
 				{
 					free(lpCurrSub->lpSSA->sesStruct.lpcStyle);
 					lpCurrSub->lpSSA->sesStruct.lpsssStyle=&lplpSSAStyles[i]->sssStruct;
@@ -1067,7 +1076,16 @@ int SUBTITLESOURCE::ReadSSAEvents(void)
 
 int SUBTITLES::ReadLine(char* lpcBuffer)
 {
-	return GetSource()->ReadLine(lpcBuffer);
+	std::string textFileLine;
+	int result = GetSource()->ReadLine(textFileLine);
+	if (result < 0)
+		return result;
+	
+	lpcBuffer[0]=0;
+	strcpy(lpcBuffer, textFileLine.c_str());
+	return result;
+//
+//	return GetSource()->ReadLine(lpcBuffer);
 }
 
 
@@ -1188,8 +1206,8 @@ int SUBTITLES::Read(void* lpDest, int* iSize, __int64* lpiTimecode, ADVANCEDREAD
 	switch (GetFormat()) {
 		case SUBFORMAT_SRT:
 			if (curr_sub) {
-				lstrcpy(lpcDest,curr_sub->lpcText);
-				lpcDest+=lstrlen(lpcDest);
+				strcpy(lpcDest,curr_sub->lpcText);
+				lpcDest+=strlen(lpcDest);
 			
 				i = (curr_sub->lpcText)?strlen(curr_sub->lpcText):0; //RenderSRTLine_time(curr_sub,&lpcDest,iBegin,iEnd);
 				if (iSize) *iSize = i;
@@ -1241,7 +1259,7 @@ int SUBTITLES::RenderSRTLine_time(SUBTITLE_DESCRIPTOR* subtitle, char** lpcDest,
 		lpcFormat="%02d:%02d:%02d,%03d --> %02d:%02d:%02d,%03d  X1:%03d X2:%03d Y1:%03d Y2:%03d";
 	}
 
-	wsprintf(*lpcDest,lpcFormat,
+	sprintf(*lpcDest,lpcFormat,
 		(DWORD)(qwMSBegin/3600000),
 		(DWORD)(qwMSBegin/60000)%60,
 		(DWORD)(qwMSBegin/1000)%60,
@@ -1254,7 +1272,7 @@ int SUBTITLES::RenderSRTLine_time(SUBTITLE_DESCRIPTOR* subtitle, char** lpcDest,
 		subtitle->dwX2,
 		subtitle->dwY1,
 		subtitle->dwY2);
-		*lpcDest+=iSize=lstrlen(*lpcDest);
+		*lpcDest+=iSize=strlen(*lpcDest);
 
 	return iSize;
 }
@@ -1303,17 +1321,17 @@ int SUBTITLES::RenderSRT2AVIChunk(void** lpDest)
 
 		if (qwMSBegin||qwMSEnd)
 		{
-			wsprintf(lpcDest,"%d%c%c",iNbr++,13,10);
-			lpcDest+=lstrlen(lpcDest);
+			sprintf(lpcDest,"%d%c%c",iNbr++,13,10);
+			lpcDest+=strlen(lpcDest);
 
 			RenderSRTLine_time(lpCurrSub,&lpcDest,qwMSBegin,qwMSEnd);
 
 			*lpcDest++=13;
 			*lpcDest++=10;
 
-			lstrcpy(lpcDest,lpCurrSub->lpcText);
-			lpcDest+=lstrlen(lpcDest);
-			wsprintf(lpcDest,"%c%c%c%c",13,10,13,10);
+			strcpy(lpcDest,lpCurrSub->lpcText);
+			lpcDest+=strlen(lpcDest);
+			sprintf(lpcDest,"%c%c%c%c",13,10,13,10);
 			lpcDest+=4;
 		}
 		lpCurrSub=(SUBTITLE_DESCRIPTOR*)lpCurrSub->lpNext;
@@ -1329,7 +1347,7 @@ int SUBTITLESOURCE::RenderSSAScriptInfo(char** lpcDest)
 	char	cBuffer[8192];
 	char*	lpcBegin = *lpcDest;
 
-	wsprintf(cBuffer,"[Script Info]");
+	sprintf(cBuffer,"[Script Info]");
 	strcpy(*lpcDest,cBuffer);
 	*lpcDest+=strlen(*lpcDest);
 	sprintf(*lpcDest,"%c%c",13,10);
@@ -1356,7 +1374,7 @@ int SUBTITLESOURCE::RenderSSAStyles(char** lpcDest)
 	char*	lpcBegin = *lpcDest;
 
 	sprintf(*lpcDest,"[V4 Styles]");
-	*lpcDest+=lstrlen(*lpcDest);
+	*lpcDest+=strlen(*lpcDest);
 	sprintf(*lpcDest,"%c%c",13,10);
 	*lpcDest+=2;
 
@@ -1365,7 +1383,7 @@ int SUBTITLESOURCE::RenderSSAStyles(char** lpcDest)
 	for (int i=0;i<18;i++)
 	{
 		*((*lpcDest)++)=32;
-		wsprintf(*lpcDest,style_attribs[i]);
+		sprintf(*lpcDest,style_attribs[i]);
 		*lpcDest+=strlen(*lpcDest);
 		if (i<17) *(*lpcDest)++=',';
 	}
@@ -1375,13 +1393,13 @@ int SUBTITLESOURCE::RenderSSAStyles(char** lpcDest)
 	for (int j=0;j<(int)dwNbrOfStyles;j++)
 	{
 		ZeroMemory(cBuffer,sizeof(cBuffer));
-		wsprintf(*lpcDest,"Style: ");
+		sprintf(*lpcDest,"Style: ");
 		*lpcDest+=strlen(*lpcDest);
 
 		for (int i=0;i<18;i++)
 		{
 			sprintf(*lpcDest,"%s",lplpSSAStyles[j]->lpcArray[i]);
-			*lpcDest+=lstrlen(*lpcDest);
+			*lpcDest+=strlen(*lpcDest);
 			if (i<17) {
 				*((*lpcDest)++)=',';
 				*((*lpcDest)++)=' ';
@@ -1430,7 +1448,7 @@ int SUBTITLES::RenderSSAEvent(SUBTITLE_DESCRIPTOR* lpCurrSub,char** lpcDest, __i
 	cBuffer[0] = 0;
 	char*	lpcBegin = *lpcDest;
 
-	wsprintf(cBuffer,"Dialogue: Marked=%s,%d:%02d:%02d.%02d,%d:%02d:%02d.%02d,%s,%s,%s,%s,%s,%s,%s",
+	sprintf(cBuffer,"Dialogue: Marked=%s,%d:%02d:%02d.%02d,%d:%02d:%02d.%02d,%s,%s,%s,%s,%s,%s,%s",
 		lpCurrSub->lpSSA->sesStruct.lpcMarked,
 		(DWORD)(qwMSBegin/3600000),
 		(DWORD)(qwMSBegin/60000)%60,
@@ -1448,8 +1466,8 @@ int SUBTITLES::RenderSSAEvent(SUBTITLE_DESCRIPTOR* lpCurrSub,char** lpcDest, __i
 		lpCurrSub->lpSSA->sesStruct.lpcEffect,
 		lpCurrSub->lpSSA->sesStruct.lpcText		
 		);
-	lstrcpy(*lpcDest,cBuffer);
-	*lpcDest+=lstrlen(cBuffer);
+	strcpy(*lpcDest,cBuffer);
+	*lpcDest+=strlen(cBuffer);
 
 	return *lpcDest - lpcBegin;
 }
@@ -1462,7 +1480,7 @@ int SUBTITLES::RenderSSAEvent4MKV(SUBTITLE_DESCRIPTOR* lpCurrSub,char** lpcDest,
 
 	if (!lpCurrSub || !lpCurrSub->lpSSA || !lpCurrSub->lpSSA->sesStruct.lpcText) return 0;
 
-	wsprintf(cBuffer,"%d,,%s,%s,%s,%s,%s,%s,%s",
+	sprintf(cBuffer,"%d,,%s,%s,%s,%s,%s,%s,%s",
 		iDisplayOrderCount++,
 		lpCurrSub->lpSSA->sesStruct.lpsssStyle->lpcName,
 		lpCurrSub->lpSSA->sesStruct.lpcName,
@@ -1472,8 +1490,8 @@ int SUBTITLES::RenderSSAEvent4MKV(SUBTITLE_DESCRIPTOR* lpCurrSub,char** lpcDest,
 		lpCurrSub->lpSSA->sesStruct.lpcEffect,
 		lpCurrSub->lpSSA->sesStruct.lpcText		
 		);
-	lstrcpy(*lpcDest,cBuffer);
-	*lpcDest+=lstrlen(cBuffer);
+	strcpy(*lpcDest,cBuffer);
+	*lpcDest+=strlen(cBuffer);
 
 	return *lpcDest - lpcBegin;
 }
@@ -1508,22 +1526,22 @@ int SUBTITLES::RenderSSA2AVIChunk(void** lpDest)
 
 	// render subtitles
 
-	wsprintf(cBuffer,"[Events]");
-	lstrcpy(lpcDest,cBuffer);
-	lpcDest+=lstrlen(cBuffer);
-	wsprintf(lpcDest,"%c%c",13,10);
+	sprintf(cBuffer,"[Events]");
+	strcpy(lpcDest,cBuffer);
+	lpcDest+=strlen(cBuffer);
+	sprintf(lpcDest,"%c%c",13,10);
 	lpcDest+=2;
 
-	wsprintf(lpcDest,"Format:");
-	lpcDest+=lstrlen("Format:");
+	sprintf(lpcDest,"Format:");
+	lpcDest+=strlen("Format:");
 	for (i=0;i<10;i++)
 	{
 		*lpcDest++=32;
-		wsprintf(lpcDest,event_attribs[i]);
-		lpcDest+=lstrlen(lpcDest);
+		sprintf(lpcDest,event_attribs[i]);
+		lpcDest+=strlen(lpcDest);
 		if (i<9) *lpcDest++=',';
 	}
-	wsprintf(lpcDest,"%c%c",13,10);
+	sprintf(lpcDest,"%c%c",13,10);
 	lpcDest+=2;
 
 	while (lpCurrSub)
@@ -1554,7 +1572,7 @@ int SUBTITLES::RenderSSA2AVIChunk(void** lpDest)
 
 			RenderSSAEvent(lpCurrSub,&lpcDest,qwMSBegin,qwMSEnd);
 			
-			wsprintf(lpcDest,"%c%c",13,10);
+			sprintf(lpcDest,"%c%c",13,10);
 			lpcDest+=2;
 		}
 		lpCurrSub=(SUBTITLE_DESCRIPTOR*)lpCurrSub->lpNext;
@@ -1624,7 +1642,7 @@ int SUBTITLES::Merge(SUBTITLES* lpSubsToMerge,__int64 qwBias)
 				bIdenticalStyles=lastsub && lastsub->lpSSA && !!SSAStylesEqual(lpNext->lpSSA->sesStruct.lpsssStyle,lastsub->lpSSA->sesStruct.lpsssStyle);
 				break;
 		}
-		if (bIdenticalStyles&&(!lstrcmp(lastsub->lpcText,lpNext->lpcText)))
+		if (bIdenticalStyles&&(!strcmp(lastsub->lpcText,lpNext->lpcText)))
 		{
 			if (lastsub->qwEnd==lpNext->qwBegin+qwBias)
 			{
@@ -1678,7 +1696,7 @@ int SUBTITLES::Merge(SUBTITLES* lpSubsToMerge,__int64 qwBias)
 		{
 			free(styles[i]->sssStruct.lpcName);
 			styles[i]->sssStruct.lpcName=new char[20];
-			wsprintf(styles[i]->sssStruct.lpcName,"style%d",i+1);
+			sprintf(styles[i]->sssStruct.lpcName,"style%d",i+1);
 		}
 
 		free(lplpSSAStyles);

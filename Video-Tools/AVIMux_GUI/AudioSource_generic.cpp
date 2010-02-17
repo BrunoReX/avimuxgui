@@ -43,6 +43,11 @@ int AUDIOSOURCE::Read(void* lpDest, DWORD dwMicrosecDesired, DWORD* lpdwMicrosec
 	return 0;
 }
 
+int AUDIOSOURCE::Read(MULTIMEDIA_DATA_PACKET** dataPacket)
+{
+	return 0;
+}
+
 int AUDIOSOURCE::Seek(__int64 iPos)
 {
 	return 0;
@@ -74,12 +79,11 @@ int AUDIOSOURCE::GetChannelCount()
 	return 0;
 }
 
-char* AUDIOSOURCE::GetChannelString()
+std::string AUDIOSOURCE::GetChannelString()
 {
-	char cTemp[64]; cTemp[0] = 0;
-
-	sprintf(cTemp, "%d", GetChannelCount());
-	return _strdup(cTemp);
+	std::ostringstream sstrResult;
+	sstrResult << GetChannelCount();
+	return sstrResult.str();
 }
 
 int AUDIOSOURCE::GetGranularity()

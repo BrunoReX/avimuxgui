@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "silence.h"
+#include "..\..\Common\Path.h"
+#include "..\FileStream.h"
 //#include "stdio.h"
 
 #define SCS_INVALID		-1
@@ -14,9 +16,11 @@ SILENCE::~SILENCE()
 {
 }
 
-int SILENCE::Init(char* lpcName)
+int SILENCE::Init(const char* lpcName)
 {
-	int	i;
+	int i = 0;
+
+/*	int	i;
 	bool	bAlloc=false;
 	char	buffer[200];
 	char*	dir;
@@ -39,25 +43,37 @@ int SILENCE::Init(char* lpcName)
 		dir=".";
 
 	i=0;
-
+*/
 	iNbrOfDescs=5;
 	lpSD=(SILENCE_DESCRIPTOR*)malloc(iNbrOfDescs*sizeof(SILENCE_DESCRIPTOR));
-	lstrcat(dir,"\\silence files");
+	//lstrcat(dir,"\\silence files");
+	
 
-	wsprintf(buffer,"%s\\FILL-6ch-384kbps.ac3",dir);
-	if (SetDescriptor(buffer,1536,AUDIOTYPE_AC3,5,48000,384,&(lpSD[i]))==SSD_SUCCEEDED) i++;
-	wsprintf(buffer,"%s\\FILL-6ch-448kbps.ac3",dir);
-	if (SetDescriptor(buffer,1792,AUDIOTYPE_AC3,5,48000,448,&(lpSD[i]))==SSD_SUCCEEDED) i++;
-	wsprintf(buffer,"%s\\FILL-2ch-192kbps.ac3",dir);
-	if (SetDescriptor(buffer,768,AUDIOTYPE_AC3,2,48000,192,&(lpSD[i]))==SSD_SUCCEEDED) i++;
-	wsprintf(buffer,"%s\\FILL-6ch-768kbps.dts",dir);
-	if (SetDescriptor(buffer,1006,AUDIOTYPE_DTS,5,48000,754.50,&(lpSD[i]))==SSD_SUCCEEDED) i++;
-	wsprintf(buffer,"%s\\FILL-6ch-1509kbps.dts",dir);
-	if (SetDescriptor(buffer,2013,AUDIOTYPE_DTS,5,48000,1509.75,&(lpSD[i]))==SSD_SUCCEEDED) i++;
+	std::string dir = (lpcName ? lpcName : ".");
+
+//	wsprintf(buffer,"%s\\FILL-6ch-384kbps.ac3",dir);
+	std::string sample_ac3_6ch_384kbps_path = CPath::Combine(dir, "FILL-6ch-384kbps.ac3");
+	if (SetDescriptor(sample_ac3_6ch_384kbps_path, 1536, AUDIOTYPE_AC3, 5, 48000, 384,&(lpSD[i]))==SSD_SUCCEEDED) i++;
+
+//	wsprintf(buffer,"%s\\FILL-6ch-448kbps.ac3",dir);
+	std::string sample_ac3_6ch_448kbps_path = CPath::Combine(dir, "FILL-6ch-448kbps.ac3");
+	if (SetDescriptor(sample_ac3_6ch_448kbps_path, 1792, AUDIOTYPE_AC3, 6, 48000, 448, &(lpSD[i]))==SSD_SUCCEEDED) i++;
+
+//  wsprintf(buffer,"%s\\FILL-2ch-192kbps.ac3",dir);
+	std::string sample_ac3_2ch_192kbps_path = CPath::Combine(dir, "FILL-2ch-192kbps.ac3");
+	if (SetDescriptor(sample_ac3_2ch_192kbps_path, 768, AUDIOTYPE_AC3, 2, 48000, 192, &(lpSD[i]))==SSD_SUCCEEDED) i++;
+
+//	wsprintf(buffer,"%s\\FILL-6ch-768kbps.dts",dir);
+	std::string sample_dts_6ch_768kbps_path = CPath::Combine(dir, "FILL-6ch-768kbps.dts");
+	if (SetDescriptor(sample_dts_6ch_768kbps_path, 1006, AUDIOTYPE_DTS, 5, 48000, 754.50, &(lpSD[i]))==SSD_SUCCEEDED) i++;
+
+//	wsprintf(buffer,"%s\\FILL-6ch-1509kbps.dts",dir);
+	std::string sample_dts_6ch_1536kbps_path = CPath::Combine(dir, "FILL-6ch-1509kbps.dtss");
+	if (SetDescriptor(sample_dts_6ch_1536kbps_path, 2013, AUDIOTYPE_DTS, 5, 48000, 1509.75, &(lpSD[i]))==SSD_SUCCEEDED) i++;
 //	wsprintf(buffer,"%d: %s\\FILL-6ch-1509kbps.dts",i,dir);
 //	MessageBox(0,buffer,NULL,MB_OK);
 	iNbrOfDescs=i;
-	if (bAlloc) delete dir;
+	//if (bAlloc) delete dir;
 	return 0;
 }
 
@@ -72,22 +88,32 @@ int	SILENCE::Close()
 	return 1;
 }
 
-int SILENCE::SetDescriptor(char* lpcName,DWORD dwSize,DWORD dwFormat,DWORD dwChannels,DWORD dwFreq,float fBitrate,SILENCE_DESCRIPTOR* lpSD)
+int SILENCE::SetDescriptor(const std::string& lpcName, DWORD dwSize,
+						   DWORD dwFormat, DWORD dwChannels, DWORD dwFreq,
+						   float fBitrate, SILENCE_DESCRIPTOR* lpSD)
 {
-	FILE*	f;
-//	char	buffer[200];
+	std::string fileName = CPath::GetAbsolutePath(lpcName);
+	CFileStream* fs = new CFileStream();
+	if (STREAM_OK == fs->Open(fileName.c_str(), StreamMode::Read))
+	{
+		lpSD->lpData=malloc(dwSize);
+		lpSD->dwSize=dwSize;
+		
+		if (dwSize != fs->Read(lpSD->lpData, dwSize))
+			return SSD_FAILED;
 
-	f=fopen(lpcName,"rb");
-	if (!f) return SSD_FAILED;
-	lpSD->lpData=malloc(dwSize);
-	lpSD->dwSize=dwSize;
-	if (!fread(lpSD->lpData,dwSize,1,f)) return SSD_FAILED;
-	lpSD->dwFormat=dwFormat;
-	lpSD->dwChannels=dwChannels;
-	lpSD->fBitrate=fBitrate;
-	lpSD->dwFreq=dwFreq;
-	fclose(f);
-	return SSD_SUCCEEDED;
+		lpSD->dwFormat=dwFormat;
+		lpSD->dwChannels=dwChannels;
+		lpSD->fBitrate=fBitrate;
+		lpSD->dwFreq=dwFreq;
+		fs->Close();
+		delete fs;
+		return SSD_SUCCEEDED;
+	}
+	else
+	{
+		return SSD_FAILED;
+	}
 }
 
 int SILENCE::SetFormat(DWORD dwFormat,DWORD dwChannels,DWORD dwFreq,float fBitrate)

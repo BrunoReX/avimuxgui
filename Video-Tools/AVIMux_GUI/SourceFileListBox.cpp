@@ -342,7 +342,7 @@ BOOL CSourceFileListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 			{
 				if (lpFI = GetFileInfo()) {
 					dest=new CFileStream;
-					if (dest->Open(cfd->GetPathName().GetBuffer(255),STREAM_WRITE)==STREAM_ERR)
+					if (dest->Open(cfd->GetPathName().GetBuffer(255),StreamMode::Write)==STREAM_ERR)
 					{
 						cStr1=LoadString(IDS_COULDNOTOPENOUTPUTFILE);
 						cStr2=LoadString(IDS_ERROR);
@@ -385,8 +385,8 @@ BOOL CSourceFileListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 
 				if (!fi->bInUse) {
 
-					if (fi->lpcName) free(fi->lpcName);
-					fi->lpcName=NULL;
+					//if (fi->lpcName) free(fi->lpcName);
+					//fi->lpcName=NULL;
 					if (fi->dwType & FILETYPE_AVI) {
 						fi->AVIFile->Close(false);
 						delete fi->AVIFile;
@@ -414,7 +414,7 @@ BOOL CSourceFileListBox::OnCommand(WPARAM wParam, LPARAM lParam)
 					for (size_t i=0; i<dwFileIndexes.size(); i++) {
 						FILE_INFO* f = GetFileInfo(dwFileIndexes[i]);
 						strcat(c, "  ");
-						strcat(c, f->lpcName);
+						strcat(c, f->Name.TStr());
 						strcat(c, "\x0D");
 					}
 
@@ -603,7 +603,7 @@ void CSourceFileListBox::DrawItem(LPDRAWITEMSTRUCT lpDrawItemStruct)
 	font->GetLogFont(&logfont);
 
 	char cTempUTF8[65536]; cTempUTF8[0]=0;
-	sprintf(cTempUTF8, "[%s] %s", lpFI->cFileformatString, lpFI->lpcName);
+	sprintf(cTempUTF8, "[%s] %s", lpFI->cFileformatString, lpFI->Name.UTF8());
 	
 	int j = fromUTF8(cTempUTF8, &u);
 	if (IsUnicode())

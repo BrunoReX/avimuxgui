@@ -372,7 +372,7 @@ class MATROSKA : public CHasTitles
 		void			SetSegmentDuration(float fDuration);
 		void			SetSegmentTitle(char* cTitle);
 		void			SetTrackCount(int iCount);
-		void			SetAppName(char* cName);
+		void			SetAppName(const char* cName);
 		void			SetChapters(CChapters* c, __int64 iDuration = -1);
 		void			SetTimecodeScale(__int64 iScale);
 		void			SetTracksCopiesCount(int iCount);

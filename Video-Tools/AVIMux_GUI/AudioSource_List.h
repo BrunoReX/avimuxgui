@@ -36,6 +36,7 @@ class AUDIOSOURCELIST: public AUDIOSOURCE
 		__int64	virtual GetFrameDuration();
 		int		virtual GetGranularity();
 		char	virtual *GetCodecID();
+		std::string	virtual GetChannelString();
 		int		virtual GetOffset();
 		__int64	virtual	GetSize();
 		int		virtual	SetFrameMode(DWORD dwMode);

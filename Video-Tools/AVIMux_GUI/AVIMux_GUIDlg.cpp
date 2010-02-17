@@ -10,18 +10,71 @@ WM_QUIT
 
 	TODO:
 
+        - Check usage of text elements:
+
+		German, Hungarian:
+-410
+-411
+-412
++505
++506
+
+Polish:
++1200
++1721
++1920
+
+French:
++505
++506
+
+Italian:
++1721
++1920
+
+Spanish:
++119
++124
++218
++219
++405
++406
++407
++540
++836
++921-928
++937
++938
++947
++948
++962-1007
++1563-1583
++1707-1721
+
+Chinese:
+209 (to correct)
++1005
++1006
++1007
+
+        - make translateable:
+		    New stream title...
+			Delete stream title...
+
 	    - check: sync is b0rked for AVI output when file starts with a deltaframe
 		- check: funny characters in LOAD command break loading!? (like ' )
 		    NOT CONFIRMED
 		- check: b0rked Chapter UID from day after tomorrow.amg remux!?
 		- check: does a file name containing [ ] crash on muxing?
+		- check: memory leak when calling split point dialog?
+        - check: better UI for setting one single stream title
 
 		- add: write progress to stdout
+		- add: detect UTF-8 files without BOM
 		- add: automatic segment name creation
 		- add: reorder ssa timecodes for output
 		- add: try vorbis-in-avi output
 
-		- add: allow to disable cleartype fonts
 		- add: change avi stream number from bcd to hex
 		- add: properly detect mpeg 2.5 audio
 		- add: allow to enable/disable a confirmation before leaving
@@ -30,7 +83,19 @@ WM_QUIT
 		- fix: free space warning when overwriting files
 		- fix: when removing a file of which a stream is expanded and has the cursor
 		       on it, it crashes
-		- 
+	    - fix: ADTS with CRC
+		- TODO: verify that handler of IDM_SETLANGUAGE gets UTF-8 language name as expected
+
+  1.17.9
+        - fixed: project file missed a couple of source files (which where present in the source package, they
+		         just weren't referenced)
+	    - fixed: recognise Vista to avoid null reference problem
+		- fixed: file title of AVI files wasn't written due to bad memory deallocation
+		- fixed (again): When settings dialog cancel button exceeds the window, increase window size
+		- fixed (TEST): Close file handle when an unrecognised file type was opened
+		- fixed: when saving the contents of the video information list box of an AVI file,
+		         "txt"-filter is set
+	    - fixed: WAV file reading was broken for formats that are not supported outside a WAV
 
   1.17.8
 		- redone: TextFile class now handles UTF16 LE/BE
@@ -206,7 +271,7 @@ WM_QUIT
 #include "WAVFile.h"
 #include "..\matroska.h"
 #include "Languages.h"
-#include "TextFiles.h"
+#include "../../Common/TextFiles.h"
 #include "Trees.h"
 #include "AudioSourceTree.h"
 #include "..\XML.h"
@@ -217,8 +282,9 @@ WM_QUIT
 #include "Version.h"
 #include "OSVersion.h"
 #include "..\Filenames.h"
-#include "TraceFile.h"
 #include "..\Finalizer.h"
+#include "..\..\Common\Path.h"
+#include "fopenutf8.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -291,10 +357,67 @@ END_MESSAGE_MAP()
 CAVIMux_GUIDlg::CAVIMux_GUIDlg(CWnd* pParent /*=NULL*/)
 	: CResizeableDialog(CAVIMux_GUIDlg::IDD, pParent)
 {
+	CLocalTracer trace(GetApplicationTraceFile(), _T("CAVIMux_GUIDlg::CAVIMux_GUIDlg()"));
+
+	std::basic_ostringstream<TCHAR> sstrVersionField;
+	sstrVersionField << GetAMGVersionString() << _T(", ") << GetAMGVersionDate();
+	std::basic_string<TCHAR> strVersionField = sstrVersionField.str();
+	trace.Trace(TRACE_LEVEL_INFO, _T("Version"), strVersionField);
+
 	//{{AFX_DATA_INIT(CAVIMux_GUIDlg)
 	//}}AFX_DATA_INIT
 	// Beachten Sie, dass LoadIcon unter Win32 keinen nachfolgenden DestroyIcon-Aufruf benötigt
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	traceFile = GetApplicationTraceFile();
+	trace.Trace(TRACE_LEVEL_INFO, _T("Main Window created"), _T("Main window instance was created"));
+
+	std::wstring m_appExecuteableFile;
+	std::wstring m_appDirectory = CPath::GetAppDir(&m_appExecuteableFile);
+	wchar_t* pcmdLine = GetCommandLineW();
+	{
+		std::wostringstream sstrMsg;
+		sstrMsg << L"Startup path: \x0D\x0A  " << m_appExecuteableFile.c_str() << L"\x0D\x0A";
+		sstrMsg << L"Command line: \x0D\x0A  " << pcmdLine;
+		trace.Trace(TRACE_LEVEL_INFO, "Application startup", sstrMsg.str().c_str());
+	}
+
+	int argCount;
+	wchar_t** pArgs = CommandLineToArgvW(pcmdLine, &argCount);
+	if (argCount > 0) {
+		for (int j=1; j<argCount; j++) {
+			if (!wcscmp(pArgs[j], L"--trace-level")) {
+				int selectedLevel = TRACE_LEVEL_INFO;
+				if (argCount > j+1) {
+					wchar_t* levelString = pArgs[++j];
+					if (!_wcsicmp(levelString, L"fatal")) {
+						selectedLevel = TRACE_LEVEL_FATAL;
+					} else 
+					if (!_wcsicmp(levelString, L"error")) {
+						selectedLevel = TRACE_LEVEL_ERROR;
+					} else
+					if (!_wcsicmp(levelString, L"warn")) {
+						selectedLevel = TRACE_LEVEL_WARN;
+					} else
+					if (!_wcsicmp(levelString, L"debug")) {
+						selectedLevel = TRACE_LEVEL_DEBUG;
+					} else 
+					if (!_wcsicmp(levelString, L"info")) {
+						selectedLevel = TRACE_LEVEL_INFO;
+					} else {
+						std::basic_ostringstream<TCHAR> sstrErrorMessage;
+						sstrErrorMessage << _T("Unknown trace level: '") << CUTF8(levelString).TStr() << _T("'");
+						GetApplicationTraceFile()->Trace(TRACE_LEVEL_ERROR, "Bad argument", sstrErrorMessage.str().c_str());
+					}
+				}
+				GetApplicationTraceFile()->SetTraceLevel(selectedLevel);
+				continue;
+			}
+		}
+	}
+}
+
+CAVIMux_GUIDlg::~CAVIMux_GUIDlg()
+{
 }
 
 void CAVIMux_GUIDlg::DoDataExchange(CDataExchange* pDX)
@@ -560,8 +683,8 @@ void CAVIMux_GUIDlg::AddProtocolLine(char* lpcText, DWORD dwDebugLevel, int dwCC
 		char cTemp[256]; cTemp[0]=0;
 		sprintf(cTemp, "%04d%02d%02d-%02d%02d%02d.txt", (int)systemtime.wYear, (int)systemtime.wMonth, (int)systemtime.wDay,
 			(int)systemtime.wHour, (int)systemtime.wMinute, (int)systemtime.wSecond);
-		strcat(cLogFileName, cTemp);
-		hLogFile = CreateFile(cLogFileName, GENERIC_WRITE, 0, NULL,	OPEN_ALWAYS, NULL, NULL);
+		cLogFileName.append(cTemp);
+		hLogFile = CreateFile(cLogFileName.c_str(), GENERIC_WRITE, 0, NULL,	OPEN_ALWAYS, NULL, NULL);
 		WriteFile(hLogFile, cUTF8Hdr, 3, &dwWritten, NULL);
 	}
 
@@ -653,15 +776,15 @@ void CAVIMux_GUIDlg::UpdateProgressList()
 	LVCOLUMN lvcol; memset(&lvcol, 0, sizeof(lvcol));
 	lvcol.mask = LVCF_WIDTH;
 	if (!m_Progress_List.GetColumn(0, &lvcol) && !lvcol.cx) {
-		m_Progress_List.InsertColumn(0,"",LVCFMT_RIGHT, w-diff);
-		m_Progress_List.InsertColumn(1,LoadString(STR_MAIN_S_PRG_VIDEO),LVCFMT_RIGHT, w);
-		m_Progress_List.InsertColumn(2,LoadString(STR_MAIN_S_PRG_AUDIO),LVCFMT_RIGHT, w);
-		m_Progress_List.InsertColumn(3,LoadString(STR_MAIN_S_PRG_OVERHEAD),LVCFMT_RIGHT, w);
-		m_Progress_List.InsertColumn(4,LoadString(STR_MAIN_S_PRG_SUBTITLES),LVCFMT_RIGHT, w);
-		m_Progress_List.InsertColumn(5,LoadString(STR_MAIN_S_PRG_TOTAL),LVCFMT_RIGHT, w);
-		m_Progress_List.InsertItem(0,LoadString(STR_MAIN_S_PRG_CURRFILE));
-		m_Progress_List.InsertItem(1,LoadString(STR_MAIN_S_PRG_ALLFILES));
-		m_Progress_List.InsertItem(2,LoadString(STR_MAIN_S_PRG_TRANSFERRATE));
+		m_Progress_List.InsertColumn(0,_T(""),LVCFMT_RIGHT, w-diff);
+		m_Progress_List.InsertColumn(1, (TCHAR*)LoadString(STR_MAIN_S_PRG_VIDEO),LVCFMT_RIGHT, w);
+		m_Progress_List.InsertColumn(2, (TCHAR*)LoadString(STR_MAIN_S_PRG_AUDIO),LVCFMT_RIGHT, w);
+		m_Progress_List.InsertColumn(3, (TCHAR*)LoadString(STR_MAIN_S_PRG_OVERHEAD),LVCFMT_RIGHT, w);
+		m_Progress_List.InsertColumn(4, (TCHAR*)LoadString(STR_MAIN_S_PRG_SUBTITLES),LVCFMT_RIGHT, w);
+		m_Progress_List.InsertColumn(5, (TCHAR*)LoadString(STR_MAIN_S_PRG_TOTAL),LVCFMT_RIGHT, w);
+		m_Progress_List.InsertItem(0, (TCHAR*)LoadString(STR_MAIN_S_PRG_CURRFILE));
+		m_Progress_List.InsertItem(1, (TCHAR*)LoadString(STR_MAIN_S_PRG_ALLFILES));
+		m_Progress_List.InsertItem(2, (TCHAR*)LoadString(STR_MAIN_S_PRG_TRANSFERRATE));
 	} else {
 		for (int j=1;j<6;j++) 
 			m_Progress_List.SetColumnWidth(j, w);
@@ -683,39 +806,39 @@ void CAVIMux_GUIDlg::UpdateProgressList()
 
 void CAVIMux_GUIDlg::UpdateLanguage()
 {
-	m_Open_Files_Label.SetWindowText(LoadString(STR_MAIN_S_OPENFILES));
-	m_Add_Video_Source.SetWindowText(LoadString(STR_MAIN_B_ADDVIDEOSOURCE));
+	m_Open_Files_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_OPENFILES));
+	m_Add_Video_Source.SetWindowText((TCHAR*)LoadString(STR_MAIN_B_ADDVIDEOSOURCE));
 
-	m_Subtitles_Label.SetWindowText(LoadString(STR_MAIN_S_SUBTITLES));
-	m_Audio_Label.SetWindowText(LoadString(STR_MAIN_S_AUDIO));
+	m_Subtitles_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_SUBTITLES));
+	m_Audio_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_AUDIO));
 //	m_Video_Headline.SetWindowText(LoadString(STR_MAIN_S_VIDEO));
-	m_No_Audio.SetWindowText(LoadString(STR_MAIN_CB_NO_AUDIO));
-	m_All_Audio.SetWindowText(LoadString(STR_MAIN_CB_ALL_AUDIO));
-	m_Default_Audio_Label.SetWindowText(LoadString(STR_MAIN_CB_DEFAULT_AUDIO));
-	m_No_Subtitles.SetWindowText(LoadString(STR_MAIN_CB_NO_SUBTITLES));
-	m_All_Subtitles.SetWindowText(LoadString(STR_MAIN_CB_ALL_SUBTITLES));
-	m_Protocol_Label.SetWindowText(LoadString(STR_MAIN_S_PROTOCOL));
-	m_VideoStretchFactor_Label.SetWindowText(LoadString(STR_MAIN_S_STRETCHBY));
-	m_Title_Label.SetWindowText(LoadString(STR_MAIN_S_TITLE));
+	m_No_Audio.SetWindowText((TCHAR*)LoadString(STR_MAIN_CB_NO_AUDIO));
+	m_All_Audio.SetWindowText((TCHAR*)LoadString(STR_MAIN_CB_ALL_AUDIO));
+	m_Default_Audio_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_CB_DEFAULT_AUDIO));
+	m_No_Subtitles.SetWindowText((TCHAR*)LoadString(STR_MAIN_CB_NO_SUBTITLES));
+	m_All_Subtitles.SetWindowText((TCHAR*)LoadString(STR_MAIN_CB_ALL_SUBTITLES));
+	m_Protocol_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_PROTOCOL));
+	m_VideoStretchFactor_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_STRETCHBY));
+	m_Title_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_TITLE));
 	SendDlgItemMessage(IDC_OUTPUTOPTIONS,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_MAIN_B_OUTPUTOPTIONS));
 	SendDlgItemMessage(IDC_START,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_MAIN_B_START));
 	SendDlgItemMessage(IDC_STOP,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_MAIN_B_STOP));
 	SendDlgItemMessage(ID_LEAVE,WM_SETTEXT,NULL,(LPARAM)LoadString(STR_MAIN_B_CANCEL));
-	m_Progress_Group.SetWindowText(LoadString(STR_MAIN_S_PROGRESS));
+	m_Progress_Group.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_PROGRESS));
 
 	m_Progress_List.DeleteAllItems();
 	for (int j=0;j<6;j++)
 		m_Progress_List.DeleteColumn(0);
 	UpdateProgressList();
 
-	m_Prg_Dest_File_Label.SetWindowText(LoadString(STR_MAIN_S_PRG_DESTFILE));
-	m_Prg_Frames_Label.SetWindowText(LoadString(STR_MAIN_S_PRG_FRAMES));
-	m_Prg_Legidx_Label.SetWindowText(LoadString(STR_MAIN_S_PRG_LEGIDX));
-	m_Prg_Progress_Label.SetWindowText(LoadString(STR_MAIN_S_PRG_PROGRESS));
+	m_Prg_Dest_File_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_PRG_DESTFILE));
+	m_Prg_Frames_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_PRG_FRAMES));
+	m_Prg_Legidx_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_PRG_LEGIDX));
+	m_Prg_Progress_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_PRG_PROGRESS));
 
-	m_Stream_Lng_Label.SetWindowText(LoadString(STR_MAIN_S_AUDIONAME));
-	m_Audiodelay_Label.SetWindowText(LoadString(STR_MAIN_S_AUDIODELAY));
-	m_OutputResolution_Label.SetWindowText(LoadString(STR_MAIN_S_RESOLUTION));
+	m_Stream_Lng_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_AUDIONAME));
+	m_Audiodelay_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_AUDIODELAY));
+	m_OutputResolution_Label.SetWindowText((TCHAR*)LoadString(STR_MAIN_S_RESOLUTION));
 	m_StreamTree.InvalidateRect(NULL);
 
 	switch (iCurrentView) {
@@ -727,7 +850,7 @@ void CAVIMux_GUIDlg::UpdateLanguage()
 		case 1: ButtonState_STOP(); break;
 	}
 
-	m_Chapter_Editor.SetWindowText(LoadString(STR_SFO_O_CHAPTERS));
+	m_Chapter_Editor.SetWindowText((TCHAR*)LoadString(STR_SFO_O_CHAPTERS));
 }
 
 
@@ -799,6 +922,8 @@ void CAVIMux_GUIDlg::AddFile(CFileDialog* cfd)
 
 DWORD DetectFileType(STREAM* lpSource, void** pReturn)
 {
+	CLocalTracer trace(GetApplicationTraceFile(), "DetectFileType(...)");
+
 	union
 	{
 		MP3SOURCE*			mp3source;
@@ -822,8 +947,9 @@ DWORD DetectFileType(STREAM* lpSource, void** pReturn)
 	lpSource->SetOffset(0);
 	lpSource->Seek(0);
 	oggfile=new OGGFILE;
-	if (oggfile->Open(lpSource, OGG_OPEN_READ)==OGG_OPEN_OK)
+	if (oggfile->Open(lpSource, OGG_OPEN_READ) == OGG_OPEN_OK)
 	{
+		trace.Trace(TRACE_LEVEL_INFO, _T("File type detection"), _T("File is an OGG file"));
 		vorbis = new VORBISFROMOGG;
 		vorbis->Open(oggfile);
 		vorbis->Close();
@@ -843,6 +969,8 @@ DWORD DetectFileType(STREAM* lpSource, void** pReturn)
 		Finalizer<MATROSKA, MATROSKA, delete_ptr> mkvsourceGuard(mkvsource);
 		if (mkvsource->Open(lpSource,MMODE_READ | MMODE_DUMMY)==MOPEN_OK)
 		{
+			trace.Trace(TRACE_LEVEL_INFO, _T("File type detection"), _T("File is a matroska file"));
+
 	//		mkvsource->Close();
 	//		delete mkvsource;
 			lpSource->SetOffset(0);
@@ -856,11 +984,13 @@ DWORD DetectFileType(STREAM* lpSource, void** pReturn)
 	subsource=new SUBTITLES;
 
 
-	t=new CTextFile(STREAM_READ, lpSource, CHARACTER_ENCODING_UTF8);
+	t=new CTextFile(StreamMode::Read, lpSource, CharacterEncoding::UTF8);
 	Finalizer<CTextFile, CTextFile, delete_ptr> textFileGuard(t);
 	{
 		if (subsource->Open(t))
 		{
+			trace.Trace(TRACE_LEVEL_INFO, _T("File type detection"), _T("File is a subtitle file"));
+
 			subsource->Close();
 			delete subsource;
 			lpSource->SetOffset(0);
@@ -874,6 +1004,8 @@ DWORD DetectFileType(STREAM* lpSource, void** pReturn)
 			Finalizer<char, void, free> textFileStringGuard(c);
 			XMLNODE* pTree = NULL;
 			if (xmlBuildTree(&pTree, c) == XMLERR_OK) {
+				trace.Trace(TRACE_LEVEL_INFO, _T("File type detection"), _T("File is an XML file"));
+
 				if (pReturn) *pReturn = pTree;
 				return FILETYPE_XML;
 			} 
@@ -884,6 +1016,8 @@ DWORD DetectFileType(STREAM* lpSource, void** pReturn)
 	avisource=new AVIFILEEX;
 	if (avisource->Open(lpSource,FA_READ | FA_DUMMY,AT_AUTODETECT)==AFE_OK)
 	{
+		trace.Trace(TRACE_LEVEL_INFO, _T("File type detection"), _T("File is an AVI file"));
+
 		avisource->Close(false);
 		delete avisource;
 		lpSource->SetOffset(0);
@@ -901,6 +1035,8 @@ DWORD DetectFileType(STREAM* lpSource, void** pReturn)
 		ac3source->SetResyncRange(resync_lengths[i]);
 		if (ac3source->Open(lpSource) != AS_ERR)
 		{
+			trace.Trace(TRACE_LEVEL_INFO, _T("File type detection"), _T("File is an AC3 file"));
+
 			lpSource->SetOffset(0);
 			return FILETYPE_AC3;
 		}
@@ -914,6 +1050,7 @@ DWORD DetectFileType(STREAM* lpSource, void** pReturn)
 		dtssource->SetResyncRange(resync_lengths[i]);
 		if (dtssource->Open(lpSource) != AS_ERR)
 		{
+			trace.Trace(TRACE_LEVEL_INFO, _T("File type detection"), _T("File is a DTS file"));
 			lpSource->SetOffset(0);
 			return FILETYPE_DTS;
 		}
@@ -926,6 +1063,7 @@ DWORD DetectFileType(STREAM* lpSource, void** pReturn)
 		mp3source->SetResyncRange(resync_lengths[i]);
 		if (mp3source->Open(lpSource) != AS_ERR)
 		{
+			trace.Trace(TRACE_LEVEL_INFO, _T("File type detection"), _T("File is an MP2/3 file"));
 			lpSource->SetOffset(0);
 			return FILETYPE_MP3;
 		}
@@ -937,6 +1075,7 @@ DWORD DetectFileType(STREAM* lpSource, void** pReturn)
 		Finalizer<AACSOURCE, AACSOURCE, delete_ptr> aacsourceGuard(aacsource);
 		if (aacsource->Open(lpSource) != AS_ERR)
 		{
+			trace.Trace(TRACE_LEVEL_INFO, _T("File type detection"), _T("File is an ADTS/AAC file"));
 			lpSource->SetOffset(0);
 			return FILETYPE_AAC;
 		}
@@ -949,9 +1088,13 @@ DWORD DetectFileType(STREAM* lpSource, void** pReturn)
 	Finalizer<WAVEFILE, WAVEFILE, delete_ptr> waveGuard(wavfile);
 	if (wavfile->Open(lpSource, WAVE_OPEN_READ) >= WAVE_OPEN_OK)
 	{
+		trace.Trace(TRACE_LEVEL_INFO, _T("File type detection"), _T("File is a WAV file"));
+
 		lpSource->SetOffset(0);
 		return FILETYPE_WAV;
 	}
+
+	trace.Trace(TRACE_LEVEL_INFO, _T("File type detection"), _T("File type could not be determined"));
 
 	return FILETYPE_UNKNOWN;
 }
@@ -977,12 +1120,15 @@ void CAVIMux_GUIDlg::AddAudioStream(AUDIO_STREAM_INFO* asi)
 		tii->iCurrPos = 2 * m_StreamTree.GetRootCount();
 
 		m_StreamTree.SetItemData(
-			hItem0=Tree_InsertCheck(&m_StreamTree,(char*)LPSTR_TEXTCALLBACK), (DWORD)tii);
+			hItem0=Tree_InsertCheck_Callback(&m_StreamTree), (DWORD)tii);
 
 		newTII(tii, TIIID_LNGCODE); 
-		asi->audiosource->GetLanguageCode(tii->pText);
+		std::string languageCode;
+		asi->audiosource->GetLanguageCode(languageCode); //(tii->pText);
+		strcpy(tii->pText, languageCode.c_str());
+
 		m_StreamTree.SetItemData(
-			hItem2=Tree_InsertCheck(&m_StreamTree,(char*)LPSTR_TEXTCALLBACK, hItem0),
+			hItem2=Tree_InsertCheck_Callback(&m_StreamTree, hItem0),
 			(DWORD)tii);
 		m_StreamTree.ShowItemCheckBox(hItem2, false);
 
@@ -1015,13 +1161,14 @@ void CAVIMux_GUIDlg::AddVideoStream(VIDEO_STREAM_INFO* vsi)
 		tii->iOrgPos = m_StreamTree.GetRootCount();
 		tii->iCurrPos = 2 * m_StreamTree.GetRootCount();
 
-		m_StreamTree.SetItemData(hItem1=Tree_InsertCheck(&m_StreamTree,
-			(char*)LPSTR_TEXTCALLBACK),	(DWORD)tii);
+		m_StreamTree.SetItemData(hItem1=Tree_InsertCheck_Callback(&m_StreamTree), (DWORD)tii);
 
 		newTII(tii, TIIID_LNGCODE); 
-		vsi->videosource->GetLanguageCode(tii->pText);
+		std::string languageCode;
+		vsi->videosource->GetLanguageCode(languageCode);
+		strcpy(tii->pText, languageCode.c_str());
 		m_StreamTree.SetItemData(
-			hItem2=Tree_InsertCheck(&m_StreamTree,(char*)LPSTR_TEXTCALLBACK, hItem1),
+			hItem2=Tree_InsertCheck_Callback(&m_StreamTree, hItem1),
 			(DWORD)tii);
 		m_StreamTree.ShowItemCheckBox(hItem2, false);
 
@@ -1051,14 +1198,16 @@ void CAVIMux_GUIDlg::AddSubtitleStream(SUBTITLE_STREAM_INFO* ssi)
 		tii->iOrgPos = m_StreamTree.GetRootCount();
 		tii->iCurrPos = 2 * m_StreamTree.GetRootCount();
 
-		m_StreamTree.SetItemData(hItem=Tree_InsertCheck(&m_StreamTree,(char*)LPSTR_TEXTCALLBACK),
-			(DWORD)tii);
+		m_StreamTree.SetItemData(hItem=Tree_InsertCheck_Callback(
+			&m_StreamTree), (DWORD)tii);
 
 		newTII(tii, TIIID_LNGCODE); 
-		ssi->lpsubs->GetLanguageCode(tii->pText);
+		std::string languageCode;
+		ssi->lpsubs->GetLanguageCode(languageCode);
+		strcpy(tii->pText, languageCode.c_str());
+
 		m_StreamTree.SetItemData(
-			hItem2=Tree_InsertCheck(&m_StreamTree,(char*)LPSTR_TEXTCALLBACK, hItem),
-			(DWORD)tii);
+			hItem2=Tree_InsertCheck_Callback(&m_StreamTree, hItem), (DWORD)tii);
 		m_StreamTree.ShowItemCheckBox(hItem2, false);
 
 		ITitleSet* titleSet = ssi->lpsubs->GetTitleSet(); 
@@ -1259,7 +1408,7 @@ void CAVIMux_GUIDlg::OnStart()
 	HTREEITEM		hItem;
 
 	lpDAI=new DEST_AVI_INFO;
-	ZeroMemory(lpDAI,sizeof(DEST_AVI_INFO));
+	//ZeroMemory(lpDAI,sizeof(DEST_AVI_INFO));
 	lpDAI->dwNbrOfVideoStreams = 1;
 
 	ButtonState_START();
@@ -1273,11 +1422,13 @@ void CAVIMux_GUIDlg::OnStart()
 
 // Formatierung für Numerierung
 	if (!lpDAI->settings->GetInt("output/general/numbering/enabled")) {
-		lpDAI->lpFormat=new char[5+lstrlen("$Name")];
-		lstrcpy(lpDAI->lpFormat,"$Name");
+		//lpDAI->lpFormat=new char[5+lstrlen("$Name")];
+		//lstrcpy(lpDAI->lpFormat,"$Name");
+		lpDAI->fileNameFormat = _T("$Name");
 	} else {
-		lpDAI->lpFormat=new char[(5+lstrlen(sfOptions.lpcNumbering))];
-		lstrcpy(lpDAI->lpFormat,sfOptions.lpcNumbering);
+		//lpDAI->lpFormat=new char[(5+lstrlen(sfOptions.lpcNumbering))];
+		//lstrcpy(lpDAI->lpFormat,sfOptions.lpcNumbering);
+		lpDAI->fileNameFormat = sfOptions.fileNumberingFormat;
 	}
 
 // maximale Dateizahl
@@ -1370,7 +1521,7 @@ void CAVIMux_GUIDlg::OnStart()
 			lpDAI->iMaxDuration = lpDAI->videosource->GetDuration();
 			lpDAI->iDurationFlags = DAI_DF_DURATION;
 		}
-	}
+	} 
 
 // Preload
 //	lpDAI->dwPreload=sfOptions.dwPreload;//atoi(Buffer);
@@ -1383,7 +1534,7 @@ void CAVIMux_GUIDlg::OnStart()
 
 	audio_streams = m_StreamTree.GetItems(m_StreamTree.GetRootItem(),TIIID_ASI,-1);
 
-	for (i=0;i<audio_streams.size();i++) {
+	for (i=0;i<static_cast<int>(audio_streams.size());i++) {
 		TREE_ITEM_INFO*	tii = m_StreamTree.GetItemInfo(audio_streams[i]);
 		tii->pASI->audiosource->Enable(0);
 	}
@@ -1416,13 +1567,13 @@ void CAVIMux_GUIDlg::OnStart()
 		}
 	}
 	
-	for (i=0;i<audio_streams.size();i++) {
+	for (i=0; i < static_cast<int>(audio_streams.size()); i++) {
 		TREE_ITEM_INFO*	tii = m_StreamTree.GetItemInfo(audio_streams[i]);
 		tii->pASI->audiosource->Enable(1);
 	}
 
 	lpDAI->dwNbrOfAudioStreams=audio_streams.size();
-	lpDAI->asi=new AUDIO_STREAM_INFO*[1+audio_streams.size()];
+//	lpDAI->asi=new AUDIO_STREAM_INFO*[1+audio_streams.size()];
 
 // Geht nicht, wenn weder Video noch Audio verfügbar ist
 	if (!lpDAI->dwNbrOfAudioStreams && !lpDAI->dwNbrOfVideoStreams) {
@@ -1432,14 +1583,15 @@ void CAVIMux_GUIDlg::OnStart()
 
 	for (i=0;i<(int)lpDAI->dwNbrOfAudioStreams;i++)	{
 		TREE_ITEM_INFO*	tii = m_StreamTree.GetItemInfo(audio_streams[i]);
-		lpDAI->asi[i]=tii->pASI;
+		//lpDAI->asi[i]=tii->pASI;
+		lpDAI->asi.push_back(tii->pASI);
 	}
 
 // Subtitles
 //	subtitles = new CDynIntArray;
 	subtitles = m_StreamTree.GetItems(m_StreamTree.GetRootItem(),TIIID_SSI,-1);
 
-	for (i=0;i<subtitles.size();i++) {
+	for (i=0; i<static_cast<int>(subtitles.size()); i++) {
 		TREE_ITEM_INFO*	tii = m_StreamTree.GetItemInfo(subtitles[i]);
 		tii->pSSI->lpsubs->Enable(0);
 	}
@@ -1458,12 +1610,13 @@ void CAVIMux_GUIDlg::OnStart()
 
 	if (!subtitles.empty())
 	{
-		lpDAI->ssi=new SUBTITLE_STREAM_INFO*[subtitles.size()];
-		for (i=0;i<subtitles.size();i++)
+		//lpDAI->ssi=new SUBTITLE_STREAM_INFO*[subtitles.size()];
+		for (i=0; i<static_cast<int>(subtitles.size());i++)
 		{
 			HTREEITEM hItem = subtitles[i];
 			TREE_ITEM_INFO* tii = m_StreamTree.GetItemInfo(hItem);
-			lpDAI->ssi[i]=tii->pSSI;
+			//lpDAI->ssi[i]=tii->pSSI;
+			lpDAI->ssi.push_back(tii->pSSI);
 			wsprintf(Buffer,"Subtitle %d",i+1);
 			if (!(lpDAI->ssi[i]->lpsubs->GetName(NULL)))
 				lpDAI->ssi[i]->lpsubs->SetName(Buffer);
@@ -1630,7 +1783,10 @@ void CAVIMux_GUIDlg::OnStart()
 			case FILENAME_FROM_SEGMENT_TITLE:
 				if (lpDAI->cTitle) {
 					strcpy(o.lpstrFile, lpDAI->cTitle->Get());
-					FilenameRemoveIllegalCharactersUTF8(o.lpstrFile, '_');
+//					FilenameRemoveIllegalCharactersUTF8(o.lpstrFile, '_');
+					std::basic_string<TCHAR> fileName = o.lpstrFile;
+					fileName = CPath::ReplaceIllegalFilenameCharacters(fileName, '_');
+					strcpy(o.lpstrFile, fileName.c_str());
 				}
 				break;
 			case FILENAME_FROM_SOURCE_FILENAME: {
@@ -1638,10 +1794,10 @@ void CAVIMux_GUIDlg::OnStart()
 				if (lpDAI->videosource)
 					mms = lpDAI->videosource;
 				else
-				if (lpDAI->asi)
+				if (!lpDAI->asi.empty())
 					mms = lpDAI->asi[0]->audiosource;
 				else
-				if (lpDAI->ssi)
+				if (!lpDAI->ssi.empty())
 					mms = lpDAI->ssi[0]->lpsubs;
 
 				if (mms) {
@@ -1652,8 +1808,9 @@ void CAVIMux_GUIDlg::OnStart()
 							DWORD file_id = t->pMSI->lpdwFiles[1];
 							FILE_INFO* fi = m_SourceFiles.GetFileInfoFromID(file_id);
 							if (fi) {
-								strcpy(o.lpstrFile, fi->lpcName);
-								FilenameKeepName(o.lpstrFile);
+								std::basic_string<TCHAR> fileName(fi->Name.UTF8());
+								fileName = CPath::GetFileName(fileName);
+								strcpy(o.lpstrFile, fileName.c_str());
 							}
 						}
 
@@ -1692,30 +1849,44 @@ void CAVIMux_GUIDlg::OnStart()
 		while (lpDAI->lpFileName[iPos-1]!='.') iPos--;
 		char* cExt = &lpDAI->lpFileName[iPos];
 
-		i = strlen(lpDAI->lpFormat)-1;
+		std::basic_string<TCHAR> targetFileExtension = CUTF8(cExt).TStr();
+
+/*		i = strlen(lpDAI->lpFormat)-1;
 		while (i>=0 && lpDAI->lpFormat[i-1]!='.') i--;
 		if (i<=0) {
 			i = strlen(lpDAI->lpFormat)+1;
 			strcat(lpDAI->lpFormat, ".");
 		}
+*/
+		//lpDAI->lpFormat[i] = 0;
 
+		// remove the file name extension from the target file name format string
+		// TODO: Test this
+		std::basic_string<TCHAR>::size_type indexOfDot = lpDAI->fileNameFormat.find(_T('.'));
+		if (indexOfDot != std::basic_string<TCHAR>::npos) {
+			lpDAI->fileNameFormat = lpDAI->fileNameFormat.substr(0, indexOfDot+1);
+		} else {
+			lpDAI->fileNameFormat.append(_T("."));
+		}
 
-		lpDAI->lpFormat[i] = 0;
-
-		if (!_stricmp(cExt,"avi")) {
+		//if (!_stricmp(cExt,"avi")) {
+		if (targetFileExtension == _T("avi")) {
 			if (!iAllowAVIOutput) {
 				sprintf(Buffer, "You tried to choose AVI even though it has not been listed among the available output formats. If AVI is missing in this list, AVI-Mux GUI cannot create an AVI file from the source you selected.");
 				MessageBox(Buffer, "Error", MB_OK | MB_ICONERROR);
 				OnStop();
 				return;
 			}
-			lpDAI->iOutputFormat = DOF_AVI;
-			strcat(lpDAI->lpFormat,"avi");
+			lpDAI->OutputFileFormat = DEST_AVI_INFO::OutputFormat::AVI;
+			//strcat(lpDAI->lpFormat,"avi");
+			lpDAI->fileNameFormat.append(_T("avi"));
 		}
 		
-		if (!_stricmp(cExt,"mkv") || !_stricmp(cExt,"mka")) {
-			lpDAI->iOutputFormat = DOF_MKV;
-			strcat(lpDAI->lpFormat,cExt);
+		//if (!_stricmp(cExt,"mkv") || !_stricmp(cExt,"mka")) {
+		if (targetFileExtension == _T("mkv") || targetFileExtension == _T("mka")) {
+			lpDAI->OutputFileFormat = DEST_AVI_INFO::OutputFormat::MKV;
+			//strcat(lpDAI->lpFormat,cExt);
+			lpDAI->fileNameFormat.append(targetFileExtension);
 		}
 
 	// Namen ohne Erweiterung
@@ -1724,9 +1895,11 @@ void CAVIMux_GUIDlg::OnStart()
 		
 		if (lpDAI->dwNbrOfVideoStreams) lpDAI->videosource->Enable(1);
 		SetDialogState_Muxing();
-		doSaveConfig(lastjobfile);
-		if (lpDAI->iOutputFormat == DOF_AVI) AfxBeginThread((AFX_THREADPROC)MuxThread_AVI,lpDAI);
-		if (lpDAI->iOutputFormat == DOF_MKV) AfxBeginThread((AFX_THREADPROC)MuxThread_MKV,lpDAI);
+		doSaveConfig(lastjobfile.c_str());
+		if (lpDAI->OutputFileFormat == DEST_AVI_INFO::OutputFormat::AVI) 
+			AfxBeginThread((AFX_THREADPROC)MuxThread_AVI,lpDAI);
+		if (lpDAI->OutputFileFormat == DEST_AVI_INFO::OutputFormat::MKV) 
+			AfxBeginThread((AFX_THREADPROC)MuxThread_MKV,lpDAI);
 //		sfOptions.bDispDoneDlg=true;
 		settings->SetInt("gui/general/overwritedlg", 1);
 		sfOptions.bExitAfterwards=false;
@@ -1846,8 +2019,8 @@ DWORD CAVIMux_GUIDlg::Clear()
 
 		cb = (CBuffer*)m_SourceFiles.GetItemData(i);
 		fi=(FILE_INFO*)cb->GetData();
-		if (fi->lpcName) free(fi->lpcName);
-		fi->lpcName=NULL;
+//		if (fi->lpcName) free(fi->lpcName);
+		//fi->lpcName=NULL;
 		if (fi->dwType & FILETYPE_AVI) {
 			fi->AVIFile->Close(false);
 			delete fi->AVIFile;
@@ -1889,12 +2062,12 @@ void CAVIMux_GUIDlg::OnCancel()
 
 	doSaveConfig((char*)Filename.c_str(), 0);
 	
-	if (sfOptions.lpcNumbering) 
-		free(sfOptions.lpcNumbering);
-	sfOptions.lpcNumbering=NULL;
+//	if (sfOptions.lpcNumbering) 
+//		free(sfOptions.lpcNumbering);
+//	sfOptions.lpcNumbering=NULL;
 
 	for (int i=0;i<(int)dwLanguages;UnloadLanguageFile(lplpLanguages[i++]));
-	delete lplpLanguages;
+	delete[] lplpLanguages;
 
 	m_Protocol.DeleteAllItems();
 	m_StreamTree.DeleteAllItems();
@@ -1934,9 +2107,9 @@ void CAVIMux_GUIDlg::ButtonState_START()
 	iButtonState = 2;
 }
 
-void name_without_ext(char* lpcName, char* cNoExt)
+void name_without_ext(const char* lpcName, char* cNoExt)
 {
-	char*					cFilename = NULL;
+	/*char*					cFilename = NULL;
 	char*					cExtension = NULL;
 
 	splitpathname(lpcName,&cFilename,&cExtension);
@@ -1945,7 +2118,19 @@ void name_without_ext(char* lpcName, char* cNoExt)
 	while (*(cNoExt+j)!='.' && j) {
 		j--;
 	}
-	if (j) *(cNoExt+j)=0;
+	if (j) *(cNoExt+j)=0;*/
+
+	std::string name = lpcName;
+	size_t last_backslash_pos = name.find_last_of('\\');
+	size_t last_dot_pos = name.find_last_of('.');
+
+	if (last_backslash_pos != std::string::npos &&
+		last_dot_pos != std::string::npos)
+	{
+		std::string rawName = name.substr(last_backslash_pos + 1, 
+			last_dot_pos - last_backslash_pos - 1);
+		strcpy(cNoExt, rawName.c_str());
+	}
 }
 
 
@@ -2027,7 +2212,7 @@ void CAVIMux_GUIDlg::SaveGUIConfig()
 	fclose(file);
 }
 
-void CAVIMux_GUIDlg::doSaveConfig(char* lpcFile, int clear)
+void CAVIMux_GUIDlg::doSaveConfig(const char* lpcFile, int clear)
 {
 	FILE*			file;
 	int				i,j, k;
@@ -2043,7 +2228,7 @@ void CAVIMux_GUIDlg::doSaveConfig(char* lpcFile, int clear)
 	MULTIMEDIA_STREAM_INFO* lpmsi;
 	TREE_ITEM_INFO*	tii;
 	HTREEITEM		hItem;
-	char			cBuffer[8192];
+//	char			cBuffer[8192];
 	bool			bWith;
 	int*			files_added;
 
@@ -2059,7 +2244,7 @@ void CAVIMux_GUIDlg::doSaveConfig(char* lpcFile, int clear)
 
 		fprintf(file, cUTF8Hdr);
 		if (clear) fprintf(file,"CLEAR\n");
-		fprintf(file,"LANGUAGE %s\n",GetCurrentLanguage()->lpcName);
+		fprintf(file,"LANGUAGE %s\n", GetCurrentLanguage()->name.UTF8());
 		fprintf(file,"SET INPUT OPTIONS\n");
 		fprintf(file,"WITH SET OPTION\nUNBUFFERED %d\n", settings->GetInt("input/general/unbuffered"));
 		fprintf(file,"OVERLAPPED %d\n", settings->GetInt("input/general/overlapped"));
@@ -2103,7 +2288,7 @@ void CAVIMux_GUIDlg::doSaveConfig(char* lpcFile, int clear)
 			if (bWith) fprintf(file,"END WITH\n");
 			bWith=false;
 			fprintf(file,"LOAD ");
-			fprintf(file,lpfi[dwlpfic]->lpcName);
+			fprintf(file,lpfi[dwlpfic]->Name.UTF8());
 			fprintf(file,"\n");
 			dwlpfic^=1;
 		}
@@ -2268,9 +2453,10 @@ void CAVIMux_GUIDlg::doSaveConfig(char* lpcFile, int clear)
 					}
 				}
 
-				lpasi->audiosource->GetLanguageCode(cBuffer);
-				if (lstrlen(cBuffer))
-					fprintf(file,"AUDIO LNGCODE %d %s\n",i+1,cBuffer);
+				std::string languageCode;
+				lpasi->audiosource->GetLanguageCode(languageCode);
+				if (!languageCode.empty())
+					fprintf(file,"AUDIO LNGCODE %d %s\n",i+1,languageCode.c_str());
 				
 				if (lpasi->audiosource->FormatSpecific(MMSGFS_AAC_ISSBR))
 					fprintf(file,"AUDIO SBR %d %d\n",i+1,1);
@@ -2299,9 +2485,10 @@ void CAVIMux_GUIDlg::doSaveConfig(char* lpcFile, int clear)
 					}
 				}
 
-				tii->pSSI->lpsubs->GetLanguageCode(cBuffer);
-				if (cBuffer && strlen(cBuffer)) {
-					fprintf(file,"SUBTITLE LNGCODE %d %s\n",k+1,cBuffer);
+				std::string languageCode;
+				tii->pSSI->lpsubs->GetLanguageCode(languageCode);
+				if (!languageCode.empty()) {
+					fprintf(file,"SUBTITLE LNGCODE %d %s\n",k+1,languageCode.c_str());
 				}
 				fprintf(file,"SUBTITLE DEFAULT %d %d\n",k+1,tii->pSSI->lpsubs->IsDefault());
 
@@ -2327,9 +2514,10 @@ void CAVIMux_GUIDlg::doSaveConfig(char* lpcFile, int clear)
 					}
 				}
 
-				tii->pMSI->mms->GetLanguageCode(cBuffer);
-				if (cBuffer && strlen(cBuffer)) {
-					fprintf(file,"VIDEO LNGCODE %d %s\n",j+1,cBuffer);
+				std::string languageCode;
+				tii->pMSI->mms->GetLanguageCode(languageCode);
+				if (!languageCode.empty()) {
+					fprintf(file,"VIDEO LNGCODE %d %s\n",j+1,languageCode.c_str());
 				}
 				fprintf(file,"VIDEO DEFAULT %d %d\n",j+1,tii->pMSI->mms->IsDefault());
 
@@ -2348,9 +2536,9 @@ void CAVIMux_GUIDlg::doSaveConfig(char* lpcFile, int clear)
 
 		fprintf(file,"DESELECT SUBTITLE 0\n");
 		
-		for (i=0;i<subs_stream_indices.size();i++)
+		for (size_t index=0; index<subs_stream_indices.size(); index++)
 		{
-			fprintf(file,"SELECT SUBTITLE %d\n",subs_stream_indices[i]+1);
+			fprintf(file, "SELECT SUBTITLE %d\n", subs_stream_indices[index]+1);
 		}
 
 		fprintf(file,"WITH SET OPTION\n");
@@ -2385,7 +2573,7 @@ void CAVIMux_GUIDlg::doSaveConfig(char* lpcFile, int clear)
 		}
 		fprintf(file,"NUMBERING %s\n",(settings->GetInt("output/general/numbering/enabled"))?"ON":"OFF");
 //		if (!sfOptions.dwDontUseNumbering)
-		fprintf(file,"NUMBERING %s\n",sfOptions.lpcNumbering);
+		fprintf(file,"NUMBERING %s\n",CUTF8(sfOptions.fileNumberingFormat.c_str()).TStr());
 
 		CAttribs* ai = settings->GetAttr("output/avi/audio interleave");
 		fprintf(file,"AUDIO INTERLEAVE %d %s\n",(int)ai->GetInt("value"),//sfOptions.dwAudioInterleaveVal,
@@ -2510,11 +2698,17 @@ void CAVIMux_GUIDlg::doSaveConfig(char* lpcFile, int clear)
 			fprintf(f, txt_all);
 			fclose(f);
 
-			char* e = NULL;
-			char* fn = NULL;
+			//char* e = NULL;
+			//char* fn = NULL;
+			std::string fileName;
+			std::string fileExtension;
+			std::string pathName;
+
 		//	char p[65536]; memset(p, 0, sizeof(p));
-			splitpathname(lpcChFile, &fn, &e, NULL);//(char**)&p);
-			fprintf(file, "LOAD %s\n", fn);
+		//	splitpathname(lpcChFile, &fn, &e, NULL);//(char**)&p);
+			splitpathname<char>(lpcChFile, fileName, fileExtension, pathName);
+
+			fprintf(file, "LOAD %s\n", fileName.c_str());
 			xmlDeleteNode(&xml);
 
 		} else {
@@ -2554,7 +2748,7 @@ void CAVIMux_GUIDlg::OnLoad()
 		Str2UTF8(cfd->GetPathName().GetBuffer(255), u);
 		ZeroMemory(&conf,sizeof(conf));
 		file=new CFileStream;
-		file->Open(u,STREAM_READ);
+		file->Open(u, StreamMode::Read);
 		file->Read(&conf.dwID,4);
 		file->Read(&conf.dwSize,4);
 		file->Read(&conf.dwVersion,conf.dwSize);
@@ -2562,8 +2756,8 @@ void CAVIMux_GUIDlg::OnLoad()
 
 		sfOptions.dwUseManualSplitPoints=conf.dwUseSplitList;
 		sfOptions.dwFrames=conf.dwMaxFrames;
-		sfOptions.lpcNumbering=new char[1+lstrlen(conf.cFormat)];
-		lstrcpy(sfOptions.lpcNumbering,conf.cFormat);
+		sfOptions.fileNumberingFormat = CUTF8(conf.cFormat).TStr(); //new char[1+lstrlen(conf.cFormat)];
+		//lstrcpy(sfOptions.lpcNumbering,conf.cFormat);
 
 		file->Close();
 		delete file;
@@ -2728,7 +2922,7 @@ void CAVIMux_GUIDlg::OnRButtonUp(UINT nFlags, CPoint point)
 		
 	for (i=0;i<(int)dwLanguages;i++)
 		cmLanguages->AppendMenu(MF_STRING |
-		(i == current_language_index?MF_CHECKED:MF_UNCHECKED),dwLangs[i],lplpLanguages[i]->lpcName);
+		(i == current_language_index?MF_CHECKED:MF_UNCHECKED),dwLangs[i],lplpLanguages[i]->name.TStr());
 	
 
 	cStr=LoadString(STR_MAIN_B_SAVECONFIG);
@@ -2769,12 +2963,11 @@ BOOL CAboutDlg::OnInitDialog()
 	// TODO: Zusätzliche Initialisierung hier einfügen
 	
 	SetWindowText(LoadString(STR_AB_TITLE));
-	char d[256];
-	char version[32];
-	GetAMGVersionString(version, sizeof(version));
-	sprintf(d, "%s, %s", version, GetAMGVersionDate());
-	m_Version.SetWindowText(d);
-	
+
+	std::basic_ostringstream<TCHAR> sstrVersionField;
+	sstrVersionField << GetAMGVersionString() << _T(", ") << GetAMGVersionDate();
+	std::basic_string<TCHAR> strVersionField = sstrVersionField.str();
+	m_Version.SetWindowText(strVersionField.c_str());
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX-Eigenschaftenseiten sollten FALSE zurückgeben
@@ -2809,6 +3002,9 @@ if (!strcmp(w, id)) { \
 
 LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) 
 {
+	static std::basic_string<TCHAR> badIndexMsgTitle = _T("Bad stream index");
+	CLocalTracer trace(GetApplicationTraceFile(), _T("CAVIMux_GUIDlg::WindowProc(...)"), TRACE_LEVEL_NEVER);
+
 	char* c;
 	int i,j;
 	TREE_ITEM_INFO*		tii;
@@ -2816,11 +3012,30 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	SUBTITLE_STREAM_INFO* lpssi;
 	MULTIMEDIA_STREAM_INFO* lpmsi;
 	char*	cParam=(char*)lParam;
-	char	cBuffer[256];
+	char	cBuffer[1024];
 	char*	w;
 	char*					entire_line = NULL;
 	bool					bError=false;
 	bool					B[10];
+
+	struct TraceBadStreamIndexStruct
+	{
+	private:
+		CLocalTracer& m_trace;
+	public: 
+		TraceBadStreamIndexStruct(CLocalTracer& trace)
+			: m_trace(trace)
+		{
+		}
+	public:
+		bool operator() (std::basic_string<TCHAR> streamType, int index)
+		{
+			std::basic_ostringstream<TCHAR> sstrMsg;
+			sstrMsg << _T("Could not find ") << streamType << _T(" stream #") << index + 1 << _T(" in stream tree");
+			m_trace.Trace(TRACE_LEVEL_ERROR, badIndexMsgTitle, sstrMsg.str());
+			return true;
+		}
+	} TraceBadStreamIndex (trace);
 
 	// TODO: Speziellen Code hier einfügen und/oder Basisklasse aufrufen
 	ZeroMemory(B,sizeof(B));
@@ -2853,7 +3068,7 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 			case IDM_SETLANGUAGE:
 				c = (char*)lParam;
 				for (i=0;i<(int)dwLanguages;i++) {
-					if (!_strcmpi(c,lplpLanguages[i]->lpcName)) {
+					if (!_strcmpi(c,lplpLanguages[i]->name.UTF8())) {
 						SetCurrentLanguage(lplpLanguages[i]);
 						current_language_index = i;
 					}
@@ -2865,8 +3080,13 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				Clear();
 				break;
 			case IDM_SELAUDIO:
-				if (lParam!=-1) {
-					Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,lParam,TIIID_ASI),true);
+				if (lParam != -1) {
+					HTREEITEM targetItem = Tree_Index2Item(&m_StreamTree, lParam, TIIID_ASI);
+					if (!targetItem) {
+						TraceBadStreamIndex(_T("audio"), lParam);
+					} else {
+						Tree_SetCheckState(&m_StreamTree, targetItem, true);
+					}
 				} else {
 					for (i=0;i<(int)m_StreamTree.GetCount();i++) {
 						Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,i,TIIID_ASI),true);
@@ -2875,7 +3095,12 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				break;
 			case IDM_SELVIDEO:
 				if (lParam!=-1) {
-					Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,lParam,TIIID_VSI),true);
+                    HTREEITEM targetItem = Tree_Index2Item(&m_StreamTree, lParam, TIIID_VSI);
+					if (!targetItem) {
+						TraceBadStreamIndex(_T("video"), lParam);
+					} else {
+						Tree_SetCheckState(&m_StreamTree,targetItem,true);
+					}
 				} else {
 					for (i=0;i<(int)m_StreamTree.GetCount();i++) {
 						Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,i,TIIID_VSI),true);
@@ -2887,7 +3112,12 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				break;
 			case IDM_DESELAUDIO:
 				if (lParam!=-1) {
-					Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,lParam,TIIID_ASI),false);
+					HTREEITEM targetItem = Tree_Index2Item(&m_StreamTree,lParam,TIIID_ASI);
+					if (!targetItem) {
+						TraceBadStreamIndex(_T("audio"), lParam);
+					} else {
+						Tree_SetCheckState(&m_StreamTree, targetItem, false);
+					}
 				} else {
 					for (i=0;i<(int)m_StreamTree.GetCount();i++) {
 						Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,i,TIIID_ASI),false);
@@ -2896,16 +3126,26 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				break;
 			case IDM_SELSUB:
 				if (lParam!=-1) {
-					Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,lParam,TIIID_SSI),true);
+					HTREEITEM targetItem = Tree_Index2Item(&m_StreamTree,lParam,TIIID_SSI);
+					if (!targetItem) {
+						TraceBadStreamIndex(_T("subtitle"), lParam);
+					} else {
+						Tree_SetCheckState(&m_StreamTree, targetItem, true);
+					}
 				} else {
 					for (i=0;i<(int)m_StreamTree.GetCount();i++) {
-						Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,i,TIIID_SSI),true);
+						Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree, i, TIIID_SSI),true);
 					}
 				}
 				break;
 			case IDM_DESELSUB:
 				if (lParam!=-1) {
-					Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,lParam,TIIID_SSI),false);
+					HTREEITEM targetItem = Tree_Index2Item(&m_StreamTree, lParam, TIIID_SSI);
+					if (!targetItem) {
+						TraceBadStreamIndex(_T("subtitle"), lParam);
+					} else {
+						Tree_SetCheckState(&m_StreamTree, targetItem, false);
+					}
 				} else {
 					for (i=0;i<(int)m_StreamTree.GetCount();i++) {
 						Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,i,TIIID_SSI),false);
@@ -2914,7 +3154,13 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 				break;
 			case IDM_DESELVIDEO:
 				if (lParam!=-1) {
-					Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,lParam,TIIID_VSI),false);
+                    HTREEITEM targetItem = Tree_Index2Item(&m_StreamTree, lParam, TIIID_VSI);
+					if (!targetItem) {
+						TraceBadStreamIndex(_T("video"), lParam);
+					} else {
+						Tree_SetCheckState(&m_StreamTree, targetItem, false);
+					}
+				//	Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,lParam,TIIID_VSI),false);
 				} else {
 					for (i=0;i<(int)m_StreamTree.GetCount();i++) {
 						Tree_SetCheckState(&m_StreamTree,Tree_Index2Item(&m_StreamTree,i,TIIID_VSI),false);
@@ -2965,8 +3211,13 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 		case IDM_SETOPTION:
 			//entire_line = (char*)calloc(1,1+strlen(cParam));
 			newz(char, 1+strlen(cParam), entire_line);
+
 			if (bSetOutputOptions)
 			{
+				std::ostringstream sstrMessage;
+				sstrMessage << "Processing: Output option '" << cParam << "'";
+				trace.Trace(TRACE_LEVEL_DEBUG, _T("Processing output option"), sstrMessage.str());
+
 				bError=false;
 				strcpy(entire_line,cParam);
 				w=getword(&cParam);
@@ -3061,51 +3312,56 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						(B[4]=!strcmp(w,"NAMEEX")))	{ // AUDIO NAME/LNGCODE
 						w=getword(&cParam);
 						j=atoi(w)-1;
-						tii = m_StreamTree.GetItemInfo(Tree_Index2Item(&m_StreamTree,j,TIIID_ASI,&j));
-						if (tii) lpasi = tii->pASI; else lpasi=NULL;
 
-						if (B[0]) {
-							HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
-							m_StreamTree.AddTitleToStreamTree(hItem,
-								"und", cParam);
-						} else
-						if (B[1]) {
-							m_StreamTree.FindID(Tree_Index2Item(&m_StreamTree,j),TIIID_LNGCODE,&tii);
-							if (tii->pText) delete tii->pText;
-							tii->pText = new char[1024];
-							strcpy(tii->pText,cParam);
-							lpasi->audiosource->SetLanguageCode(cParam);
-						} else
-						if (B[4]) {
-							char* lng = getword(&cParam);
-							char* title = cParam;
+						HTREEITEM hStreamItem = Tree_Index2Item(&m_StreamTree, j, TIIID_ASI, &j);
+						if (!hStreamItem) {
+							TraceBadStreamIndex(_T("audio"), j);
+						} else {
+							tii = m_StreamTree.GetItemInfo(hStreamItem);
+							if (tii) lpasi = tii->pASI; else lpasi=NULL;
 
-							if (!title || !title[0])
-								title = NULL;
+							if (B[0]) {
+								//HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
+								m_StreamTree.AddTitleToStreamTree(hStreamItem, "und", cParam);
+							} else
+							if (B[1]) {
+								m_StreamTree.FindID(Tree_Index2Item(&m_StreamTree,j),TIIID_LNGCODE,&tii);
+								if (tii->pText) delete[] tii->pText;
+								tii->pText = new char[1024];
+								strcpy(tii->pText,cParam);
+								lpasi->audiosource->SetLanguageCode(cParam);
+							} else
+							if (B[4]) {
+								char* lng = getword(&cParam);
+								char* title = cParam;
 
-							HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
-							if (!strcmp(lng, "*"))
-								m_StreamTree.DeleteAllTitlesFromStreamTree(hItem);
-							else
-								m_StreamTree.AddTitleToStreamTree(hItem, lng, title);
+								if (!title || !title[0])
+									title = NULL;
 
-						} else
-						if (B[2]) {
-							w=cParam;
-							if (isposint(w)) {
-								lpasi->audiosource->FormatSpecific(MMSSFS_AAC_SETSBR, atoi(w));
-								FillAAC_ASI(&lpasi, (AACSOURCE*)lpasi->audiosource);
+								//HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
+								if (!strcmp(lng, "*"))
+									m_StreamTree.DeleteAllTitlesFromStreamTree(hStreamItem);
+								else
+									m_StreamTree.AddTitleToStreamTree(hStreamItem, lng, title);
+
+							} else
+							if (B[2]) {
+								w=cParam;
+								if (isposint(w)) {
+									lpasi->audiosource->FormatSpecific(MMSSFS_AAC_SETSBR, atoi(w));
+									FillAAC_ASI(&lpasi, (AACSOURCE*)lpasi->audiosource);
+								} else 
+									bError=true;
 							} else 
-								bError=true;
-						} else 
-						if (B[3]) {
-							w=cParam;
-							if (isposint(w)) {
-								lpasi->audiosource->SetDefault(atoi(w));
+							if (B[3]) {
+								w=cParam;
+								if (isposint(w)) {
+									lpasi->audiosource->SetDefault(atoi(w));
+								}
 							}
+							m_StreamTree.Invalidate();
+							m_StreamTree.UpdateWindow();
 						}
-						m_StreamTree.Invalidate();
-						m_StreamTree.UpdateWindow();
 					} 
 					else bError=true;
 				}
@@ -3122,17 +3378,18 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 					}
 					else
 					{
-						if (sfOptions.lpcNumbering)	{
+/*						if (sfOptions.lpcNumbering)	{
 							free(sfOptions.lpcNumbering);
-						}
+						}*/
 						char cBuffer[256]; cBuffer[0]=0;
 						if (strstr(w, "%d") || strstr(w, "%s"))
 							strcpy(cBuffer, "$Name ($Nbr)");
 						else 
 							strcpy(cBuffer, w);
 
-						sfOptions.lpcNumbering=new char[1+lstrlen(cBuffer)];
-						lstrcpy(sfOptions.lpcNumbering,cBuffer);
+						/*sfOptions.lpcNumbering=new char[1+lstrlen(cBuffer)];
+						lstrcpy(sfOptions.lpcNumbering,cBuffer);*/
+						sfOptions.fileNumberingFormat = CUTF8(cBuffer).TStr();
 					}
 				}
 				else
@@ -3254,35 +3511,39 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						(B[4]=!strcmp(w,"NAMEEX")))	{ // SUB NAME
 						w=getword(&cParam);
 						j=atoi(w)-1;
-						tii = m_StreamTree.GetItemInfo(Tree_Index2Item(&m_StreamTree,j,TIIID_SSI,&j));
-						lpssi = tii->pSSI;
 
-						if (B[0]) {
-							HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
-							m_StreamTree.AddTitleToStreamTree(hItem,
-								"und", cParam);
-						} else
-						if (B[1]) {
-							m_StreamTree.FindID(Tree_Index2Item(&m_StreamTree,j),TIIID_LNGCODE,&tii);
-							if (tii->pText) delete tii->pText;
-							tii->pText = new char[1024];
-							strcpy(tii->pText,cParam);
-							lpssi->lpsubs->SetLanguageCode(cParam);
-						} else
-						if (B[4]) {
-							char* lng = getword(&cParam);
-							char* title = cParam;
+						HTREEITEM hStreamItem = Tree_Index2Item(&m_StreamTree, j, TIIID_SSI, &j);
+						if (!hStreamItem) {
+							TraceBadStreamIndex(_T("subtitle"), j);
+						} else {
+							tii = m_StreamTree.GetItemInfo(hStreamItem);
+							lpssi = tii->pSSI;
+
+							if (B[0]) {
+								//HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
+								m_StreamTree.AddTitleToStreamTree(hStreamItem, "und", cParam);
+							} else
+							if (B[1]) {
+								m_StreamTree.FindID(hStreamItem, TIIID_LNGCODE, &tii);
+								if (tii->pText) delete[] tii->pText;
+								tii->pText = new char[1024];
+								strcpy(tii->pText,cParam);
+								lpssi->lpsubs->SetLanguageCode(cParam);
+							} else
+							if (B[4]) {
+								char* lng = getword(&cParam);
+								char* title = cParam;
 							
-							if (!title || !title[0])
-								title = NULL;
+								if (!title || !title[0])
+									title = NULL;
 
-							HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
-							if (!strcmp(lng, "*"))
-								m_StreamTree.DeleteAllTitlesFromStreamTree(hItem);
-							else
-								m_StreamTree.AddTitleToStreamTree(hItem, lng, title);
+								//HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
+								if (!strcmp(lng, "*"))
+									m_StreamTree.DeleteAllTitlesFromStreamTree(hStreamItem);
+								else
+									m_StreamTree.AddTitleToStreamTree(hStreamItem, lng, title);
 
-						} else
+							} else
 /*						
 						if (B[0] || B[1]) {
 							m_StreamTree.FindID(Tree_Index2Item(&m_StreamTree,j),B[0]?TIIID_STRNAME:TIIID_LNGCODE,&tii);
@@ -3297,14 +3558,15 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						if (B[1]) {
 							lpssi->lpsubs->SetLanguageCode(cParam);
 						} else */
-						if (B[2]) {
-							w=cParam;
-							if (isposint(w)) {
-								lpssi->lpsubs->SetDefault(atoi(w));
+							if (B[2]) {
+								w=cParam;
+								if (isposint(w)) {
+									lpssi->lpsubs->SetDefault(atoi(w));
+								}
 							}
+							m_StreamTree.Invalidate();
+							m_StreamTree.UpdateWindow();
 						}
-						m_StreamTree.Invalidate();
-						m_StreamTree.UpdateWindow();
 					} else
 						bError=true;
 			
@@ -3318,36 +3580,38 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						(B[4]=!strcmp(w,"NAMEEX")))	{ // VIDEO
 						w=getword(&cParam);
 						j=atoi(w)-1;
-						tii = m_StreamTree.GetItemInfo(Tree_Index2Item(&m_StreamTree,j,TIIID_VSI,&j));
-						lpmsi = tii->pMSI;
 
-						
-						if (B[0]) {
-							HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
-							m_StreamTree.AddTitleToStreamTree(hItem,
-								"und", cParam);
-						} else
-						if (B[1]) {
-							m_StreamTree.FindID(Tree_Index2Item(&m_StreamTree,j),TIIID_LNGCODE,&tii);
-							if (tii->pText) delete tii->pText;
-							tii->pText = new char[1024];
-							strcpy(tii->pText,cParam);
-							lpmsi->mms->SetLanguageCode(cParam);
-						} else
-						if (B[4]) {
-							char* lng = getword(&cParam);
-							char* title = cParam;
+						HTREEITEM hStreamItem = Tree_Index2Item(&m_StreamTree, j, TIIID_VSI, &j);
+						if (!hStreamItem) {
+							TraceBadStreamIndex(_T("video"), j);
+						} else {
+							tii = m_StreamTree.GetItemInfo(hStreamItem);
+							lpmsi = tii->pMSI;
+							if (B[0]) {
+								//HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
+								m_StreamTree.AddTitleToStreamTree(hStreamItem, "und", cParam);
+							} else
+							if (B[1]) {
+								m_StreamTree.FindID(hStreamItem, TIIID_LNGCODE, &tii);
+								if (tii->pText) delete[] tii->pText;
+								tii->pText = new char[1024];
+								strcpy(tii->pText,cParam);
+								lpmsi->mms->SetLanguageCode(cParam);
+							} else
+							if (B[4]) {
+								char* lng = getword(&cParam);
+								char* title = cParam;
+	
+								if (!title || !title[0])
+									title = NULL;
+	
+							//	HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
+								if (!strcmp(lng, "*"))
+									m_StreamTree.DeleteAllTitlesFromStreamTree(hStreamItem);
+								else
+									m_StreamTree.AddTitleToStreamTree(hStreamItem, lng, title);
 
-							if (!title || !title[0])
-								title = NULL;
-
-							HTREEITEM hItem = Tree_Index2Item(&m_StreamTree,j);
-							if (!strcmp(lng, "*"))
-								m_StreamTree.DeleteAllTitlesFromStreamTree(hItem);
-							else
-								m_StreamTree.AddTitleToStreamTree(hItem, lng, title);
-
-						} else
+							} else
 /*						if (B[0] || B[1]) {
 							m_StreamTree.FindID(Tree_Index2Item(&m_StreamTree,j),B[0]?TIIID_STRNAME:TIIID_LNGCODE,&tii);
 							if (tii->pText) delete tii->pText;
@@ -3361,14 +3625,15 @@ LRESULT CAVIMux_GUIDlg::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 						if (B[1]) {
 							lpmsi->mms->SetLanguageCode(cParam);
 						}*/
-						if (B[2]) {
-							w=cParam;
-							if (isposint(w)) {
-								lpmsi->mms->SetDefault(atoi(w));
+							if (B[2]) {
+								w=cParam;
+								if (isposint(w)) {
+									lpmsi->mms->SetDefault(atoi(w));
+								}
 							}
+							m_StreamTree.Invalidate();
+							m_StreamTree.UpdateWindow();
 						}
-						m_StreamTree.Invalidate();
-						m_StreamTree.UpdateWindow();
 					} else
 						bError=true;
 			
@@ -4001,7 +4266,8 @@ void CAVIMux_GUIDlg::OnSelchangeSourcefilelist()
 				SetWindowTextUTF8(hTitleEdit, fi->MKVFile->GetSegmentTitle());
 			} else if (fi->dwType & FILETYPE_AVI) {
 				char* utf8 = NULL;
-				Str2UTF8(fi->AVIFile->GetTitle(), &utf8);
+				std::string fileTitle = fi->AVIFile->GetTitle();
+				Str2UTF8(fileTitle.c_str(), &utf8);
 				SetWindowTextUTF8(hTitleEdit, utf8);
 				delete utf8;
 			} else SetWindowTextUTF8(hTitleEdit, "");
@@ -4083,7 +4349,7 @@ void CAVIMux_GUIDlg::OnBeginlabeleditAudiotree(NMHDR* pNMHDR, LRESULT* pResult)
 	} else {
 		CEdit* edit = m_StreamTree.GetEditControl();
 		UTF82Str(tii->pText, c);
-		edit->SetWindowText(c);
+		edit->SetWindowTextA(c);
 	}
 
 	bEditInProgess = 1;
@@ -4107,7 +4373,7 @@ void CAVIMux_GUIDlg::OnEndlabeleditAudiotree(NMHDR* pNMHDR, LRESULT* pResult)
 
 		if (unicode) {
 			HWND edit = TreeView_GetEditControl(m_StreamTree.m_hWnd);
-			SendMessageW(edit, WM_GETTEXT, 256, (LPARAM)c);
+			::SendMessageW(edit, WM_GETTEXT, 256, (LPARAM)c);
 			WStr2UTF8(c, c);
 		} else {
 			CEdit* edit = m_StreamTree.GetEditControl();
@@ -4393,7 +4659,8 @@ void CAVIMux_GUIDlg::OnNMCustomdrawAudiotree(NMHDR *pNMHDR, LRESULT *pResult)
 					{
 						if (tvitem.state & TVIS_SELECTED)
 						{
-							if (GetFocus() && GetFocus()->m_hWnd == m_StreamTree.m_hWnd)
+							CWnd* focusedWindow = GetFocus();
+							if (focusedWindow && focusedWindow->m_hWnd == m_StreamTree.m_hWnd)
 							{
 								SetTextColor(pNMCD->hdc, RGB(24, 24, 255) ^ RGB(255, 255, 255));
 							}
@@ -4413,7 +4680,7 @@ void CAVIMux_GUIDlg::OnNMCustomdrawAudiotree(NMHDR *pNMHDR, LRESULT *pResult)
 
 		if (mustCreateNewFont)
 		{
-			fontToUse->CreateFontIndirectA(&lf);
+			fontToUse->CreateFontIndirect(&lf);
 			tii->SetFont(fontToUse);
 		}
 

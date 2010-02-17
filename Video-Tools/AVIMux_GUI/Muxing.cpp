@@ -16,6 +16,7 @@
 #include "UTF8Windows.h"
 #include "OSVersion.h"
 #include "..\FileStream.h"
+#include "fopenutf8.h"
 
 #define INT64_MAX 0x7FFFFFFFFFFFFFFF
 
@@ -370,7 +371,7 @@ const int CHECKEXISTENCE_OVERWRITE    = 0x05;
 int	CheckExistence(char* cFilename, int ask, __int64* filesize)
 {
 	CFileStream* f = new CFileStream;
-	if (f->Open(cFilename, STREAM_READ) != STREAM_OK) {
+	if (f->Open(cFilename, StreamMode::Read) != STREAM_OK) {
 		delete f;
 		return CHECKEXISTENCE_DOESNOTEXIST;
 	}
@@ -553,21 +554,27 @@ bool DeleteFileUTF8(char* file_name)
 #include "../strings.h"
 
 /* free space functions */
+/** \brief Determines the amount of free disk space 
+ *
+ * \param fileName Name of a file on the target disk in UTF-8 encoding
+ */
 __int64 GetDirectoryFreeSpace(char* filename)
 {
 	char* f = NULL;
 	char* e = NULL;
 	char* path = (char*)calloc(1, 32768);
 
-	splitpathname(filename, &e, &f, &path);
-	char* p = NULL;
-	fromUTF8(path, &p);
+	CUTF8 utf8FullFileName(filename, CharacterEncoding::UTF8);
+	std::wstring fileName;
+	std::wstring fileNameExtension;
+	std::wstring pathName;
 
-	uint64 free_bytes = 0;
-	(*UGetDiskFreeSpaceEx())(p, &free_bytes, NULL, NULL);
-   	free(path);
+	splitpathname<wchar_t>(utf8FullFileName, fileName, fileNameExtension, pathName);
 
-	return free_bytes;
+	ULARGE_INTEGER free_bytes;
+	GetDiskFreeSpaceExW(pathName.c_str(), &free_bytes, NULL, NULL);
+
+	return free_bytes.QuadPart;
 }
 
 bool FreeSpaceErrorMessage(int msg_id, __int64 free_space, 
@@ -628,7 +635,13 @@ bool CheckDiskSpace(bool bDoCheck, __int64 total_size, __int64 disk_space,
 bool IsNTFS(char* cFileName, wchar_t** file_system, wchar_t** root) 
 {
 	char* cPath = new char[32768];
-	splitpathname(cFileName, NULL, NULL, &cPath);
+	
+	std::string fileName;
+	std::string fileExtension;
+	std::string pathName;
+	splitpathname<char>(const_cast<char*>(cFileName), fileName, fileExtension, pathName);
+	
+	strcpy(cPath, pathName.c_str());
 	wchar_t* wcPath = new wchar_t[32768];
 	fromUTF8(cPath, wcPath);
 	
@@ -673,8 +686,10 @@ bool VerifySuitableFileSystem(char* cFilename, __int64 max_size)
 		char* msg = LoadString(IDS_OVER4GBONLYNTFS, LOADSTRING_UTF8);
 		wchar_t* wmsg = NULL;
 		UTF82WStr(msg, (char**)&wmsg);
-		wchar_t m[32768];
-		_swprintf(m, wmsg, root_dir, file_system);
+		wchar_t m[32768]; m[0]=0;
+
+		// TODO: Testen
+		_swprintf_c(m, 32768, wmsg, root_dir, file_system);
 
 		wchar_t* title = NULL;
 		UTF82WStr(LoadString(STR_GEN_ERROR, LOADSTRING_UTF8), (char**)&title);
@@ -869,6 +884,8 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	char dir[32768];
 	GetModuleFileName(NULL, dir, 512);
 	silence->Init(dir);
+
+	std::basic_string<TCHAR> strVersion = ComposeVersionString();
 
 	cStr[0]=LoadString(STR_MUXLOG_BEGIN);
 	lpDAI->dlg->AddProtocolLine(cStr[0],5);
@@ -1122,6 +1139,8 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	if (lpDAI->split_points && lpDAI->split_points->GetCount())
 		lpDAI->dwEstimatedNumberOfFiles = max(lpDAI->split_points->GetCount()+1, lpDAI->dwEstimatedNumberOfFiles);
 
+	CUTF8 utf8FileNameFormat(lpDAI->fileNameFormat.c_str());
+
 	if (lpDAI->settings->GetInt("gui/general/overwritedlg")) {
 		check = FirstFilenameCheck(lpDAI, RawFilename, FFC_FORMAT_AVI, &overwriteable_size);
 		if (check == -1)
@@ -1177,7 +1196,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 	}
 
 	memset(cFilename, 0, sizeof(cFilename));
-	FormatOutputFileName(cFilename,lpDAI->lpFormat, RawFilename,
+	FormatOutputFileName(cFilename, utf8FileNameFormat.TStr(), /*lpDAI->lpFormat,*/ RawFilename,
 		dwPartNbr, NULL);
 
 	if (check != CHECKEXISTENCE_OVERWRITE)
@@ -1190,10 +1209,10 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 
 	DeleteFileUTF8(cFilename);
 	DestFile=new CFileStream;
-	if (DestFile->Open(cFilename, STREAM_READ | 
-			(bUnbufferedOutput?STREAM_UNBUFFERED_WRITE:STREAM_WRITE) | 
-			(bThreaded?STREAM_THREADED:0) |
-			(bOverlapped?STREAM_OVERLAPPED:0))==STREAM_ERR) {
+	if (DestFile->Open(cFilename, StreamMode::Read | 
+			(bUnbufferedOutput?StreamMode::UnbufferedWrite:StreamMode::Write) | 
+			(bThreaded?StreamMode::Threaded:StreamMode::None) |
+			(bOverlapped?StreamMode::Overlapped:StreamMode::None))==STREAM_ERR) {
 
 		cStr[0]=LoadString(IDS_COULDNOTOPENOUTPUTFILE);
 		lpDAI->dlg->MessageBox(cStr[0],lpDAI->dlg->cstrError,MB_OK | MB_ICONERROR);
@@ -1235,7 +1254,9 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 		lpDAI->cTitle->SetOutputFormat(CSB_UTF8);
 	}
 
-	ComposeVersionString(cBuffer);
+	//ComposeVersionString(cBuffer);
+	cBuffer[0];
+	strcpy_s(cBuffer, 64, strVersion.c_str());
 	AVIOut->SetWritingAppName(cBuffer);
 	if (s->GetInt("output/avi/opendml/stdindex/pattern") == SIP_FRAMES)
 	{
@@ -1704,7 +1725,7 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 				bSplitInitiated=false;
 				ZeroMemory(cFilename,sizeof(cFilename));
 				//wsprintf(cFilename,lpDAI->lpFormat,RawFilename,dwPartNbr);
-				FormatOutputFileName(cFilename,lpDAI->lpFormat, RawFilename,
+				FormatOutputFileName(cFilename,/*lpDAI->lpFormat*/utf8FileNameFormat.TStr(), RawFilename,
 					dwPartNbr, NULL);
 
 				if (!v->IsEndOfStream()) {
@@ -1719,10 +1740,10 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 					strcpy(cBuffer,cFilename);				
 					DeleteFileUTF8(cFilename);
 					NextDestFile=new CFileStream;
-					if (NextDestFile->Open(cBuffer, STREAM_READ |
-						(bUnbufferedOutput?STREAM_UNBUFFERED_WRITE:STREAM_WRITE) | 
-						(bThreaded?STREAM_THREADED:0) |
-						(bOverlapped?STREAM_OVERLAPPED:0))==STREAM_ERR) {
+					if (NextDestFile->Open(cBuffer, StreamMode::Read |
+						(bUnbufferedOutput?StreamMode::UnbufferedWrite:StreamMode::Write) | 
+						(bThreaded?StreamMode::Threaded:StreamMode::None) |
+						(bOverlapped?StreamMode::Overlapped:StreamMode::None))==STREAM_ERR) {
 
 						AVIOut->FlushWriteCache();
 						AVIOut->Close();
@@ -1779,7 +1800,9 @@ int MuxThread_AVI(DEST_AVI_INFO* lpDAI)
 						lpDAI->asi[i]->audiosource->GetName(Buffer);
 						NextAVIOut->SetStreamName(i+1,Buffer);
 					}
-					ComposeVersionString(Buffer);
+					cBuffer[0]=0;
+					strcpy_s(cBuffer, 64, strVersion.c_str());
+					//ComposeVersionString(Buffer);
 					NextAVIOut->SetWritingAppName(Buffer);
 					if (lpDAI->cTitle) {
 						lpDAI->cTitle->SetOutputFormat(CSB_ASCII);
@@ -1958,8 +1981,8 @@ finish:
 		lpDAI->asi[i]->audiosource->Enable(0);
 	}
 //	free(lpDAI->lpFormat);
-	free(lpDAI->asi);
-	if (lpDAI->ssi&&lpDAI->dwNbrOfSubs) free(lpDAI->ssi);
+//	free(lpDAI->asi);
+//	if (lpDAI->ssi&&lpDAI->dwNbrOfSubs) free(lpDAI->ssi);
 	free(lpDAI->lpFileName);
 	
 	for (i=0;i<lpDAI->dwNbrOfAC3Streams;i++)
@@ -2034,7 +2057,7 @@ int GetStreamNumber(DEST_AVI_INFO* lpDAI, int iType, int iNumber)
 const int FOFN_USE_CHAPTER_NAME = 0x04;
 const int FOFN_CAN_USE_CHAPTER_NAME = 0x80;
 
-int FormatOutputFileName(char* cDest, char* cFormat, char* cRawFileName,
+int FormatOutputFileName(char* cDest, const char* cFormat, const char* cRawFileName,
 						 int iCurrentFile, SPLIT_POINT_DESCRIPTOR* pSPD,
 						 int* flags)
 {
@@ -2129,7 +2152,7 @@ int FormatSegmentTitle(char* cDest, char* cRawSegmentName, char* cRawFilename,
 
 int string_comp(const void* c1, const void* c2)
 {
-	return strcmp((char*)c1, (char*)c2);
+	return strcmp((const char*)c1, (const char*)c2);
 }
 
 int FirstFilenameCheck(DEST_AVI_INFO* lpDAI, char* RawFilename, int format,
@@ -2173,7 +2196,8 @@ int FirstFilenameCheck(DEST_AVI_INFO* lpDAI, char* RawFilename, int format,
 			for (int j = 1;j<=file_count; j++) {
 				char cFN[4096]; memset(cFN, 0, sizeof(cFN));
 				__int64 s;
-				FormatOutputFileName(cFN, lpDAI->lpFormat, RawFilename, j, 
+				CUTF8 utf8FileNameFormat(lpDAI->fileNameFormat.c_str());
+				FormatOutputFileName(cFN, utf8FileNameFormat.TStr() /*lpDAI->lpFormat*/, RawFilename, j, 
 					lpDAI->split_points->At(j-1), &flags);
 				len = strlen(cFN);
 				if (CheckExistence(cFN, CHECKEXISTENCE_NEVERASK, &s) == CHECKEXISTENCE_OVERWRITE) {
@@ -2201,7 +2225,7 @@ int FirstFilenameCheck(DEST_AVI_INFO* lpDAI, char* RawFilename, int format,
 
 			for (int j=0;j<file_count;j++) {
 				CFileStream* f = new CFileStream;
-				if (f->Open(ppAll[j], STREAM_READ) == STREAM_OK) {
+				if (f->Open(ppAll[j], StreamMode::Read) == STREAM_OK) {
 					overwritable_size += f->GetSize();
 					f->Close();
 				}
@@ -2214,7 +2238,8 @@ int FirstFilenameCheck(DEST_AVI_INFO* lpDAI, char* RawFilename, int format,
 			if (double_count) {
 				char* cMsg1 = LoadString(STR_WRN_NONUNIQUEFILENAMES, LOADSTRING_UTF8);
 				char* cMsg2 = LoadString(IDS_WARNING, LOADSTRING_UTF8);
-				char* cCfg = lpDAI->lpFormat;
+				CUTF8 utf8FileNameFormat(lpDAI->fileNameFormat.c_str());
+				const char* cCfg = utf8FileNameFormat.TStr(); //lpDAI->lpFormat;
 				char* cMsg = (char*)calloc(strlen(cMsg1)+strlen(cCfg)+100,sizeof(char));
 
 				sprintf(cMsg, cMsg1, cCfg);
@@ -2375,7 +2400,22 @@ MATROSKA_TRACK_SOURCE* GenerateMatroskaTrackSource(MATROSKA* m,
 
 int MuxThread_MKV(DEST_AVI_INFO* lpDAI)
 {
+	std::map<unsigned int, std::wstring> laceStyleTexts;
+	laceStyleTexts[LACESTYLE_XIPH] = L"xiph";
+	laceStyleTexts[LACESTYLE_EBML] = L"ebml";
+	laceStyleTexts[LACESTYLE_FIXED] = L"fixed";
+	laceStyleTexts[LACESTYLE_AUTO] = L"auto";
+	laceStyleTexts[0] = L"none";
+
+	std::map<bool, std::wstring> enabledDisabledTexts;
+	enabledDisabledTexts[true] = L"enabled";
+	enabledDisabledTexts[false] = L"disabled";
+
 	WaitForMuxing(lpDAI);
+
+	CLocalTracer trace(GetApplicationTraceFile(), "MuxThread_MKV(...)");
+	std::basic_string<TCHAR> muxSettingsTitleString = _T("Mux settings");
+
 	CAttribs*   s = lpDAI->settings;
 	MATROSKA*	m;
 	MUX_STATE*	lpmsState;
@@ -2438,10 +2478,17 @@ int MuxThread_MKV(DEST_AVI_INFO* lpDAI)
 	int	force_matroska_2 = (int)lpDAI->settings->GetInt("output/mkv/force v2");
 	int matroska_version = (force_matroska_1)?1:2;
 	int allow_a_aac = (int)lpDAI->settings->GetInt("output/mkv/use a_aac");
+	CUTF8 utf8FileNameFormat(lpDAI->fileNameFormat.c_str());
+
+	trace.Trace(TRACE_LEVEL_INFO, muxSettingsTitleString, CFormatHelper::FormatSimple<std::wstring>(
+		L"Using file name pattern: %1", utf8FileNameFormat));
 
 	char mkv_ver[128]; mkv_ver[0]=0;
 	sprintf(mkv_ver, LoadString(STR_MUXLOG_MATROSKAVERSION), matroska_version);
 	lpDAI->dlg->AddProtocolLine(mkv_ver, 4);
+
+	trace.Trace(TRACE_LEVEL_INFO, muxSettingsTitleString, CFormatHelper::FormatSimple<int>(
+		L"Creating matroska version %1 files", matroska_version));
 
 	int free_style = !force_matroska_1 && !force_matroska_2;
 	lpDAI->dlg->AddProtocolLine(Message_index(MSG_BENDSPECS, free_style), 4);
@@ -2449,13 +2496,27 @@ int MuxThread_MKV(DEST_AVI_INFO* lpDAI)
 	if (force_matroska_1)
 		lpDAI->settings->SetInt("output/mkv/lacing/video/on", 0);
 
-	int	bLaceVideo = (int)lpDAI->settings->GetInt("output/mkv/lacing/video/on");
+	bool bLaceVideo = !!lpDAI->settings->GetInt("output/mkv/lacing/video/on");
 	if ((int)s->GetInt("output/mkv/lacing/style") != LACESTYLE_AUTO) 
+	{
+		if (bLaceVideo) 
+		{
+			trace.Trace(TRACE_LEVEL_WARN, muxSettingsTitleString, _T("Can't use video lacing because lace setting is not 'auto'"));
+		}
 		bLaceVideo = false;
+	}
+	trace.Trace(TRACE_LEVEL_INFO, muxSettingsTitleString, CFormatHelper::FormatSimple(
+		L"Video lacing is %1", enabledDisabledTexts[bLaceVideo]));
 	
 	int	iVideoFramesPerLace = (int)lpDAI->settings->GetInt("output/mkv/lacing/video/frames");
+
 	int	hard_linking = (int)lpDAI->settings->GetInt("output/mkv/hard linking");
-	int header_stripping = (int)lpDAI->settings->GetInt("output/mkv/compression/header striping");
+	trace.Trace(TRACE_LEVEL_INFO, muxSettingsTitleString, CFormatHelper::FormatSimple(
+		L"Creating hard links is %1", enabledDisabledTexts[!!hard_linking]));
+
+	bool header_stripping = !!lpDAI->settings->GetInt("output/mkv/compression/header striping");
+	trace.Trace(TRACE_LEVEL_INFO, muxSettingsTitleString, CFormatHelper::FormatSimple(
+		L"Header striping is %1", enabledDisabledTexts[header_stripping]));
 
 	
 	bool		bDoLace[100];
@@ -2535,9 +2596,9 @@ int MuxThread_MKV(DEST_AVI_INFO* lpDAI)
 
 	/* retrieve cue write settings */
 	int bCues = (int)lpDAI->settings->GetInt("output/mkv/cues/on");
-	int bCuesV = (int)lpDAI->settings->GetInt("output/mkv/cues/video/on");
+	bool bCuesV = !!lpDAI->settings->GetInt("output/mkv/cues/video/on");
 	int bCuesA = (int)lpDAI->settings->GetInt("output/mkv/cues/audio/on");
-	int bCuesS = (int)lpDAI->settings->GetInt("output/mkv/cues/subs/on");
+	bool bCuesS = !!lpDAI->settings->GetInt("output/mkv/cues/subs/on");
 	int bCuesWriteBlockNumber = (int)lpDAI->settings->GetInt("output/mkv/cues/write blocknumber");
 	int bCuesAOAO = (int)lpDAI->settings->GetInt("output/mkv/cues/audio/only audio-only/on");
 	int hdr_size_set = (int)s->GetInt("output/mkv/headers/size");
@@ -2757,12 +2818,13 @@ int MuxThread_MKV(DEST_AVI_INFO* lpDAI)
 
 	// set filename to mka if audio-only
 	if (!lpDAI->dwNbrOfVideoStreams) {
-		lpDAI->lpFormat[strlen(lpDAI->lpFormat)-1]='a';
+		//lpDAI->lpFormat[strlen(lpDAI->lpFormat)-1]='a';
+		lpDAI->fileNameFormat[lpDAI->fileNameFormat.size() - 1] = _T('a');
 	}
 
 	flags |= FOFN_CAN_USE_CHAPTER_NAME;
 	cBuffer[0]=0; memset(cBuffer, 0, sizeof(cBuffer));
-	FormatOutputFileName(cBuffer, lpDAI->lpFormat, RawFilename, iCurrentFile,
+	FormatOutputFileName(cBuffer, /*lpDAI->lpFormat*/utf8FileNameFormat.TStr(), RawFilename, iCurrentFile,
 		&pSPD, &flags);
 
 	qwMaxBytes = (s->GetInt("output/general/file size/max"))*(1<<20);
@@ -2824,7 +2886,7 @@ start:
 		}
 		
 		cBuffer[0]=0; memset(cBuffer, 0, sizeof(cBuffer));
-		FormatOutputFileName(cBuffer, lpDAI->lpFormat, RawFilename, iCurrentFile++,
+		FormatOutputFileName(cBuffer, /*lpDAI->lpFormat*/utf8FileNameFormat.TStr(), RawFilename, iCurrentFile++,
 			&pSPD, &flags);
 		
 		if (check != CHECKEXISTENCE_OVERWRITE)
@@ -2836,10 +2898,10 @@ start:
 		// delete output file if it already exists
 		DeleteFileUTF8(cBuffer);
 		DestFile=new CFileStream;
-		if (DestFile->Open(cBuffer, STREAM_READ | 
-			(bUnbufferedOutput?STREAM_UNBUFFERED_WRITE:STREAM_WRITE) | 
-			(bOverlapped?STREAM_OVERLAPPED:0) |
-			(bThreaded?STREAM_THREADED:0))==STREAM_ERR) {
+		if (DestFile->Open(cBuffer, StreamMode::Read | 
+			(bUnbufferedOutput?StreamMode::UnbufferedWrite:StreamMode::Write) | 
+			(bOverlapped?StreamMode::Overlapped:StreamMode::None) |
+			(bThreaded?StreamMode::Threaded:StreamMode::None))==STREAM_ERR) {
 			lpDAI->dlg->MessageBox(LoadString(IDS_COULDNOTOPENOUTPUTFILE),lpDAI->dlg->cstrError,MB_OK | MB_ICONERROR);
 			lpDAI->dlg->ButtonState_STOP();
 			lpDAI->dlg->SetDialogState_Config();
@@ -2849,7 +2911,8 @@ start:
 		}
 		lpDAI->dlg->SetDlgItemText(IDC_DESTFILE,cBuffer);
 		lstrcpy(cFilename,cBuffer);
-
+		trace.Trace(TRACE_LEVEL_INFO, _T("Muxing"), CFormatHelper::FormatSimple(
+			L"New file created: %1", cFilename));
 		m = new MATROSKA;
 		CACHE* cache;
 
@@ -2865,8 +2928,13 @@ start:
 			__int64 j = lpDAI->settings->GetInt("output/mkv/TimecodeScale/mkv");
 			m->SetTimecodeScale(j);
 			v->SetTimecodeScale(j);
+			trace.Trace(TRACE_LEVEL_INFO, muxSettingsTitleString, CFormatHelper::FormatSimple(
+				L"Timecode scale: %1", j));
 		} else {
-			m->SetTimecodeScale(lpDAI->settings->GetInt("output/mkv/TimecodeScale/mka"));
+			__int64 timecodeScale = lpDAI->settings->GetInt("output/mkv/TimecodeScale/mka");
+			m->SetTimecodeScale(timecodeScale);
+			trace.Trace(TRACE_LEVEL_INFO, muxSettingsTitleString, CFormatHelper::FormatSimple(
+				L"Timecode scale: %1", timecodeScale));
 		}
 
 		Millisec2HMSF(-qwBias/1000000,&dwHour,&dwMin,&dwSec,&dwFrac);
@@ -2889,12 +2957,19 @@ start:
 			s->GetInt("output/mkv/clusters/position")?MFA_ENABLE:MFA_DISABLE);
 
 		//m->EnablePrevClusterSize((int)s->GetInt("output/mkv/clusters/prevclustersize"));
+		bool writePrevClusterSize = !!s->GetInt("output/mkv/clusters/prevclustersize");
 		m->Enable(MF_WRITE_PREV_CLUSTER_SIZE, 0,
-			s->GetInt("output/mkv/clusters/prevclustersize")?MFA_ENABLE:MFA_DISABLE);
+			writePrevClusterSize ? MFA_ENABLE : MFA_DISABLE);
+		trace.Trace(TRACE_LEVEL_INFO, muxSettingsTitleString, CFormatHelper::FormatSimple(
+			L"Writing size of previous cluster into clusters is %1", enabledDisabledTexts[writePrevClusterSize]));
 
 		m->SetTrackCount(iTrackCount=lpDAI->dwNbrOfAudioStreams+lpDAI->dwNbrOfVideoStreams+lpDAI->dwNbrOfSubs);
 		m->SetSegmentDuration((float)iMaxDuration / m->GetTimecodeScale());
+		
+		
 		m->EnableRandomizeElementOrder(j=(int)s->GetInt("output/mkv/randomize element order"));
+		
+
 		m->SetNonclusterIndexMode((int)s->GetInt("output/mkv/headers/index in first seekhead"));
 		
 		lpDAI->dlg->AddProtocolLine(LoadString(MSG_RANDELORDER[j]), 4);
@@ -2909,17 +2984,28 @@ start:
 			bCuesWriteBlockNumber?MFA_ENABLE:MFA_DISABLE);
 
 		if (bCues) {
+			trace.Trace(TRACE_LEVEL_INFO, muxSettingsTitleString, CFormatHelper::FormatSimple(
+				L"Cues for video streams are %1", enabledDisabledTexts[bCuesV]));
 			if (bCuesV) 
 				m->EnableCues(CUE_VIDEO, 1);
+
+			trace.Trace(TRACE_LEVEL_INFO, muxSettingsTitleString, CFormatHelper::FormatSimple(
+				L"Cues for subtitle streams are %1", enabledDisabledTexts[bCuesS]));
 			if (bCuesS)
 				m->EnableCues(CUE_SUBS, 1);
+
 			if (bCuesA) {
+				bool setToEnabled = false;
 				if (bCuesAOAO && !lpDAI->dwNbrOfVideoStreams) {
 					m->EnableCues(CUE_AUDIO, 1);
+					setToEnabled = true;
 				}
 				if (!bCuesAOAO) {
 					m->EnableCues(CUE_AUDIO, 1);
+					setToEnabled = true;
 				}
+				trace.Trace(TRACE_LEVEL_INFO, muxSettingsTitleString, CFormatHelper::FormatSimple(
+					L"Cues for audio streams are %1", enabledDisabledTexts[setToEnabled]));
 			}
 		}
 
@@ -3003,7 +3089,10 @@ start:
 			v->GetName(cName);
 			//m->SetTrackName(0, cName);
 			m->GetTrackTitleSet()->Import(v->GetTitleSet());
-			v->GetLanguageCode(cName);
+			
+			std::string languageCode;
+			v->GetLanguageCode(languageCode); // cName
+			strcpy(cName, languageCode.c_str());
 			m->SetTrackLanguageCode(0, cName);
 		}
 
@@ -3034,9 +3123,11 @@ start:
 			m->SetSamplingFrequency(i,(float)as->GetFrequency(),(float)as->GetOutputFrequency());
 			m->SetChannelCount(i,as->GetChannelCount());
 			char cName[500]; cName[0]=0;
-			char cLangCode[10];
+			
+			//char cLangCode[10];
+			std::string languageCode;
 			//lpDAI->asi[j]->audiosource->GetName(cName);
-			lpDAI->asi[j]->audiosource->GetLanguageCode(cLangCode);
+			lpDAI->asi[j]->audiosource->GetLanguageCode(languageCode); // cLangCode
 			//m->SetTrackName(i,cName);
 			m->GetTrackTitleSet(i)->Import(lpDAI->asi[j]->audiosource->GetTitleSet());
 			
@@ -3049,8 +3140,10 @@ start:
 					break;
 			}
 
-			lpDAI->asi[j]->audiosource->GetLanguageCode(cBuffer);
-			m->SetTrackLanguageCode(i,cBuffer);
+			//lpDAI->asi[j]->audiosource->GetLanguageCode(cBuffer);
+			lpDAI->asi[j]->audiosource->GetLanguageCode(languageCode);
+
+			m->SetTrackLanguageCode(i, (char*)languageCode.c_str()); // cBuffer);
 			CAttribs* lacing = lpDAI->settings->GetAttr("output/mkv/lacing");
 			CAttribs* s = lpDAI->settings;
 			if (!ids || w && w->wFormatTag && strcmp(ids, "A_VORBIS")
@@ -3084,10 +3177,10 @@ start:
 								case 4: strcat(cCodecID, "MPEG4/"); break;
 							}
 							switch (a->FormatSpecific(MMSGFS_AAC_PROFILE)) {
-								case AAC_ADTS_PROFILE_LC: strcat(cCodecID, "LC"); break;
-								case AAC_ADTS_PROFILE_LTP: strcat(cCodecID, "LTP"); break;
-								case AAC_ADTS_PROFILE_MAIN: strcat(cCodecID, "MAIN"); break;
-								case AAC_ADTS_PROFILE_SSR: strcat(cCodecID, "SSR"); break;
+								case AACSOURCE::AdtsProfile::LC: strcat(cCodecID, "LC"); break;
+								case AACSOURCE::AdtsProfile::LTP: strcat(cCodecID, "LTP"); break;
+								case AACSOURCE::AdtsProfile::Main: strcat(cCodecID, "MAIN"); break;
+								case AACSOURCE::AdtsProfile::SSR: strcat(cCodecID, "SSR"); break;
 							}
 							if (a->FormatSpecific(MMSGFS_AAC_ISSBR)) {
 								strcat(cCodecID, "/SBR");
@@ -3144,7 +3237,7 @@ start:
 			m->SetFlags(i,1,bDoLace[j],as->IsDefault());
 			lpDAI->asi[j]->audiosource->GetName(cName);
 
-			if ((int)s->GetInt("output/mkv/lacing/style") || cName[0] || cLangCode[0] || lpDAI->asi[j]->iDelay) {
+			if ((int)s->GetInt("output/mkv/lacing/style") || cName[0] || !languageCode.empty() || lpDAI->asi[j]->iDelay) {
 				wsprintf(cBuffer,LoadString(STR_MUXLOG_STREAM),i);
 				lpDAI->dlg->AddProtocolLine(cBuffer,5);
 			}
@@ -3163,8 +3256,8 @@ start:
 				wsprintf(cBuffer,LoadString(STR_MUXLOG_NAME),cName);
 				lpDAI->dlg->AddProtocolLine(cBuffer,4, APL_UTF8);
 			}
-			if (strlen(cLangCode)) {
-				wsprintf(cBuffer,LoadString(STR_MUXLOG_LANGUAGECODE),cLangCode);
+			if (!languageCode.empty()) {
+				wsprintf(cBuffer,LoadString(STR_MUXLOG_LANGUAGECODE),languageCode.c_str());
 				lpDAI->dlg->AddProtocolLine(cBuffer,4, APL_UTF8);
 			}
 			if (lpDAI->asi[j]->iDelay) {
@@ -3195,10 +3288,11 @@ start:
 			m->SetTrackType(j,MSTRT_SUBT);
 
 			char cName[500]; cName[0]=0;
-			char cLangCode[10];
+			//char cLangCode[10];
+			std::string languageCode;
 		//	subs->GetName(cName);
-			subs->GetLanguageCode(cLangCode);
-			if (cName[0] || cLangCode[0]) {
+			subs->GetLanguageCode(languageCode); // cLangCode
+			if (cName[0] || !languageCode.empty()) {
 				wsprintf(cBuffer,LoadString(STR_MUXLOG_STREAM),i+1);
 				lpDAI->dlg->AddProtocolLine(cBuffer,5);
 
@@ -3206,8 +3300,8 @@ start:
 					sprintf(cBuffer,LoadString(STR_MUXLOG_NAME),cName);
 					lpDAI->dlg->AddProtocolLine(cBuffer,5, APL_UTF8);
 				}
-				if (cLangCode[0]) {
-					sprintf(cBuffer,LoadString(STR_MUXLOG_LANGUAGECODE),cLangCode);
+				if (!languageCode.empty()) {
+					sprintf(cBuffer,LoadString(STR_MUXLOG_LANGUAGECODE),languageCode.c_str());
 					lpDAI->dlg->AddProtocolLine(cBuffer,5, APL_UTF8);
 				}
 
@@ -3215,8 +3309,8 @@ start:
 			//m->SetTrackName(j,cName);
 			m->GetTrackTitleSet(j)->Import(subs->GetTitleSet());
 
-			subs->GetLanguageCode(cBuffer);
-			m->SetTrackLanguageCode(j,cBuffer);
+//			subs->GetLanguageCode(cBuffer);
+			m->SetTrackLanguageCode(j, (char*)languageCode.c_str());
 			cBuffer[0]=0;
 			switch (subs->GetFormat()) {
 				case SUBFORMAT_SRT:
@@ -3289,9 +3383,8 @@ start:
 
 		m->BeginWrite();
 		{
-			char	buffer[200];
-			ComposeVersionString(buffer);
-			m->SetAppName(buffer);
+			std::basic_string<TCHAR> version = ComposeVersionString();
+			m->SetAppName(version.c_str());
 		}
 
 		iFramecount = 0;
@@ -3769,7 +3862,7 @@ start:
 	WaitForSingleObject(hSem_finish, INFINITE);
 
 	CloseHandle(hSem_finish);
-	delete lpDAI->lpFormat;
+//	delete lpDAI->lpFormat;
 	lpDAI->split_points->DeleteAll();
 	delete lpDAI->split_points;
 	delete lpDPI;
@@ -3796,6 +3889,8 @@ start:
 	lpDAI->settings->Delete();
 	delete lpDAI->settings;
 	delete lpDAI;
+
+	trace.Trace(TRACE_LEVEL_INFO, "Muxing", "Muxing process finished");
 //	cacheAllowReadAhead(0);
 	if (bExit) c->PostMessage(WM_COMMAND, ID_LEAVE, 0);
 	return 1;

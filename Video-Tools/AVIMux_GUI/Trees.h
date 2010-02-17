@@ -4,14 +4,16 @@
 #include <vector>
 
 template <class T> 
-HTREEITEM Tree_Insert(T* CTree,char* cBuffer,HTREEITEM hParent = NULL, HTREEITEM hAfter = TVI_LAST)
+HTREEITEM Tree_Insert(T* CTree, const char* cBuffer,HTREEITEM hParent = NULL, HTREEITEM hAfter = TVI_LAST)
 {
+	//std::string itemString(cBuffer);
+
 	TVINSERTSTRUCT	tvi;
 
 	tvi.hParent=hParent;
 	tvi.hInsertAfter=hAfter;
 	tvi.item.mask=TVIF_TEXT;
-	tvi.item.pszText=cBuffer;
+	tvi.item.pszText = const_cast<char*>(cBuffer); //(char*)itemString.c_str(); //cBuffer;
 	
 	if (cBuffer != LPSTR_TEXTCALLBACK)
 		tvi.item.cchTextMax=strlen(cBuffer);
@@ -20,15 +22,36 @@ HTREEITEM Tree_Insert(T* CTree,char* cBuffer,HTREEITEM hParent = NULL, HTREEITEM
 }
 
 template <class T> 
-HTREEITEM Tree_InsertCheck(T* CTree,char* cBuffer,HTREEITEM hParent = NULL, HTREEITEM hAfter = TVI_LAST)
+HTREEITEM Tree_InsertCheck(T* CTree, const CUTF8& buffer,
+						   HTREEITEM hParent = NULL, HTREEITEM hAfter = TVI_LAST)
+{
+	TVINSERTSTRUCT	tvi;
+
+	std::vector<TCHAR> tempBuffer(buffer.TStr(), buffer.TStr() + _tcslen(buffer.TStr()));
+
+	tvi.hParent=hParent;
+	tvi.hInsertAfter=hAfter;
+	tvi.item.mask=TVIF_TEXT;
+	tvi.item.pszText = &tempBuffer[0];
+	tvi.item.cchTextMax = 1 + _tcslen(buffer.TStr());
+
+	HTREEITEM hRes = CTree->InsertItem(&tvi);
+	Tree_SetCheckState(CTree,hRes,true);
+
+	return hRes;
+}
+
+template <class T> 
+HTREEITEM Tree_InsertCheck_Callback(T* CTree, 
+						   HTREEITEM hParent = NULL, HTREEITEM hAfter = TVI_LAST)
 {
 	TVINSERTSTRUCT	tvi;
 
 	tvi.hParent=hParent;
 	tvi.hInsertAfter=hAfter;
 	tvi.item.mask=TVIF_TEXT;
-	tvi.item.pszText=cBuffer;
-	tvi.item.cchTextMax=1+lstrlen(cBuffer);
+	tvi.item.pszText = LPSTR_TEXTCALLBACK;
+	tvi.item.cchTextMax = 0;
 
 	HTREEITEM hRes = CTree->InsertItem(&tvi);
 	Tree_SetCheckState(CTree,hRes,true);
@@ -121,7 +144,51 @@ std::vector<HTREEITEM> Tree_GetAllRootElements(T* CTree, HTREEITEM hItem)
 	return result;
 }
 
+/*
+ * \brief Finds an element in a tree of TREE_ITEM_INFO elements
+ *
+ * \param tree the tree to look in
+ * \param index index of items with ID \a id to find
+ * \param id iID member of item to look for
+ * \param pIndexInTree pointer to variable that receives the real index of the
+ *        item in the tree
+ */
 template <class T> 
+HTREEITEM Tree_Index2Item(T* tree, int index, int id = -1, int* pIndexInTree = NULL)
+{
+	int counter = 0;
+	int matchCounter = 0;
+	HTREEITEM hItem = tree->GetRootItem();
+
+	while (hItem)
+	{
+		TREE_ITEM_INFO* itemInfo = (TREE_ITEM_INFO*)tree->GetItemData(hItem);
+		if (!itemInfo)
+			continue;
+
+		if (id == -1 || itemInfo->iID == id)
+		{
+			// ID matches
+			if (index == matchCounter)
+			{
+				// item was found
+				if (pIndexInTree)
+					*pIndexInTree = counter;
+				return hItem;
+			}
+
+			matchCounter++;
+		}
+
+		counter++;
+		hItem = tree->GetNextSiblingItem(hItem);
+	}
+
+	return NULL;
+}
+
+// This code is not readable and could return a hItem even if the item is not found
+/*template <class T> 
 HTREEITEM Tree_Index2Item(T* CTree, int iIndex, int iID = -1, int* d = NULL)
 {
 	int counter = 0;
@@ -143,7 +210,7 @@ HTREEITEM Tree_Index2Item(T* CTree, int iIndex, int iID = -1, int* d = NULL)
 	if (d) *d = counter-2;
 
 	return hItem;
-}
+}*/
 
 
 #endif

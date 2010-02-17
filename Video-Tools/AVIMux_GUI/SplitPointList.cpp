@@ -121,6 +121,7 @@ bool CSplitPointList::CheckSplitPoint(DWORD dwSplitPos)
 			cStr=LoadString(IDS_ERROR);
 			cStr2=LoadString(IDS_FRAMENBRTOOHIGH);
 			wsprintf(Buffer,cStr2.GetBuffer(200),dwSplitPos);
+
 			MessageBox(Buffer,cStr,MB_OK | MB_ICONERROR);
 			return false;
 		}

@@ -10,8 +10,9 @@
 #include "../Filenames.h"
 #include "Version.h"
 #include "..\FileStream.h"
-#include "TraceFile.h"
-
+#include "../../Common/Path.h"
+#include <sstream>
+#include "../../Common/Controls/OSSpecific.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -20,14 +21,17 @@ static char THIS_FILE[] = __FILE__;
 
 BOOL CAVIMux_GUIDlg::OnInitDialog()
 {
+	OSSPECIFIC& osspecific = OSSPECIFIC::GetInstance();
+
+	CLocalTracer trace(GetApplicationTraceFile(), _T("CAVIMux_GUIDlg::OnInitDialog()"));
+
 	char*	Buffer;
 	int		buffer_size = 65536;
 	int		i;
-	char*	dir;
-	char*	lf;
-	char	cwinver[64];
-
-	//GetApplicationTraceFile()->SetTraceLevel(TRACE_LEVEL_NONE);
+	std::string	dir;
+//	char*	lf;
+	std::basic_string<TCHAR> cwinver;
+	std::basic_string<TCHAR> WinVerByAPIFunctions;
 
 	srand(GetTickCount());
 	settings = NULL;
@@ -36,24 +40,59 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	bAddAS_immed = 1;
 	current_language_index = 0;
 
-	GetOSVersionString(cwinver, 64);
-    
+	// Determine some info about the running system
+	SYSTEM_INFO si;
+	GetSystemInfo(&si);
+	GetOSVersionString(cwinver);
+    WinVerByAPIFunctions = GetOperatingSystemByAvailableAPIFunctions();
+
+	// Abrufen wieviel Speicher vorhanden ist
+	MEMORYSTATUSEX memStatusEx;
+	memStatusEx.dwLength = sizeof(memStatusEx);
+	MEMORYSTATUS memStatus;
+	memStatus.dwLength = sizeof(memStatus);
+	BOOL hasMemoryInfoEx = FALSE;
+	BOOL hasMemoryInfo = FALSE;
+	if (osspecific.GlobalMemoryStatusEx) {
+		hasMemoryInfoEx = (*osspecific.GlobalMemoryStatusEx)(&memStatusEx);
+	} else {
+		if (osspecific.GlobalMemoryStatus) {
+			// sollte immer vorhanden sein
+			hasMemoryInfo = (*osspecific.GlobalMemoryStatus)(&memStatus);
+		}
+	}
+
+	std::basic_ostringstream<TCHAR> sstrOsVersion;
+	sstrOsVersion << _T("  OS according to GetVersionEx : ") << cwinver << _T("\x0D\x0A");
+	sstrOsVersion << _T("  OS according to available API: ") << WinVerByAPIFunctions << _T(" or newer\x0D\x0A");
+	sstrOsVersion << _T("  Number of CPU cores          : ") << si.dwNumberOfProcessors << _T("\x0D\x0A");
+	if (hasMemoryInfoEx) {
+		sstrOsVersion << _T("  Total memory                 : ") << (memStatusEx.ullTotalPhys >> 20) << " MB" << "\x0D\x0A";
+		sstrOsVersion << _T("  Free memor                   : ") << (memStatusEx.ullAvailPhys >> 20) << " MB";
+	} else if (hasMemoryInfo) {
+		sstrOsVersion << _T("  Total memory                 : ") << (memStatus.dwTotalPhys >> 20) << " MB" << "\x0D\x0A";
+		sstrOsVersion << _T("  Free memor                   : ") << (memStatus.dwAvailPhys >> 20) << " MB";
+	}
+	trace.Trace(TRACE_LEVEL_INFO, _T("System info"), sstrOsVersion.str());	
+
+
 	if (!IsOSWin2kplus()) {
-		char c[4096];
-		sprintf(c, "The following operating system has been found: %s. This application might work or not on Win 9x/ME/NT <=4. You should use Windows 2000/XP/2003.", cwinver);
-		MessageBox(c, "Problem", MB_OK | MB_ICONERROR);
-	//	PostMessage(WM_QUIT);
-	//	return 0;
+
+		std::basic_ostringstream<TCHAR> sstrMsg;
+		sstrMsg << "The following operating system has been found:";
+		sstrMsg << cwinver;
+		sstrMsg << ". This application might work or not on Win 9x/ME/NT <=4. You should use Windows 2000/XP/2003.";
+
+		MessageBox(sstrMsg.str().c_str(), _T("Problem"), MB_OK | MB_ICONERROR);
 	}
 
 	utf8_EnableRealUnicode(DoesOSSupportUnicode());
-//	printf("Unicode should be working\n");
 
 	bEditInProgess = 0;	
 
-	if (!(uiMessage = RegisterWindowMessage("mymessage_1"))) {
-		MessageBox("Could not register user-defined window message!",
-			"Error",MB_OK | MB_ICONERROR);
+	if (!(uiMessage = RegisterWindowMessage(_T("mymessage_1")))) {
+		MessageBox(_T("Could not register user-defined window message!"),
+			_T("Error"), MB_OK | MB_ICONERROR);
 		PostMessage(WM_QUIT,0,0);
 		return 0;
 	}
@@ -90,63 +129,31 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	dwLangs[15] = IDM_LANG16;
 
 	Buffer=new char[65536];
-	dir=new char[65536];
-	lf=new char[65536];
 
-	(*UGetModuleFileName())(NULL, Buffer, buffer_size/2);
-	toUTF8(Buffer, dir);
-	for (i=strlen(dir);i>0;i--) {
-		if (dir[i]=='\\') {
-			dir[i]=0;
-			i=-1;
-		}	
-	}
+	dir = CUTF8(CPath::GetAppDir((std::string*)NULL)).UTF8();
+	dir = CPath::GetLongFilename(dir);
 
-	char* udir = NULL;
-	appdir = dir;
-	fromUTF8(dir, &udir);
-	(*USetCurrentDirectory())(udir);
-	free(udir);
+	cfgfile = CPath::GetLongFilename(CPath::Combine(dir, "config.ini"));
+	lastjobfile = CPath::GetLongFilename(CPath::Combine(dir, "last-job.amg"));
 
-	char odir[65536];
-	Filename2LongFilename(dir, odir, sizeof(odir));
-	strcpy(dir, odir);
-
-	cfgfile = dir;
-	cfgfile.append("\\config.ini");
-
-	strcpy(lastjobfile,dir);
-	strcat(lastjobfile,"\\last-job.amg");
-
-	guifile = dir;
-	guifile.append("\\gui.amg.xml");
-	
-//	strcpy(guifile, dir);
-//	strcat(guifile, "\\gui.amg.xml");
-
-	strcpy(lf,dir);
-	strcat(lf,"\\languages.amg");
-	Filename2LongFilename(lf, odir, sizeof(odir));
-	strcpy(lf, odir);
-
-	lngcodefile = dir;
-	lngcodefile.append("\\language_codes.txt");
-	char* temp = _strdup(lngcodefile.c_str());
-	Filename2LongFilename(temp, odir, sizeof(odir));
-	lngcodefile = odir;
-	free(temp);
+	guifile = CPath::GetLongFilename(CPath::Combine(dir, "gui.amg.xml"));
+	std::string languageListFile = CPath::GetLongFilename(CPath::Combine(dir, "languages.amg"));
+	lngcodefile = CPath::GetLongFilename(CPath::Combine(dir, "language_codes.txt"));
 
 	CFileStream* F = new CFileStream();
 	CTextFile* textfile = new CTextFile();
 
-	if (F->Open(lf, STREAM_READ) != STREAM_OK || textfile->Open(STREAM_READ, F) != STREAM_OK) {
+	if (F->Open(languageListFile.c_str(), StreamMode::Read) != STREAM_OK || 
+		textfile->Open(StreamMode::Read, F) != STREAM_OK) {
 		MessageBox("Couldn't open file\n\nlanguages.amg\n\nPossible reasons are either that you have tried to run AVI-Mux GUI directly from a zip archive or that you deleted or removed this file.","Fatal error",MB_OK | MB_ICONERROR);
 		PostMessage(WM_QUIT);
 		return 0;
 	}
 
-	textfile->SetOutputEncoding(CHARACTER_ENCODING_UTF8);
-	textfile->ReadLine(Buffer);
+	textfile->SetOutputEncoding(CharacterEncoding::UTF8);
+	std::string textFileLine;
+	textfile->ReadLine(textFileLine);
+	strcpy(Buffer, textFileLine.c_str());
 	int equalsignpos = strcspn(Buffer, "=");
 	if (equalsignpos == strlen(Buffer)) {
 		MessageBox("languages.amg file is invalid\n\nExpected: number=<number_of_language_files>","Fatal error",MB_OK | MB_ICONERROR);
@@ -162,19 +169,19 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	{
 		DWORD dwLngCount = 0;
 		dwLanguages=atoi(Buffer+7);
-		lplpLanguages=(LANGUAGE_DESCRIPTOR**)new LANGUAGE_DESCRIPTOR[dwLanguages];
+		lplpLanguages=new LANGUAGE_DESCRIPTOR*[dwLanguages];
 		for (i=0;i<(int)dwLanguages;i++)
 		{
-//			lstrcpy(lf,dir);
-//			lstrcat(lf,"\\");
-			lf[0]=0;
 			memset(Buffer, 0, buffer_size);
-			textfile->ReadLine(Buffer);
-			lstrcat(lf,Buffer);
+			textfile->ReadLine(textFileLine);
+			//textfile->ReadLine(Buffer);
+			strcpy(Buffer, textFileLine.c_str());
+
+			std::string languageFile = CPath::GetLongFilename(CPath::Combine(dir, Buffer));
 			Buffer[0]=0;
-			if (!(lplpLanguages[dwLngCount]=LoadLanguageFile(lf)))
+			if (!(lplpLanguages[dwLngCount]=LoadLanguageFile(languageFile.c_str())))
 			{
-				wsprintf(Buffer,"Couldn't open language file: \n\n%s\n\nIf you changed the original directory stucture inside the downloaded file, then shame on you! If you use Win 9x/ME, the problem could be a language file using UTF-8 coding. Open the file in Windows Editor and resave it using ANSI coding in that case.",lf);
+				sprintf(Buffer,"Couldn't open language file: \n\n%s\n\nIf you changed the original directory stucture inside the downloaded file, then shame on you! If you use Win 9x/ME, the problem could be a language file using UTF-8 coding. Open the file in Windows Editor and resave it using ANSI coding in that case.", languageFile.c_str());
 				MessageBox(Buffer,"Error",MB_OK | MB_ICONERROR);
 			} else dwLngCount++;
 		}
@@ -193,12 +200,8 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	delete F;
 	
 	SetCurrentLanguage(lplpLanguages[0]);
-	cLogFileName[0]=0;
-	strcpy(cLogFileName, dir);
-	strcat(cLogFileName, "\\AVI-Mux GUI - Logfile - ");
+	cLogFileName = CPath::Combine(dir, "AVI-Mux GUI - Logfile - ");
 
-	delete[] dir;
-	delete[] lf;
 	delete[] Buffer;
 
 	CResizeableDialog::OnInitDialog();
@@ -219,8 +222,9 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	if (strstr(Buffer, "%%d") || strstr(Buffer, "%%s"))
 		strcpy(Buffer, "$Name ($Nbr)");
 
-	sfOptions.lpcNumbering=new char[1+lstrlen(Buffer)];
-	lstrcpy(sfOptions.lpcNumbering,Buffer);
+//	sfOptions.lpcNumbering=new char[1+lstrlen(Buffer)];
+//	lstrcpy(sfOptions.lpcNumbering,Buffer);
+	sfOptions.fileNumberingFormat = CUTF8(Buffer).TStr();
 	
 	GetPrivateProfileString("config","maxframes","0",Buffer,200,(char*)cfgfile.c_str());
 	sfOptions.dwFrames=atoi(Buffer);
@@ -511,7 +515,9 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 
 	char title[100]; title[0]=0; GetWindowText(title,100); CString c;
 	char version[32];
-	GetAMGVersionString(version, sizeof(version));
+	std::basic_string<TCHAR> strVersion = GetAMGVersionString();
+	strcpy_s(version, strVersion.c_str());
+
 	strcat(title, " ");
 	strcat(title, version);
 	SetWindowText(title);
@@ -544,9 +550,9 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 	LANGUAGE_CODES* lngcd = GetLanguageCodesObject();
 	F = new CFileStream;
 	textfile = new CTextFile;
-	if (F->Open((char*)lngcodefile.c_str(), STREAM_READ) == STREAM_OK) {
-		textfile->Open(STREAM_READ, F);
-		textfile->SetOutputEncoding(CHARACTER_ENCODING_UTF8);
+	if (F->Open((char*)lngcodefile.c_str(), StreamMode::Read) == STREAM_OK) {
+		textfile->Open(StreamMode::Read, F);
+		textfile->SetOutputEncoding(CharacterEncoding::UTF8);
 		int j = 0;
 		char* buf = new char[j=1+(size_t)textfile->GetSize()];
 		textfile->Read(buf, j-1);
@@ -592,7 +598,16 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 				char* f2load;
 				newz(char,1+strlen(__argv[i]), f2load);
 				strcpy(f2load,__argv[i]);
-				PostMessage(GetUserMessageID(),IDM_DOADDFILE,(LPARAM)f2load);
+
+				CUTF8 utf8FileToLoad(f2load);
+				HANDLE h = CreateFileW(utf8FileToLoad.WStr(), GENERIC_READ, FILE_SHARE_READ,
+					NULL, OPEN_EXISTING, NULL, NULL);
+				if (h != INVALID_HANDLE_VALUE)
+				{
+					CloseHandle(h);
+					char* utf8f2load = _strdup(utf8FileToLoad.UTF8());
+					PostMessage(GetUserMessageID(),IDM_DOADDFILE,(LPARAM)utf8f2load);
+				}
 			}
 		}
 	}
@@ -732,5 +747,6 @@ BOOL CAVIMux_GUIDlg::OnInitDialog()
 
 	TABHandler_install(hTitleEdit, m_OutputResolution.m_hWnd, false);
 
+	trace.Trace(TRACE_LEVEL_INFO, _T("Application startup"), _T("Main window initialized"));
 	return false;  
 }

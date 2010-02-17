@@ -169,9 +169,9 @@ uint32 WINAPI GetWindowTextUTF8(HWND hWnd, char* pBuffer, int max_len)
 }
 
 void mb(int i) {
-	char c[32]; c[0]=0;
+	/*char c[32]; c[0]=0;
 	sprintf(c, "%d", i);
-	MessageBox(0, c, "Info:", MB_OK);
+	MessageBox(0, c, "Info:", MB_OK);*/
 }
 
 uint32 WINAPI GetWindowTextUTF8(HWND hWnd, char** pBuffer)

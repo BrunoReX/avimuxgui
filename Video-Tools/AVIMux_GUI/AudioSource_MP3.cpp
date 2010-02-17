@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "audiosource_mp3.h"
 
-#include "TraceFile.h"
 #include "..\FormatTime.h"
 #include "..\FormatInt64.h"
 
@@ -165,6 +164,7 @@ int MP3SOURCE::Open(STREAM* lpStream)
 
 	if (!Success) {
 		GetSource()->SetOffset(0);
+		delete fh;
 		return AS_ERR;
 	}
 
@@ -460,24 +460,7 @@ int MP3SOURCE::ReadFrame(void* lpDest,DWORD* lpdwMicroSecRead,__int64* lpqwNanoS
 	}
 	else
 	{
-		char cTime[64]; cTime[0]=0;
-		Millisec2Str(GetCurrentTimecode() * GetTimecodeScale() / 1000000, cTime);
-
-		char cCurrPos[64]; cCurrPos[0]=0;
-		QW2Str(GetSource()->GetPos(), cCurrPos, 0);
-
-		char cSize[64]; cSize[0]=0;
-		QW2Str(GetSource()->GetSize(), cSize, 0);
-
-		char cName[1024]; cName[0]=0;
-		GetName(cName);
-
-		char msg[2048]; msg[0]=0;
-		sprintf_s(msg, "Error reading frame header\nStream: %s\nPosition: %s\nTotal size: %s\nLast timecode: %s",
-			cName, cCurrPos, cSize, cTime);
-
-		//GetApplicationTraceFile()->Trace(TRACE_LEVEL_ERROR, "Bad input stream", msg);
-
+		LogFrameHeaderReadingError();
 		GetSource()->Seek(qwOldPos);
 		return 0;
 	}
