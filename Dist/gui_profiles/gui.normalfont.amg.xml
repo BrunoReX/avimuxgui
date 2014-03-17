@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE GUI SYSTEM "avimuxguiconfig.dtd">
+<gui>
+<file_information>
+<font>
+<quality>0</quality>
+</font>
+</file_information>
+<settings_window>
+<font>
+<quality>0</quality>
+</font>
+</settings_window>
+<chapter_editor>
+<font>
+<quality>0</quality>
+</font>
+</chapter_editor>
+<ebml_tree>
+<font>
+<quality>0</quality>
+</font>
+</ebml_tree>
+<riff_tree>
+<font>
+<quality>0</quality>
+</font>
+</riff_tree>
+<main_window>
+<font>
+<quality>0</quality>
+</font>
+</main_window>
+</gui>

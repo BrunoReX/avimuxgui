@@ -1,0 +1,1201 @@
+[AVI-Mux GUI Language File]
+
+NAME
+Polish
+
+1
+OK
+
+2
+Anuluj
+
+3
+Resetuj
+
+101
+O AVI-Mux GUI...
+
+102
+To jest plik MP3 CBR
+
+103
+To jest plik MP3 VBR
+
+104
+Informacje
+
+105
+Uwaga
+
+106
+Problem
+
+107
+Ten plik to MP3-CBR. Ma byæ sprawdzony?
+
+108
+Pytanie
+
+109
+ród³o wideo niedostêpne!
+
+110
+Pliki Avi wiêksze ni¿ 2000 MB mo¿na utworzyæ tylko w formacie Open-DML.\n\nKontynuowaæ (ustawiaj¹c format wyjœciowy jako Open-DML)?
+
+111
+Nie zaznaczy³eœ Ÿród³a wideo!
+
+112
+Obs³ugiwane s¹ tylko nastêpuj¹ce formaty: AVI, MKV, MP3, WAV, AC3, DTS, AAC, OGG/Vorbis, SRT, SSA oraz prawid³owe skrypty plików AVI-Mux GUI
+
+113
+Plik nie mo¿e byæ dodany:\n\n%s
+
+114
+To nie jest prawid³owy plik Avi:\n\n%s
+
+115
+Nie mo¿na otworzyæ pliku wyjœciowego!
+
+116
+Rzeczywiœcie chcesz wszystko usun¹æ?
+
+117
+Zosta³ wpisamy maksymalny rozmiar pliku wiêkszy ni¿ 4000 MB. \nUrz¹dzenie wyjœciowe %s u¿ywa %s jako w³asnego systemu plików, lecz wymagany jest NTFS.\n\nCzy ustawiæ maksymalny rozmiar plków do 4000 MB i kontynuowaæ?
+
+119
+Oddziel do OGG/Vorbis
+
+120
+Nie mo¿na odczytaæ Ÿród³a audio %d. choæ koniec pracy ze strumieniem nie zosta³ jeszcze osi¹gniêty. Przyczyn¹ mog¹ byæ uszkodzone nag³ówki klatki.
+
+121
+Ustaw przesuniêcie
+
+122
+Oddziel binarnie
+
+123
+Oddziel napisy do pliku tekstowego
+
+124
+Oddziel do pliku ADTS-packed AAC
+
+125
+Zaznaczone Ÿród³o wideo nie posiada %d klatek. Wpisz mniejsz¹ liczbê.
+
+126
+Klatka %d nie jest klatk¹ kluczow¹!\nJeœli tutaj nast¹pi podzia³, plik docelowy mo¿e byæ uszkodzony.\n\nKontynuowac?
+
+127
+Dodaj
+
+128
+Usuñ
+
+129
+Zmieñ
+
+130
+Oddziel RAW i zapamiêtaj dane u¿ywanego M2F2
+
+131
+Nie mo¿na odczytaæ trybu 2 - Plik Ÿród³owy!
+
+132
+Sprawdzanie CRC
+
+133
+Nie mo¿na odczytaæ Ÿród³a wideo!
+
+134
+Plik
+
+135
+ród³o
+
+136
+Informacja o pliku
+
+137
+Typ-Avi
+
+138
+Standardowy
+
+139
+Open-DML
+
+140
+Rozdzielczoœæ
+
+141
+Szybkoœæ klatki
+
+142
+Liczba klatek
+
+143
+Rozmiar strumienia wideo
+
+144
+Szybkoœæ danych wideo
+
+145
+Liczba strumieni audio
+
+146
+Format-tagu
+
+147
+Strumieñ audio
+
+148
+Bitrate
+
+149
+Szybkoœæ przetwarzania
+
+150
+Kana³y
+
+151
+Granulacja
+
+152
+Rozmiar
+
+153
+Liczba fragmentów
+
+154
+Ca³kowita liczba fragmentów
+
+155
+OpenDML + Legacy-Index
+
+156
+Strumieñ wideo
+
+157
+Wartoœæ szybkoœci klatki zosta³a prawdopodobnie przypisana przez wadliwy program!
+
+158
+D³ugoœæ strumienia
+
+159
+Klatek
+
+160
+Indeks Open-DML
+
+161
+Pozycje w super indeksie
+
+162
+Pozycja
+
+163
+Strumieñ
+
+164
+Wartoœæ rzeczywista
+
+165
+Wartoœæ zapisana w dwDuration
+
+166
+Uszkodzony!
+
+167
+Wymienione klatki kluczowe
+
+168
+Wymienione klatki delta
+
+169
+Wymienione klatki pominiête
+
+170
+Watroœæ biCompression 
+
+171
+Napraw wartoœci dwDuration
+
+172
+Nie zaznaczono naprawiania!
+
+173
+Wybrane zmiany bêd¹ teraz zastosowane. Plik zostanie zamkniêty
+
+174
+Napraw wartoœci dwMicroSecPerFrame
+
+175
+Zapisz jako...
+
+176
+Zmieñ szybkoœæ klatki...
+
+177
+Plik jest ju¿ w u¿yciu:\n\n%s
+
+178
+Ustaw flagi:
+
+179
+Pliki Ÿród³owe MP3/AC3/DTS nie mog³y byæ otwarte: Pierwszy nag³ówek strumienia wydaje siê byæ uszkodzonym.
+
+180
+Zmieñ MainAVIHeader.dwFlags
+
+181
+Wersja
+
+183
+Rozmiary fragmentów
+
+184
+Ponad
+
+185
+Do
+
+186
+Dodaj - Ustawienia zaawansowane
+
+187
+Usuñ wszystko
+
+188
+Jest dostêpnych %d MB, wymaganych %d MB.\n\nKontynuowaæ? (nie zalecane!)
+
+189
+Proces zakoñczony!
+
+190
+Pliki s¹ ju¿ w u¿yciu:
+
+191
+Wybierz 'Tak' aby wszystko nadpisaæ, wybierz 'Nie' aby zaptaæ o ka¿dy plik, wybierz 'Anuluj' aby zakoñczyæ.
+
+192
+Niew³aœciwa pozycja strumienia AC3:
+
+193
+Ustawienia wartoœæ maksymalnego rozmiaru pliku sprawi, ¿e prawdopodobnie bêdzie wiêcej ni¿ jeden plik wyjœciowy.\nWymagany jest  brakuj¹cy $Nbr ci¹gu formatu (lub numerowanie zosta³o wy³¹czone).\n\nKontynuowaæ (nie zalecane)?
+
+194
+Zapisz strumieñ jako plik DTS
+
+195
+Bajtów
+
+199
+Wybra³eœ jako format wyjœciowy Open-DML z wiêcej ni¿ 3 strumieniami audio, ale tylko 1 standardowy indeks na strumieñ i listê RIFF. Plik prawdopodobnie nie bêdzie zdolny do odtworzenia z DirectShow.\n\nKontynuowaæ (nie zalecane)?
+
+200
+MainAVIHeader.dwTotalFrames - wartoœæ przypisana wadliwym programem!
+
+201
+Napraw wartoœci MainAVIHeader.dwTotalFrames
+
+202
+Wartoœæ rzeczywista
+
+203
+Sugerowany rozmiar buforu
+
+204
+Numer napisów
+
+205
+Napisy
+
+206
+Informacja o Ÿródle wideo
+
+207
+MB
+
+208
+KB
+
+209
+Próbujesz utworzyæ plik AVI z wiêcej ni¿ dziewiêcioma strumieniami. Z powodu starych (i nie ca³kowicie poprawnych) czêœci kodu w AVI-Mux GUI, wymagane jest u¿ycie formatu Open-DML dla tych plików.\n\nKontynuowaæ ustawiaj¹c format wyjœciowy jako Open-DML?
+
+210
+Jêzyk
+
+211
+Nie mo¿na scaliæ prawid³owo napisów z ró¿nymi formatami!
+
+212
+GB
+
+213
+Prze³¹cz do protoko³u
+
+214
+Prze³¹cz do Ÿród³a strumieni
+
+215
+Wyra¿enie: SET OPTION %s\nUnknown: %s
+
+216
+Wyra¿enie: %s\nUnknown: %s
+
+217
+Bezzw³ocznie dodaj Ÿród³a audio
+
+218
+Chcesz nadpisaæ ten plik?
+
+219
+Ca³kowity rozmiar tych plików
+
+301
+Rozmiar strumienia (strh)
+
+302
+Rozmiar strumienia (index)
+
+405
+Nastêpuj¹ce pliki zostan¹ usuniête
+
+406
+Nastêpuj¹ce strumienie zostan¹ usuniête
+
+407
+Kontynuowaæ?
+
+501
+Otwórz pliki (Metod¹ Przeci¹gnij/Upuœæ)
+
+502
+Zapisz konfiguracjê
+
+503
+Unikaj zbêdnego odszukiwania operacji
+
+504
+Generuj dane Ÿród³owe z plików
+
+505
+Dostêpne strumienie:
+
+506
+Wideo
+
+507
+Audio
+
+508
+Napisy
+
+509
+Brak audio
+
+510
+Wsz. strum. audio
+
+511
+Domyœlnie
+
+512
+Brak napisów
+
+513
+Wszystkie napisy
+
+514
+Protokó³
+
+516
+Ustawienia
+
+517
+Uruchom
+
+518
+Zatrzymaj
+
+519
+Zamknij
+
+520
+Postêp
+
+521
+Suma danych (kB)
+
+522
+Aktualny plik
+
+523
+Zakres
+
+524
+Wideo
+
+525
+Audio
+
+526
+Górny
+
+527
+Zakres
+
+528
+Plik docelowy
+
+529
+Pozycja:
+
+530
+Transfer
+
+531
+fps
+
+532
+Postêp
+
+533
+Zapis indeksu
+
+534
+Jêzyk:
+
+535
+Przesuniêcie (ms):
+
+536
+Napisy
+
+537
+Tytu³ pliku:
+
+538
+Rozci¹gaj w
+
+539
+Rozdzielcz.
+
+540
+Plik domyœlny
+
+600
+O AVI-Mux GUI...
+
+700
+Punkt podzia³u
+
+701
+Nowy plik w
+
+800
+Opcje: Otwórz pliki
+
+801
+Pliki - Avi 
+
+802
+Maksymalny rozmiar fragmentów w kB:
+
+803
+Próbuj przywracaæ w³aœciwy rozmiar fragmentu
+
+804
+Wymuœ strumienie MP3 jako VBR
+
+805
+Zmieñ dwFourCC "DX50" na "divx"
+
+810
+ Pliki - MP3 
+
+811
+Pytaj czy wprowadzaæ zmiany dla CBR
+
+812
+Zawsze zmieniaj do CBR
+
+813
+Nigdy nie zmieniaj do CBR
+
+814
+Wyœwietl rezultat
+
+820
+ Tryb 2 - Pliki 
+
+821
+Domyœlne sprawdzanie CRC
+
+830
+ £¹czenie plików Avi 
+
+831
+ Nie weryfikuj kompatybilnoœci AC3 przed ³¹czeniem
+
+832
+ Rozdzia³y
+
+833
+Importuj rozdzia³y
+
+834
+Generuj rozdzia³y z pliku
+
+835
+ Pliki - MKV
+
+836
+Odczyt z asynchr. wyprz.
+
+900
+ Ustawienia Ÿród³o/wyjœcie 
+
+901
+ Ustawienia pliku 
+
+902
+ Struktura pliku Avi 
+
+903
+Twórz listy REC
+
+904
+ Ustawienia Open-DML
+
+905
+U¿yj wyjœcia Open-DML
+
+906
+ Standardowe indeksy na strumieñ
+
+907
+1 na listê RIFF
+
+908
+1 na
+
+909
+klatki
+
+910
+auto
+
+911
+Twórz indeks zapisu
+
+912
+Przeplot audio
+
+913
+kB
+
+914
+Klatki
+
+915
+Odczyt wstêpny (ms)
+
+916
+Klatki AC3 na fragment (CBR)
+
+921
+Zapisywanie bez buforowe
+
+922
+Utwórz plik rejestru
+
+923
+Tryb asynchroniczny
+
+924
+Oddzielny w¹tkek
+
+925
+Domyœlna nazwa pliku
+
+926
+nie ma domyœlnej nazwy pliku 
+
+927
+Fragment tytu³u 
+
+928
+Pierwsze Ÿród³o pliku
+
+930
+ Podziel 
+
+931
+Maks. rozmiar pliku (MB)
+
+932
+Ustaw rêczne punkty dzielenia
+
+933
+Nazwy pliku:
+
+934
+Klatki
+
+935
+Maks. iloœæ plików
+
+936
+Tryb klatki MP3 CBR
+
+937
+Dodaj fragment przed MainAVIHeader
+
+938
+ Interleave 
+
+940
+ Struktura MKV - Strona 1 
+
+941
+Lacing
+
+942
+Maks. rozmiar klastra
+
+943
+Maks. d³ugoœæ klastra
+
+944
+Zapisuj "PrevClusterSize"
+
+945
+Zapisuj "Pozycjê"
+
+946
+Limit pierwszego klastra do 30 ku
+
+947
+Zapisuj Szer./Wysok. wyœwietlania
+
+948
+Wymuœ kompatybilnoœæ z  matroska v1
+
+950
+ G³ówne 
+
+951
+Rozdzia³y
+
+952
+Standardowy format docelowy:
+
+953
+ Struktura MKV - Strona 2 
+
+954
+ Struktura MKV
+
+955
+Zapisuj wartoœci
+
+956
+Tylko dla plików audio
+
+957
+Zapisuj 2 kopie utworu
+
+958
+Indeks klastrów w seekhead
+
+959
+Szerokoœæ w bitach
+
+960
+Przypadkowa wartoœæ elementu
+
+961
+ Inne 
+
+962
+Roz. nag³ówka (kB, 0=auto):
+
+963
+Indeks braku-klastrów w 1 SeekHead
+
+964
+ Struktura MKV - Strona 3 
+
+965
+ Ustawienia wewnêtrzne znaku
+
+966
+Minimum (ms)
+
+967
+Automatyczny rozmiar znaku
+
+968
+KB na strumieñ i godzinê
+
+969
+Docelowy rozmiar proporcji (/1000)
+
+970
+Mocne ³¹czenie podczas dzielenia
+
+971
+Zapis CueBlockNumber
+
+972
+Paskowy strumieñ nag³ówków
+
+973
+Wymuœ kompatybilnoœæ z matroska v2
+
+974
+Dopuœæ CodecID "A_AAC"
+
+975
+ Wersja Matroska 
+
+1001
+Zaznacz pliki Ÿród³a strumienia 
+
+1002
+Zaznacz pliki w u¿yciu 
+
+1003
+W³¹cz potwierdzenie nadpisywania
+
+1004
+Wyœwietl komunikat zakoñczenia
+
+1005
+Zaznacz domyœlne strumienie
+
+1006
+Zaznacz strumienie niezgodne z AVI
+
+1007
+U¿yj czcionek cleartype
+
+1100
+Ustaw dwFlags
+
+1101
+ Dostêpne flagi 
+
+1200
+Ustaw szybkoœæ klatki
+
+1201
+ Jednostka 
+
+1202
+fps
+
+1203
+µspf
+
+1204
+nspf
+
+1300
+Rêczne oznaczanie punktów dzielenia
+
+1400
+Informacja o pliku
+
+1401
+Informacja o Ÿródle wideo
+
+1402
+Zapisz zmiany
+
+1500
+£¹czenie...
+
+1501
+Nowy plik w %d:%02d:%02d.%03d (klatka %d):\n%s
+
+1502
+Gotowe!
+
+1503
+Rozpoczêto dzielenie klatki %d: %s %s
+
+1504
+Rozmiar: %s %s (ponadmiarowy przy %s %s)\nCzas trwania: %d:%02d:%02d.%03d (%d klatek)
+
+1505
+Strumieñ audio %d: %s %s     Czas trwania: %d:%02d:%02d.%03d
+
+1510
+Numer strumienia audio: %d
+
+1511
+Numer napisów: %d
+
+1512
+    Nazwa: %s
+
+1513
+    Przesuniêcie: %d
+
+1514
+  Plik: %d
+
+1515
+Maksymalny rozmiar nag³ówka nie mo¿e przekroczyæ wiêcej ni¿:\n%s %s
+
+1516
+Nie mo¿na wykonaæ podzia³u w klatce kluczowej: %s
+
+1517
+Maks. rozmiar pliku: %s %s
+
+1518
+Przewidywany nag³ówek:
+
+1519
+Przewidywany, ca³kowity rozmiar wyjœciowy:
+
+1520
+Uwaga! Pierwsza klatka Ÿród³a wideo nie jest klatk¹ kluczow¹!\nPierwsza klatka kluczowa znajduje siê w: %d
+
+1521
+Przewidywany rozmiar raw:
+
+1522
+Zapisany nag³ówek: %s %s
+
+1523
+Dziel punkt %d do %s
+
+1524
+Znacznik rozdzia³u w punkcie dzielenia %d nie mo¿e byæ roz³o¿ony!
+
+1525
+  %s lacing stosowany w %s wystêpuj¹cych blokach %s klatek \n  Rozmiar nag³ówków: %s bajtów
+
+1526
+%s zapisywanych klastrów tworz¹cych %s bajtów w nag³ówku
+
+1527
+Stworzona wartoœæ punktów %s, które maj¹ byæ zapisane %s 
+
+1528
+Skala kodu czasowego wyjœcia: %s
+
+1529
+Wartoœci dla strumienia wideo w³¹czone
+
+1530
+Wartoœci dla strumienia wideo wy³¹czone
+
+1531
+Wartoœci dla strumienia audio w³¹czone
+
+1532
+Wartoœci dla strumienia audio wy³¹czone
+
+1533
+Lacing wideo z %d klatek przez lace
+
+1534
+Lacing dla strumienia wideo jest wy³¹czony
+
+1535
+    wy³¹czanie lacingu
+
+1536
+    Rozmiar lace: %d ms
+
+1537
+Wy³¹czanie Lacingu dla wszystkich czêœci audio
+
+1538
+Rozmiar seekhead: %s %s
+
+1539
+Klastry bêd¹ indeksowane w seekhead
+
+1540
+Klastry nie bêd¹ indeksowane w seekhead
+
+1541
+    Kod narodowy: %s
+
+1542
+W³¹czony zapis bez buforowy
+
+1543
+Wy³¹czony zapis bez buforowy
+
+1544
+W³¹czone asynchroniczne wyjœcie
+
+1545
+Wy³¹czone asynchroniczne wyjœcie
+
+1546
+    Audio AC3: zapis %d klatek na fragment
+
+1547
+    Audio DTS: zapis %d klatek na fragment
+
+1548
+    MP3 Audio: wy³¹czanie trybu klatki dla CBR
+
+1549
+    MP3 Audio: w³¹czanie trybu klatki dla CBR
+
+1550
+    MP3 Audio: Nie mo¿na wy³¹czyæ przewidywanego trybu klatki dla opóŸnienia
+
+1551
+    Audio MP3: zapis %d klatek na fragment
+
+1552
+Rozmiar pierwszej listy RIFF: %s MB
+
+1553
+Standardowe indeksowanie przez strumieñ: 1 przez listê RIFF
+
+1554
+Standardowe indeksowanie przez strumieñ: 1 przez %d klatek
+
+1555
+Przeplatane audio: %d kB
+
+1556
+Przeplatane audio: %d klatek
+
+1557
+Listy zapisu aktywne
+
+1558
+Listy zapisu nieaktywne
+
+1559
+    Napisy: %s
+
+1560
+    Kompresja: %s
+
+1561
+Tryb niskiego nag³ówka dla docelowego AVI w³¹czony.
+
+1562
+Tryb niskiego nag³ówka dla docelowego AVI wy³¹czony.
+
+1563
+Dodawanie fragmentu przed nag³ówkami AVI w³¹czone.
+
+1564
+Dodawanie fragmentu przed nag³ówkami AVI wy³¹czone.
+
+1565
+Wartoœci dla napisów w³¹czone
+
+1566
+Wartoœci dla napisów wy³¹czone
+
+1567
+Rozmiar nag³ówków: %s bajtów
+
+1568
+Wartoœæ docelowego rozmiaru: %4.1f%% dostêpnego miejsca
+
+1569
+Element losowy w³¹czony
+
+1570
+Element losowy wy³¹czony
+
+1571
+Zapis CueBlockNumber
+
+1572
+Nie zapisuj CueBlockNumber
+
+1573
+Plik Matroska mo¿e byæ rozci¹gany w bitach
+
+1574
+Plik Matroska nie mo¿e byæ rozci¹gany
+
+1575
+Tworzenie pliku Matroska v%d
+
+1576
+Rozmiar floats: %d bajtów
+
+1577
+Rozmiar nadpisywanych plików:
+
+1578
+Iloœæ wolnego miejsca na dysku:
+
+1579
+U¿yj dodatkowej pamiêci dla pliku wyjœciowego: Tak
+
+1580
+U¿yj dodatkowej pamiêci dla pliku wyjœciowego: Nie
+
+1581
+U¿ywana pamiêæ %d z %s kB
+
+1582
+Nawet podczas usuwania plików, które maj¹ zostaæ nadpisane, wolne miejsce na dysku bêdzie niewystarczj¹ce:\n\nWymagane: %s\nWolna iloœæ miejsca: %s\nDostêpne miejsce uzyskane przez nadpisywane pliki: %s\n\nKontynuowaæ?
+
+1583
+Dostêpna iloœæ wolnego miejsca na dysku jest niewystarczaj¹ca: \n\nWymagane: %s\nIloœæ wolnego miejsca: %s\n\nKontynuowaæ?
+
+1601
+Oddziel jako SRT...
+
+1602
+Oddziel jako SSA...
+
+1701
+Mo¿esz stosowaæ do ³¹czenia jedynie pliki AVI, MKV, MP3, AAC oraz pliki AC3!
+
+1702
+Nie mo¿na po³¹czyæ plików:\nLiczba strumieni nie jest jednakowa!
+
+1703
+Nie mo¿na po³¹czyæ plików:\nRozdzielczoœæ wideo jest nieodpowiednia!
+
+1704
+Nie mo¿na po³¹czyæ plików:\nFormaty kompresji wideo s¹ inne: %s <-> %s
+
+1705
+Niekompatybilne strumienie audio: \n\n%s, strumieñ %d
+
+1706
+Niekompatybilne napisy: \n\n%s, strumieñ %d
+
+1707
+Nie mo¿na po³¹czyæ plików:\nID kodeków wideo s¹ inne: %s <-> %s
+
+1708
+Pliki XML zawieraj¹ nie-unikalne UIDy, lub przynajmniej jeden z UIDów ju¿ istnieje.\n\nUpewnij siê czy Twoje pliki XML zawieraj¹ unikalne UIDy i spróbuj wczytaæ je ponownie
+
+1709
+Powinieneœ wskazaæ koniec ka¿dego rozdzia³u wewn¹trz wskazanej edycji
+
+1710
+Wskaza³eœ\n* maksymalny rozmiar pliku jest mniejszy ni¿ rozmiar ca³kowity pliku dolecowego\n* wyznaczony jest przynajmniej jeden punkt samodzielnego dzielenia punktu\n\nDlatego te¿, AVI-Mux GUI nie mo¿e przewidzieæ nazw wszystkich docelowych plików. Wybierz 'Tak' aby nadpisaæ wszystkie istniej¹ce pliki bez pytania, 'Nie' aby pytaæ przy ka¿dym pliku, lub 'Anuluj' aby przerwaæ.
+
+1711
+Bie¿¹ca konfiguracja nazw pliku (%s) sprawi, ¿e niektóre nazwy bêd¹ mog³y byæ u¿yte wiêcej ni¿ jeden raz.\n\nCzy chcesz kontynuowaæ pomimo to?
+
+1712
+Plik, który chcesz otworzyæ jest plikiem OGG posiadaj¹cym wiêcej ni¿ jeden strumieñ. Takie pliki nie s¹ obs³ugiwane.
+
+1713
+Próbujesz dodaæ strumienie napisów u¿ywaj¹c ró¿nych formatów kompresji.
+
+1714
+B³¹d podczas wczytywania pliku AVI!\n\nJeœli widzisz t¹ wiadomoœæ, to masz do czynienia z uszkodzonym plikiem AVI, z którym parser AVi nie mo¿e sobie poradziæ.
+
+1715
+Fragment tego pliku wybiega poza SegmentUID. Dlatego te¿ nie mo¿na zaimportowaæ rozdzia³ów z tego fragmentu.
+
+1716
+Szybkoœæ próbkowania wymienionych plików nie jest odpowiednia:\n  #%d: %s -> %d Hz\n  #%d: %s -> %d Hz
+
+1717
+Wymienione pliki posiadaj¹ ró¿n¹ liczbê kana³ów:\n  #%d: %s -> kana³y: %d\n  #%d: %s -> kana³y: %d
+
+1718
+Wymienione pliki posiadaj¹ ró¿ne wersje warstw MPEG:\n  #%d: %s -> Warstwa %d\n  #%d: %s -> Warstwa %d
+
+1719
+Wymienione pliki posiadaj¹ ró¿ne wersje MPEG:\n  #%d: %s -> MPEG %d\n  #%d: %s -> MPEG %d
+
+1720
+Wymienione pliki posiadaj¹ ró¿ne profile AAC:\n  #%d: %s -> %s\n  #%d: %s -> %s
+
+1721
+Wymieniony plik nie móg³ byæ otworzony do zapisu:\n\n%s
+
+1801
+Szybkoœæ klatek w plikach Avi jest niezgodna.\nPo³¹czenie jest mo¿liwe, ale tylko format wyjœciowy MKV bêdzie dostêpny.
+
+1900
+Rozdzia³y
+
+1901
+Podrozdzia³
+
+1902
+Zapisz jako ...
+
+1903
+Syntax:  z [ - till]. U¿yj F2, aby edytowaæ elementy w drzewie rozdzia³ów. U¿yj przycisku Insert, aby dodaæ nowy rozdzia³ w tym samym poziomie zaznaczonego rozdzia³u i PgUp/PgDn do przeniesienia rozdzia³u w górê lub w dó³. U¿yj Delate, aby usun¹æ rozdzia³.
+
+1904
+Jêzyk
+
+1905
+Tytu³
+
+1920
+Gotowe
+
+2000
+Edycja jest uporz¹dkowana
+
+2001
+Edycja jest ukryta
+
+2002
+Edycja domyœlna
+
+2003
+Rozdzia³ jest ukryty
+
+2004
+Rozdzia³ jest w³¹czony
+
+2005
+Kopiuj...
+
+2006 
+Kopiuj wszystko z tego poziomu...
+
+2007
+Wklej w tym samym poziomie...
+
+2008
+Wklej jako podrozdzia³...
+
+2009
+Wklej wszystko w nowej edycji...
+
+2010
+Wklej ka¿dy do nowej edyji...
+
+2011
+Wyczyœæ schowek
+
+2012
+Odnów UIDs
+
+2013
+Odnów wszystkie UIDy
+
+2014
+Kopiuj elementy potomne...
+
+2015
+Kopiuj elementy potomne wszystkich elementów w tym poziomie...
+
+2016
+Numeruj podrozdzia³y...

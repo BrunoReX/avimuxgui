@@ -1,0 +1,1201 @@
+[AVI-Mux GUI Language File]
+
+NAME
+Spanish
+
+1
+Aceptar
+
+2
+Cancelar
+
+3
+Resetear
+
+101
+Acerca de AVI-Mux GUI
+
+102
+Éste Archivo MP3 es CBR
+
+103
+Éste archivo MP3 es VBR
+
+104
+Información
+
+105
+Atención
+
+106
+Error
+
+107
+Éste archivo posiblemente sea MP3-CBR. ¿Comprobarlo?
+
+108
+Pregunta
+
+109
+¡Video de origen no disponible!
+
+110
+Archivos AVI mayores de 2000 MB sólo pueden ser creados en formato Open-DML.\n\nContinuar (y convertirlo a Open-DML)?
+
+111
+No has elegido el Video origen
+
+112
+Sólo los siguientes tipos de archivo están soportados: AVI, MKV, MP3, WAV, AC3, DTS, AAC, OGG/Vorbis, SRT, SSA y "Scripts AVI-Mux GUI" válidos.
+
+113
+El archivo no ha podido ser añadido:\n\n%s
+
+114
+No es un archivo AVI válido:\n\n%s
+
+115
+¡No se puede abrir el archivo de salida!
+
+116
+¿Está seguro que desea eliminar todo?
+
+117
+A fijado un tamaño máximo de archivo mayor a 4000 MB. \nEl dispositivo de salida %s usa %s como su sistema de archivos, pero se necesita NTFS.\n\n¿Continuar el proceso con el tamaño máximo de archivo fijado en 4000 MB?
+
+119
+Extraer a OGG/Vorbis
+
+120
+No es posible leer el audio de origen %d. Aunque el final de la pista no sido alcanzado todavía. La razón podría ser una cabezera de cuadro incorrecta.
+
+121
+Definir el retardo
+
+122
+Extraer binario
+
+123
+Extraer subtítulo a un archivo de texto
+
+124
+Extraer a archivo AAC empaquetado ADTS 
+
+125
+El video seleccionado no contiene %d cuadros. Por favor, introduzca un número más pequeño.
+
+126
+El cuadro %d no es un "keycuadro"!\nSi divide la pelicula por aquí el archivo de salida podría ser ilegible.\n\n¿Continuar?
+
+127
+Añadir
+
+128
+Eliminar
+
+129
+Cambia
+
+130
+Extraer en bruto y almacenar datos de usuario M2F2
+
+131
+No es posible leer desde un archivo de origen en Modo 2 Forma 2
+
+132
+Haz una comprobación de CRC
+
+133
+¡Imposible leer archivo de video origen!
+
+134
+Archivo
+
+135
+Origen
+
+136
+Información del archivo
+
+137
+Tipo AVI
+
+138
+Estándar
+
+139
+Open-DML
+
+140
+Resolución
+
+141
+Frecuencia de cuadros
+
+142
+Número de cuadros
+
+143
+Tamaño de la pista de video
+
+144
+Frecuencia de cuadros
+
+145
+Número de pistas de audio
+
+146
+Formato-tag
+
+147
+Pista de audio
+
+148
+Ancho de banda
+
+149
+Velocidad de muestreo
+
+150
+Canales
+
+151
+Granularidad
+
+152
+Tamaño
+
+153
+Número de tramos
+
+154
+Número total de tramos
+
+155
+OpenDML + Legacy-Index
+
+156
+Pista de video
+
+157
+¡El valor del frecuencia de cuadros (cuadrorate) aparentemente ha sido escrito por un programa defectuoso!
+
+158
+Duración de la pista
+
+159
+Cuadros
+
+160
+Open-DML Index
+
+161
+Entradas en Super Index
+
+162
+Entrada
+
+163
+Pista
+
+164
+Valor Real
+
+165
+Valor almacenado en "dwDuration"
+
+166
+¡Incorrecto!
+
+167
+Cuadros maestros
+
+168
+Cuadros Delta
+
+169
+Cuadros vacíos
+
+170
+Valor de "biCompression"
+
+171
+Corrige los valores incorrectos de "dwDuration"
+
+172
+¡No reparar seleccionado!
+
+173
+Las reparaciones seleccionadas y los cambios serán aplicados ahora. El archivo, así como su información detallada, se cerrarán.
+
+174
+Corrige los valores "dwMicroSecPerFrame"
+
+175
+Guardar como...
+
+176
+Cambiar frecuencia de cuadros...
+
+177
+El archivo está en uso:\n\n%s
+
+178
+Flags definidos:
+
+179
+No se ha podido abrir el archivo de origen MP3/AC3/DTS: La primera cabecera del cuadro parece estar mal.
+
+180
+Cambia MainAVIHeader.dwFlags
+
+181
+Versión
+
+183
+Tamaño de tramos
+
+184
+Por encima de
+
+185
+Hasta
+
+186
+Añadir - Configuración avanzada
+
+187
+Borrar todo
+
+188
+Hay %d MBytes disponibles, pero son necesarios %d MBytes aproximadamente.\n\n¿Continuar? (¡No Recomendado!)
+
+189
+¡Proceso terminado!
+
+190
+Los siguientes archivos de destino ya existen:
+
+191
+¿Continuar?
+
+192
+Posiciones incorrectas de pistas AC3:
+
+193
+Debido al tamaño máximo de archivo seleccionado, posiblemente habrá más de un archivo de salida.\nEsto requiere un "%%d" en algún lugar de la cadena de formato, el cual no está presente (o cuyo número ha sido deshabilitado).\n\n¿Continuar? (No recomendado)
+
+194
+Guarda la pista como DTS
+
+195
+Bytes
+
+199
+Ha seleccionado un fichero de salida Open-DML con más de tres pistas de audio, Pero un sólo índice estándard por pista y lista de RIFF. Debido a un error en el filtro DirectShow de Microsoft, posiblemente no pueda reproducir éste archivo con Directshow.\n\n¿Continuar? (No recomendado)
+
+200
+¡El valor del MainAVIHeader.dwTotalFrames ha sido escrito por un programa defectuoso!
+
+201
+Corrija el valor incorrecto de MainAVIHeader.dwTotalFrames
+
+202
+Valor real
+
+203
+Tamaño de "buffer" sugerido
+
+204
+Número de subtítulos
+
+205
+Subtítulos
+
+206
+Información sobre el video de origen
+
+207
+MByte
+
+208
+kByte
+
+209
+Intenta crear un archivo AVI estándar con más de nueve pistas. Debido a un error en DirectShow, es necesario usar Open-DML para éstos archivos.\n\n¿Continuar seleccionando Open-DML para el fichero de salida?
+
+210
+Lenguaje
+
+211
+¡Imposible mezclar los subtítulos debido a que tienen diferentes formatos!
+
+212
+GByte
+
+213
+Cambia a protocolo
+
+214
+Cambia a pistas de origen
+
+215
+Expresión: FIJA LA OPCION %s\nDesconocido: %s
+
+216
+Expresión: %s\nDesconocido: %s
+
+217
+Añadir fuentes de audio inmediatamente
+
+218
+Desea sobreescribir el archivo existente?
+
+219
+Tamaño total de los archivos
+
+301
+Tamaño de la pista (strh)
+
+302
+Tamaño de la pista (index)
+
+405
+Los siguientes archivos seran eliminados
+
+406
+Las siguientes pistas seran eliminadas
+
+407
+Continuar?
+
+501
+Abrir archivos
+
+502
+Guardar configuración
+
+503
+Evitar búsquedas innecesarias
+
+504
+Añadir video origen
+
+505
+Pistas disponibles:
+
+506
+Video
+
+507
+Audio
+
+508
+Subtítulos
+
+509
+Sin Audio
+
+510
+Todas las Pistas 
+
+511
+Defecto
+
+512
+Sin subtítulos
+
+513
+Todos los subtítulos
+
+514
+Protocolo
+
+516
+Opciones
+
+517
+¡Empezar!
+
+518
+Stop
+
+519
+Salir
+
+520
+Progreso
+
+521
+Cantidad de datos (kB)
+
+522
+Archivo actual
+
+523
+Total
+
+524
+Video
+
+525
+Audio
+
+526
+Costo extra
+
+527
+Total
+
+528
+Archivo de destino
+
+529
+Posición
+
+530
+Velocidad de transferencia
+
+531
+FPS
+
+532
+Progreso
+
+533
+Índice heredado
+
+534
+Atributo:
+
+535
+Retraso de la pista de audio:
+
+536
+Subtítulos
+
+537
+Título
+
+538
+Estirar
+
+539
+Resolución
+
+540
+Pista predeterminada
+
+600
+Información sobre Avi-Mux
+
+700
+Punto de división
+
+701
+Nuevo archivo en
+
+800
+Opciones: Abrir archivos
+
+801
+ Archivos - AVI 
+
+802
+Máximo del tramo en kB:
+
+803
+Intentar recuperar el tamaño correcto del tramo
+
+804
+Forzar pistas MP3 a VBR
+
+805
+Cambiar dwFourCC "DX50" a "divx"
+
+810
+ Archivos - MP3 
+
+811
+Confirmar verificacion CBR
+
+812
+Siempre comprobar que es CBR
+
+813
+No comprobar si es CBR
+
+814
+Mostar resultado de verificación
+
+820
+ Archivos - Modo 2 - Forma 2 
+
+821
+Activar "Comprobación de CRC" por defecto
+
+830
+ Unir archivos AVI 
+
+831
+ No verificar compatibilidad AC3 antes de unir
+
+832
+ Capítulo
+
+833
+Importar Capítulos
+
+834
+Generar capitulos desde archivo
+
+835
+ Ficheros - MKV
+
+836
+Lectura asincrona
+
+900
+ Ajustes de salida 
+
+901
+ Ajustes de archivo 
+
+902
+ Estructura del AVI
+
+903
+Hacer "Listas REC"
+
+904
+ Ajustes Open-DML
+
+905
+Usar salida Open-DML
+
+906
+ Indices estándar por pista
+
+907
+1 por lista RIFF
+
+908
+1 por
+
+909
+Cuadros
+
+910
+Auto
+
+911
+Crear índice heredado
+
+912
+Entrelazado de Audio
+
+913
+kB
+
+914
+Cuadros
+
+915
+Precarga (ms)
+
+916
+Cuadros AC3 por cada tramo
+
+921
+Escribiendo sin buffer
+
+922
+Crear archivo log
+
+923
+Modo asincrono
+
+924
+Use hilos separados
+
+925
+Nombre predeterminado:
+
+926
+Sin nombre predeterminado
+
+927
+Usar titulo del segmento
+
+928
+Primer archivo de origen
+
+930
+ Dividir 
+
+931
+Tamaño máximo (MB)
+
+932
+Avanzado
+
+933
+Numerar
+
+934
+Cuadros
+
+935
+Máximo de archivos 
+
+936
+Modo MP3 CBR
+
+937
+JUNK antes de MainAVIHeader
+
+938
+ Entrelazar 
+
+940
+ Estructura MKV 
+
+941
+Enlazado
+
+942
+Tamaño máximo del grupo
+
+943
+Longitud máxima del grupo
+
+944
+Escribir "PrevClusterSize"
+
+945
+Escribir "Position"
+
+946
+Primer grupo a 30 segundos
+
+947
+Mostrar el alto/ancho de pantalla
+
+948
+Forzar compatibilidad con matroska v1 
+
+950
+ General 
+
+951
+Capítulos
+
+952
+Formato estándar de salida:
+
+953
+ Estructura MKV - página 2
+
+954
+ Estructura MKV
+
+955
+Escribir cues
+
+956
+Solo para Audio
+
+957
+Escribir dos copias de las pistas
+
+958
+Indice en la cabecera de búsqueda
+
+959
+Ancho de "floats" por bit
+
+960
+Orden de elemento aleatorio
+
+961
+ Otros 
+
+962
+Tamaño cabecera(kB,0=auto)
+
+963
+Indexar non-Clusters en cabecera
+
+964
+ Estructura MKV - pagina 3 
+
+965
+ Ajustes de Intervalos en la Cue 
+
+966
+Minimo (ms)
+
+967
+Tamaño automatico de cue
+
+968
+kB por pista y hora
+
+969
+Proporcion de tamaño con destino (/1000)
+
+970
+Hard-linking al dividir
+
+971
+Escribir CueBlockNumber
+
+972
+Abrir cabeceras cuando sea posible
+
+973
+Forzar compatibilidad con matroska v2 
+
+974
+Permitir CodecID "A_AAC"
+
+975
+ Version de Matroska
+
+1001
+Resaltar los archivos de pista fuente
+
+1002
+Resaltar los archivos en uso
+
+1003
+Confirmar sobreescritura
+
+1004
+Mostrar mensaje al terminar el muxeo
+
+1005
+Resaltar pistas predeterminadas
+
+1006
+Resaltar pistas incompatibles con AVI
+
+1007
+Usar fuentes cleartype
+
+1100
+Definir "dwFlags"
+
+1101
+ Indicadores disponibles 
+
+1200
+Definir frecuencia de cuadros
+
+1201
+ Unidad 
+
+1202
+FPS
+
+1203
+µspf
+
+1204
+nspf
+
+1300
+Indicar puntos de división manualmente
+
+1400
+Información del archivo
+
+1401
+Información del video origen
+
+1402
+Aplicar cambios
+
+1500
+Empezar a mezclar...
+
+1501
+Nuevo archivo en %d:%02d:%02d.%03d (cuadro %d): %s
+
+1502
+¡Hecho!
+
+1503
+División iniciada en cuadro %d: %s %s
+
+1504
+Tamaño: %s %s (Sobredimensionado en %s %s)   Duración: %d:%02d:%02d.%03d (%d cuadros)
+
+1505
+Pista de audio %d: %s %s     Duración: %d:%02d:%02d.%03d
+
+1510
+Número de pistas de audio: %d
+
+1511
+Número de subtítulos: %d
+
+1512
+    Nombre: %s
+
+1513
+    Retardo: %d
+
+1514
+  Pista: %d
+
+1515
+Tamaño de archivo máximo excedido en no más de %s %s
+
+1516
+No se dividió en el cuadro: %s
+
+1517
+Tamaño máximo de archivo: %s %s
+
+1518
+Costo extra estimado: %s %s
+
+1519
+Tamaño total estimado del archivo de salida: %s %s
+
+1520
+¡Atención! El primer cuadro del video de origen no es un cuadro clave (keycuadro)!\nEl primero ha sido encontrado en la posición: %d
+
+1521
+Tamaño bruto estimado: %s %s
+
+1522
+Costo extra escrito: %s %s
+
+1523
+Punto de división %d at %s
+
+1524
+¡El marcador de capítulo del punto de división %d no ha podido ser resuelto!
+
+1525
+Pista %d:\n  %s enlazado usado en %s bloques que contienen %s cuadros\n  Tamaño de las cabeceras lazo: %s bytes
+
+1526
+%s grupos escritos causando %s Bytes de costo extra
+
+1527
+%s puntos de indicación para la pista de video creados
+
+1528
+Escala de salida de códigos de tiempo: %s
+
+1529
+Puntos de indicación para pistas de video activados
+
+1530
+Puntos de indicación para pistas de video desactivados
+
+1531
+Puntos de indicación para streams de audio activados
+
+1532
+Puntos de indicación para streams de audio desactivados
+
+1533
+Enlazado de video con %d cuadros por lazo
+
+1534
+El enlazado para el flujo de video está apagado
+
+1535
+    Enlazado apagado
+
+1536
+    Tamaño de lazo: %d ms
+
+1537
+Enlazado apagado para todas las pistas de audio
+
+1538
+Tamaño de la cabecera de búsqueda: %s %s
+
+1539
+Los grupos serán indexados en la cabecera de búsqueda
+
+1540
+Los grupos no se indexarán en la cabecera de búsqueda
+
+1541
+    El código de lenguaje es: %s
+
+1542
+Escritura sin buffer activada
+
+1543
+Escritura sin buffer desactivada
+
+1544
+Salida asíncrona activada
+
+1545
+Salida asíncrona desactivada
+
+1546
+    AC3 Audio: escribiendo %d cuadros por tramo
+
+1547
+    DTS Audio: escribiendo %d cuadros por tramo
+
+1548
+    MP3 Audio: desactivando el modo cuadro para CBR
+
+1549
+    MP3 Audio: activando el modo cuadro para CBR
+
+1550
+    MP3 Audio: no se puede desactivar el modo cuadro debido al retardo
+
+1551
+    MP3 Audio: Escribiendo %d cuadros por tramo
+
+1552
+Tamaño de la primera lista RIFF: sobre %s MBytes
+
+1553
+Índices standar por flujo: 1 por lista RIFF
+
+1554
+Índices standar por flujo: 1 por %d cuadros
+
+1555
+Entrelazado de audio: %d kByte
+
+1556
+Entrelazado de audio: %d cuadros
+
+1557
+Listas rec activadas
+
+1558
+Listas rec desactivadas
+
+1559
+    Formato de subtítulo: %s
+
+1560
+    Compresión: %s
+
+1561
+Modo de bajo costo para salida AVI activado
+
+1562
+Modo de bajo costo para salida AVI desactivado
+
+1563
+Escribir JUNK antes de las cabeceras AVI : Si\nImportante: Algunos reproductores no pueden leer estos archivos!
+
+1564
+Escribir JUNK antes de las cabeceras AVI: No
+
+1565
+Cues para los subtitulos activado
+
+1566
+Cues para los subtitulos desactivado
+
+1567
+Tamaño de cabeceras: %s bytes
+
+1568
+Tamaño de destino para Cue: %4.1f%% del espacio disponible
+
+1569
+Orden aleatorio activado
+
+1570
+Orden aleatorio desactivado
+
+1571
+Escribiendo CueBlockNumber
+
+1572
+No escribir CueBlockNumber
+
+1573
+La especificacion de archivos Matroska puede que se modifique un poco
+
+1574
+La especificacion de archivos Matroska no sera modificada
+
+1575
+Creando archivo Matroska v%d
+
+1576
+Tamaño de caja: %d bits
+
+1577
+Tamaño de archivos que van a sobreescribirse:
+
+1578
+Espacio libre en destino:
+
+1579
+Usar cache propio para archivo de salida: Si
+
+1580
+Usar cache propio para archivo de salida: No
+
+1581
+Usando %d lineas de cache de  %s kBytes cada una 
+
+1582
+Aun borrando todos los archivos que seran sobreescritos, no habra suficiente espacio libre:\n\nRequerido: %s\nEspacio libre en disco: %s\nEspacio adicional ganado al sobreescribir archivos: %s\n\nContinuar (altamente desaconsejable)?
+
+1583
+Espacio libre en disco insuficiente: \n\nRequerido: %s\nEspacio libre en disco: %s\n\nContinuar (altamente desaconsejable)?
+
+1601
+Extraer como SRT...
+
+1602
+Extraer como SSA...
+
+1701
+¡Sólo puede unir una serie de archivos AVI o una serie de archivos MKV, pero no se pueden mezclar,\nni entre ellos ni con otro tipo de archivo!
+
+1702
+Imposible unir los archivos:\n¡El número de pistas es diferente!
+
+1703
+Imposible unir los archivos:\n¡La resolución de video es diferente!
+
+1704
+Imposible unir los archivos:\nEl formato de compresión del video no coincide: %s <-> %s
+
+1705
+Las pistas de audio son incompatibles: \n\n%s, pista %d
+
+1706
+Los subtítulos son incompatibles: \n\n%s, pista %d
+
+1707
+No se pueden unir los archivos:\nVideo Codec IDs distintos: %s <-> %s
+
+1708
+El archivo XML contiene varios UIDs, o al menos uno de ellos esta en uso.\n\nAsegurese de que su archivo XML contiene un unico UID y no cargarlo en otro proceso.
+
+1709
+Necesita especificar el final de cada capitulo dentro de una edicion ordenada
+
+1710
+A indicado\n* un tamaño maximo de archivo menor a la capacidad total del destino\n* debe indicar un punto de division o corte manualmente\n\nDe otra manera, AVI-Mux GUI no puede predecir correctamente los nombres de archivo destino. Elija 'Si' para sobreescribir todos los archivos existentes sin preguntar, 'No' para preguntar por cada archivo, y 'Cancelar' para abortar.
+
+1711
+La configuracion actual de nombres de archivops puede causar que estos se repitan (%s).\n\nDesea continuar de todas maneras?
+
+1712
+El archivo que desea abrir es un OGG conteniendo mas de una pista, por ejemplo un archivo OGM. Estos archivos no son soportados.
+
+1713
+Esta intentando abrir pistas se subtitulos de distintos formatos.
+
+1714
+Error al intentar abrir el AVI!\n\nSi aparece este mensaje, el parser AVI a fallado intentando acceder a un archivo que parecia ser AVI. Probablemente el archivo esta dañado.
+
+1715
+Este segmento de archivo no contiene un SegmentUID. Por esa razon no es posible importar capitulos de este segmento, ni crear capitulos referentes a este segmento
+
+1716
+Los sample rates de estas pistas no son iguales:\n  #%d: %s -> %d Hz\n  #%d: %s -> %d Hz
+
+1717
+Los siguientes archivos tienen distinto numero de canales:\n  #%d: %s -> canales: %d\n  #%d: %s -> canales: %d
+
+1718
+Los siguientes archivos pertenecen a distintas versiones de la capa MPEG:\n  #%d: %s -> Capa %d\n  #%d: %s -> Capa %d
+
+1719
+Los siguientes archivos pertenecen a distintas versiones MPEG:\n  #%d: %s -> MPEG %d\n  #%d: %s -> MPEG %d
+
+1720
+Los siguientes archivos pertenecen a distintos perfiles AAC:\n  #%d: %s -> %s\n  #%d: %s -> %s
+
+1721
+No puede abrirse para escritura el siguiente archivo:\n\n%s
+
+1801
+Las frecuencia de cuadro de los archivos AVI no coinciden.\nPuede unirlos, pero solo estará disponible el formato de salida MKV.
+
+1900
+Capítulos
+
+1901
+Subcapítulo
+
+1902
+Guardar como ...
+
+1903
+Sintáxis:  from [ - till]. Use F2 para editar los ítem en el árbol de capítulos. Use Insertar para agregar capítulo al mismo nivel del capítulo seleccionado y Avanzar y Retroceder página para mover los capítulos. Use Suprimir para eliminar un capítulo.
+
+1904
+Lenguaje
+
+1905
+Título
+
+1920
+Completo
+
+2000
+La edición está ordenada
+
+2001
+La edición está oculta
+
+2002
+La edición es por defecto
+
+2003
+El capítulo está oculto
+
+2004
+El capítulo está habilitado
+
+2005
+Copiar...
+
+2006 
+Copiar todo en este nivel...
+
+2007
+Pegar en el mismo nivel...
+
+2008
+Pegar como subcapítulos...
+
+2009
+Pegra todo en una edición nueva...
+
+2010
+Pegar cada uno en una edición nueva...
+
+2011
+Borrar portapapeles
+
+2012
+Reinicializar UIDs
+
+2013
+Reinicializar todos los UIDs
+
+2014
+Copiar elementos hijo...
+
+2015
+Copiar elementos hijo de todos los elementos del nivel...
+
+2016
+Enumerar subcapítulos...

@@ -1,0 +1,1201 @@
+[AVI-Mux GUI Language File]
+
+NAME
+Türkçe
+
+1
+Tamam
+
+2
+Ýptal
+
+3
+Sýfýrla
+
+101
+AVI-Mux GUI Hakkýnda
+
+102
+Bu MP3 dosyasý "CBR"
+
+103
+Bu MP3 dosyasý "VBR"
+
+104
+Bilgi
+
+105
+Uyarý
+
+106
+Hata
+
+107
+Bu dosya "MP3-CBR" olabilir. Ýþaretlensin mi?
+
+108
+Soru
+
+109
+Video kaynaðý yok!
+
+110
+2000 MB'tan büyük AVI dosyalarý sadece "Open-DML" formatýnda oluþturulabilir.\n\n"Open-DML"e geçilip devam edilsin mi?
+
+111
+Video kaynaðý seçilmemiþ!
+
+112
+Sadece "AVI, MKV, MP3, WAV, AC3, DTS, AAC, OGG/Vorbis, SRT, SSA ve AVI-Mux GUI Script" dosyalarý desteklenir!
+
+113
+Dosya eklenemedi:\n\n%s
+
+114
+Bu geçerli bir AVI dosyasý deðil:\n\n%s
+
+115
+Çýkýþ dosyasý açýlamadý: 
+
+116
+Hepsi silinsin mi?
+
+117
+4000 MB'tan büyük bir dosya boyutu girilmiþ.\nÇýkýþ aygýtý olan %s, %s dosya sistemini kullanýyor ancak NTFS olmasý gerekli.\n\nDevam edilsin mi?
+
+119
+OGG/Vorbis olarak çýkart
+
+120
+Akýþýn sonuna gelinmediði halde ses kaynaðý %d okunamadý. Hasarlý kareler sebep olmuþ olabilir.
+
+121
+Gecikme ayarla
+
+122
+Kaynaðý Çýkart
+
+123
+Altyazýyý metin dosyasýna çýkart
+
+124
+ADTS-packed AAC dosyasý olarak çýkart
+
+125
+Seçili video kaynaðý %d kare içermiyor. Daha düþük rakamlar girin.
+
+126
+%d karesi anahtar-kare deðil!\nEðer filmi burdan ayýrýrsanýz sonuç kötü olabilir.\n\nDevam edilsin mi?
+
+127
+Ekle
+
+128
+Kaldýr
+
+129
+Deðiþtir
+
+130
+RAW'ý çýkart ve M2F2 kullanýcý verisini sakla
+
+131
+"Mode 2 Form 2" kaynak dosyasý okunamadý!
+
+132
+CRC kontrolü yap
+
+133
+Video kaynaðý okunamadý!
+
+134
+Dosya
+
+135
+Kaynak
+
+136
+Dosya Bilgisi
+
+137
+AVI-Türü
+
+138
+Standart
+
+139
+Open-DML
+
+140
+Çözünürlük:
+
+141
+Kare hýzý:
+
+142
+Kare sayýsý:
+
+143
+Video boyutu:
+
+144
+Video hýzý:
+
+145
+Ses akýþlarý:
+
+146
+Format etkieti
+
+147
+Ses akýþý
+
+148
+Bit hýzý:
+
+149
+Örnekleme hýzý:
+
+150
+Kanal
+
+151
+Tane
+
+152
+Boyut
+
+153
+Parça sayýsý:
+
+154
+Toplam parça sayýsý:
+
+155
+OpenDML + Kalýntý indeksi
+
+156
+Video akýþý
+
+157
+Kare hýzý bozuk bir program tarafýndan yazýlmýþ!
+
+158
+Akýþ uzunluðu
+
+159
+Kare
+
+160
+Open-DML indeksi
+
+161
+Süper indeks giriþleri
+
+162
+Giriþ
+
+163
+Akýþ
+
+164
+Gerçek Deðer
+
+165
+Deðer dwSüresi'nde saklý
+
+166
+Hatalý!
+
+167
+Anahtar kareleri
+
+168
+Delta kareleri
+
+169
+Düþürülmüþ kareleri
+
+170
+Sýkýþtýrma deðeri
+
+171
+Hatalý dwSüresi deðerlerini onar
+
+172
+Hiçbir onarým seçilmedi!
+
+173
+Seçili onarým ve deðiþiklikler þimdi uygulanacak. Belirtildiði üzere dosya kapatýlacak.
+
+174
+Hatalý "dwMicroSecPerFrame" deðerini onar
+
+175
+Farklý kaydet...
+
+176
+Kare hýzýný deðiþtir...
+
+177
+Dosya zaten kullanýmda:\n\n%s
+
+178
+Bayrak ayarý:
+
+179
+MP3/AC3/DTS kaynaðý açýlamadý: Ýlk kare baþlýðý hatalý.
+
+180
+"MainAVIHeader.dwFlags"i deðiþtir
+
+181
+Sürüm
+
+183
+Parça Boyutu
+
+184
+Geçkin:
+
+185
+Sýnýr:
+
+186
+Ekle - Geliþmiþ Ayarlar
+
+187
+Hepsini Sil
+
+188
+Mevcut %d MB var ama %d MB gerekiyor.\n\nDevam edilsin mi? (önerilmez)
+
+189
+Ýþlem tamamlandý!
+
+190
+Aþaðýdaki dosyalar zaten mevcut:
+
+191
+Hepsinin üzerine yazmak için"Evet"i, herbirine karar vermek için "Hayýr"ý, iptal etmek için "Ýptal"i seçin.
+
+192
+Bozuk AC3 akýþ konumlarý:
+
+193
+Maksimum dosya boyut ayarý yüzünden birden fazla dosya oluþabilir.\nBu format dizisinin biyerinde $Nbr gerektirir, ki henüz yok(veya numaralandýrma devre dýþý býrakýlmýþ).\n\nDevam edilsin mi? (önerilmez)
+
+194
+Akýþý DTS dosyasý olarak kaydet
+
+195
+Byte
+
+199
+3'ten fazla ses akýþý için "Open-DML" seçmiþsiniz ama her akýþ ve RIFF listesi için 1 tane mevcut. Microsoft DirectShow'daki bir hata yüzünden bu dosyayý DirectShow ile oynatamayacaksýnýz.\n\nDevam edilsin mi? (önerilmez)
+
+200
+"MainAVIHeader.dwTotalFrames" deðeri hatalý bir program tarafýndan yazýlmýþ!
+
+201
+Hatalý "MainAVIHeader.dwTotalFrames" deðerini onar
+
+202
+Gerçek deðer
+
+203
+Önerilen önbellek boyutu:
+
+204
+Altyazý sayýsý:
+
+205
+Altyazý
+
+206
+Video kaynaðý bilgisi
+
+207
+MB
+
+208
+KB
+
+209
+9'dan fazla akýþla bir "AVI 1.0" dosyasý oluþturmaya çalýþýyorsunuz. AVI-Mux GUI'deki eski ve tamamiyle yanlýþ kod parçalarý yüzünden bu dosyalar için "Open-DML" formatýný kullanmanýz önerilir.\n\nOpen-DML'e geçilip devam edilsin mi?
+
+210
+Dil
+
+211
+Farklý formatlarda olduðundan altyazýlar birleþtirilemedi!
+
+212
+GB
+
+213
+Protokole geç
+
+214
+Kaynak akýþlara geç
+
+215
+Ýfade: Ayarlayýn: %s\nBilinmeyen: %s
+
+216
+Ýfade: %s\nBilinmeyen: %s
+
+217
+Hýzlý ses akýþlarý ekleyin
+
+218
+Bu dosyanýn üzerine yazmak istiyor musunuz
+
+219
+Dosyalarýn toplam boyutu
+
+301
+Akýþ boyutu (strh)
+
+302
+Akýþ boyutu (indeks)
+
+405
+Aþaðýdaki dosyalar kaldýrýlacak
+
+406
+Aþaðýdaki akýþlar kaldýrýlacak
+
+407
+Devam edilsin mi?
+
+501
+Açýk Dosyalar (Eklemek için sürükleyip býrakýn)
+
+502
+Ayarlarý Kaydet
+
+503
+Gereksiz denemelerden kaçýn
+
+504
+Dosyalardan Kaynak Oluþtur
+
+505
+Mevcut akýþlar:
+
+506
+Video:
+
+507
+Ses:
+
+508
+Altyazý:
+
+509
+Ses olmasýn
+
+510
+Tüm ses akýþlarý
+
+511
+Varsayýlan
+
+512
+Altyazý olmasýn
+
+513
+Tüm altyazýlar
+
+514
+Protokol
+
+516
+Ayarlar
+
+517
+Baþla
+
+518
+Dur
+
+519
+Çýkýþ
+
+520
+Ýþlem
+
+521
+Toplam veri (KB)
+
+522
+Suanki dosya
+
+523
+Toplam
+
+524
+Video
+
+525
+Ses
+
+526
+Baslik
+
+527
+Toplam
+
+528
+Hedef dosya
+
+529
+Konum:
+
+530
+Transfer hizi
+
+531
+FPS
+
+532
+Ýþlem
+
+533
+Kalýntý indeksi
+
+534
+Dil kodu:
+
+535
+Gecikme (ms):
+
+536
+Altyazi
+
+537
+Dosya baþlýðý:
+
+538
+Uzatma:
+
+539
+Çözünürlük:
+
+540
+Varsayýlan parça
+
+600
+AVI-Mux GUI Hakkýnda
+
+700
+Ayýrma noktasý
+
+701
+Yeni dosya konumu
+
+800
+Ayarlar: Açýk dosyalar
+
+801
+ AVI dosyalarý
+
+802
+Maksimum parça boyutu (KB):
+
+803
+Doðru parça boyutunu getirmeye çalýþ
+
+804
+MP3 akýþlarýný VBR'a zorla
+
+805
+dwFourCC "DX50"i "divx"e çevir
+
+810
+ MP3 dosyalarý
+
+811
+CBR'ýn seçilip seçilmeyeceðini sor
+
+812
+CBR'ý her zaman seç
+
+813
+CBR'ý asla seçme
+
+814
+Doðrulama sonucunu göster
+
+820
+ Mode 2 - Form 2 dosyalarý
+
+821
+CRC kontrolünü varsayýlan yap
+
+830
+ AVI dosyalarýný birleþtir
+
+831
+ Birleþtirmeden önce AC3 uyumluluðunu kontrol etme
+
+832
+ Bölümler
+
+833
+Bölüm ekle
+
+834
+Dosya adlarýndan bölüm oluþtur
+
+835
+ MKV dosyalarý
+
+836
+Düzensiz okuma
+
+900
+ Kaynak/Hedef Dosya Ayarlarý 
+
+901
+ Dosya Ayarlarý 
+
+902
+ AVI Dosya Yapýsý
+
+903
+REC listeleri yap
+
+904
+ Open-DML Ayarlarý
+
+905
+Open-DML çýkýþý kullan
+
+906
+ Her akýþ için standart indeks
+
+907
+Her RIFF listesi için 1
+
+908
+Herbirine
+
+909
+Kare
+
+910
+Otomatik
+
+911
+Kalýntý indeksi oluþtur
+
+912
+Ses Giriþi
+
+913
+KB
+
+914
+Kare
+
+915
+Ön-açýlýþ (ms)
+
+916
+Her parçanýn AC3 karesi (CBR)
+
+921
+Önbelleklenmemiþ yazým
+
+922
+Kayýt dosyasý(Log) tut
+
+923
+Senkronizasyonsuz mod
+
+924
+use separate thread
+
+925
+Varsayýlan dosya adý:
+
+926
+Varsayýlan dosya adý yok
+
+927
+Parça baþlýk kullan
+
+928
+Ýlk kaynak dosyasý
+
+930
+ Ayýr
+
+931
+Maks. dosya boyutu (MB)
+
+932
+Ayýrma Noktalarýný Elle Seç
+
+933
+Dosya adlarý:
+
+934
+Kare:
+
+935
+Maksimum dosya sayýsý:
+
+936
+MP3 CBR kare modu
+
+937
+Ana AVI baþlýðýndan önce boþluk ekle
+
+938
+ Giriþikler
+
+940
+ MKV Yapýsý - Sayfa 1 
+
+941
+Bað:
+
+942
+Maksimum küme sayýsý
+
+943
+Maksimum küme uzunluðu
+
+944
+Önceki küme boyutunu yaz
+
+945
+Konumu yaz
+
+946
+Ýlk kümeyi 30'la sýnýrla
+
+947
+Her zaman görüntü boyutlarýný yaz
+
+948
+Matroska v1 uyumluluðunu zorla
+
+950
+ Genel
+
+951
+Bölümler
+
+952
+Varsayýlan çýkýþ türü:
+
+953
+ MKV Yapýsý - Sayfa 2 
+
+954
+ MKV Yapýsý 
+
+955
+Sýralarý yaz
+
+956
+Sadece ses dosyalarý için
+
+957
+Parçalarý 2 kopya yaz
+
+958
+Kümeleri baþlýkta tut
+
+959
+Bit olarak deðiþken geniþliði
+
+960
+Öðe sýrasýný rastele yap
+
+961
+ Diðerleri
+
+962
+Baþlýk boyutu (kB, 0=auto):
+
+963
+Küme olmayanlarý ilk baþlýkta tut
+
+964
+ MKV Yapýsý - Sayfa 3 
+
+965
+ Ara Ayarlarý Sýrala
+
+966
+Minimum (ms)
+
+967
+Boyutu oto. sýrala
+
+968
+Her akýþ ve saat için KB
+
+969
+Hedef boyut oraný (/1000)
+
+970
+Ayýrýrken zorlu baðlantý kullan
+
+971
+"CueBlockNumber"ý yaz
+
+972
+Mümkünse akýþ balýklarýný çiz
+
+973
+Matroska v2 uyumluluðunu zorla
+
+974
+CodecID "A_AAC"ye izin ver
+
+975
+ Matroska sürümü
+
+1001
+Akýþ kaynaðý dosyalarýný belirt
+
+1002
+Kullanýmda olan dosyalarý belirt
+
+1003
+Dosya üzerine yazmayý doðrula
+
+1004
+Ýþlem bitince bilgi penceresi göster
+
+1005
+Varsayýlan akýþlarý belirt
+
+1006
+AVI'ye uygun olmayan akýþlarý belirt
+
+1007
+Cleartype yazý tiplerini kullan
+
+1100
+dBayraklarýný Ayarla
+
+1101
+ Mevcut bayraklar
+
+1200
+Kare hýzýný ayarla
+
+1201
+ Birim
+
+1202
+FPS
+
+1203
+µspf
+
+1204
+nspf
+
+1300
+Ayýrma Noktalarýný Elle Belirleyin
+
+1400
+Dosya Bilgisi
+
+1401
+Video Kaynaðý Bilgisi
+
+1402
+Deðiþiklikleri Uygula
+
+1500
+Ýþleniyor...
+
+1501
+Yeni dosya konumu: %d:%02d:%02d.%03d (kare %d):\n%s
+
+1502
+Tamamlandý!
+
+1503
+%d. kareden ayrýlmaya baþlandý: %s %s
+
+1504
+Boyut: %s %s (%s %s boyutundan daha büyük)\nSüre: %d:%02d:%02d.%03d (%d kare)
+
+1505
+Ses akýþý %d: %s %s     Süre: %d:%02d:%02d.%03d
+
+1510
+Ses akýþý sayýsý: %d
+
+1511
+Altyazý sayýsý: %d
+
+1512
+    Ad: %s
+
+1513
+    Gecikme: %d
+
+1514
+  Parça: %d
+
+1515
+Maksimum dosya boyutu aþýldý! Tahmini fark:\n%s %s
+
+1516
+Bu anakarede ayýrma: %s 
+
+1517
+Maksimum dosya boyutu: %s %s
+
+1518
+Tahmini baþlýk: 
+
+1519
+Tahmini çýkýþ boyutu:
+
+1520
+Uyarý! Video kaynaðýnýn ilk karesi anahtar kare deðil!\nÝlk anahtar kare bu konumda: %d
+
+1521
+Tahmini ham akýþ boyutu:
+
+1522
+Yazýlan baþlýk: %s %s
+
+1523
+%s konumundaki ayýrma noktasý: %d
+
+1524
+%d ayýrma noktasýnýn bölüm iþaretleyicisi tekrar çözülemedi!
+
+1525
+   %s kare içeren %s blokta %s baðlantý kullanýldý.\n  Baðlama baþlýðý boyutu: %s byte.
+
+1526
+%s Byte baþlýk oluþturan %s küme yazýldý.
+
+1527
+%s Sýra noktasý oluþturuldu, %s tanesi yazýldý.
+
+1528
+Çýkýþ süresi ölçeði: %s
+
+1529
+Video akýþý sýralama aktif
+
+1530
+Video akýþý sýralama pasif
+
+1531
+Ses akýþý sýralama aktif
+
+1532
+Ses akýþý sýralama pasif
+
+1533
+Her baðlantý için %d kare birleþtirliyor
+
+1534
+Video akýþý baðlantýsý kapalý
+
+1535
+    Baðlantý kapalý
+
+1536
+    Baðlantý boyutu: %d ms
+
+1537
+Tüm ses parçalarý için baðlantý kapatýldý
+
+1538
+Baþlýk boyutu: %s %s
+
+1539
+Kümeler baþlýkta indekslenecek
+
+1540
+Kümeler baþlýkta indekslenmeyecek
+
+1541
+    Dil kodu: %s
+
+1542
+Önbelleksiz yazým aktif
+
+1543
+Önbelleksiz yazým pasif
+
+1544
+Senkronsuz çýkýþ aktif
+
+1545
+Senkronsuz çýkýþ pasif
+
+1546
+    AC3 Sesi: Her parça için %d kare yazýlýyor
+
+1547
+    DTS Sesi: Her parça için %d kare yazýlýyor
+
+1548
+    MP3 Sesi: CBR için kare modu kapatýlýyor
+
+1549
+    MP3 Sesi: CBR için kare modu açýlýyor
+
+1550
+    MP3 Sesi: Gecikme yüzünden kare modu kapatýlamýyor
+
+1551
+    MP3 Sesi: Her parça için %d kare yazýlýyor
+
+1552
+Ýlk RIFF listesinin boyutu: Yaklaþýk %s MB.
+
+1553
+Her akýþ için standart indeksleri: Her RIFF listesi için 1
+
+1554
+Her akýþ için standart indeksleri: Her %d kare için 1
+
+1555
+Ses giriþi: %d KB
+
+1556
+Ses giriþi: %d kare
+
+1557
+Kayýt listeleri aktif
+
+1558
+Kayýt listeleri pasif
+
+1559
+    Altyazý türü: %s
+
+1560
+    Sýkýþtýrma: %s
+
+1561
+AVI dosyalarý için düþük-baþlýk modu: Evet
+
+1562
+AVI dosyalarý için düþük-baþlýk modu: Hayýr
+
+1563
+AVI baþlýklarýndan önce boþluk yaz: Evet\nÖnemli: Bazý oynatýcýlar bu tarz dosyalarý açamayabilir!
+
+1564
+AVI baþlýklarýndan önce boþluk yaz: Hayýr
+
+1565
+Altyazý sýralama aktif
+
+1566
+Altyazý sýralama pasif
+
+1567
+Baþlýk boyutu: %s byte
+
+1568
+Sýralama hedef boyutu: Mevcut alanýn %4.1f%% kadarý.
+
+1569
+Rastgele öðe sýrasý aktif
+
+1570
+Rastgele öðe sýrasý pasif
+
+1571
+"CueBlockNumber" yazýlýyor
+
+1572
+"CueBlockNumber" yazma
+
+1573
+Matroska dosya bilgileri biraz uzatýlabilir
+
+1574
+Matroska dosya bilgileri uzatýlmayacak
+
+1575
+Matroska v%d dosyasý oluþturuluyor
+
+1576
+Süzme boyutu: %d bit.
+
+1577
+Üstüne yazýlan dosyalarýn boyutu:
+
+1578
+Hedefteki mevcut alan:
+
+1579
+Çýkýþ dosyasý için kendi belleðini kullan: Evet
+
+1580
+Çýkýþ dosyasý için kendi belleðini kullan: Hayýr
+
+1581
+Using %d cache lines of %s kBytes each
+
+1582
+Üstüne yazýlacak tüm dosyalarý silerken bile disk alaný yetmeyecek:\n\nGereken: %s\nMevcut alan: %s\nEkstra alan dosyalarýn üstüne yazýlarak saðlanacak: %s\n\nDevam edilsin mi?
+
+1583
+Mevcut disk alaný yetersiz: \n\nGereken: %s\nMevcut alan: %s\n\nDevam edilsin mi? (Önerilmez)
+
+1601
+SRT olarak kaydet...
+
+1602
+SSA olarak kaydet...
+
+1701
+Sadece AVI, MKV, MP3, AAC ve AC3 dosyalarýný birleþtirebilirsiniz.\nNe bunlarýn birleþimi ne de baþka dosya türü olmaz.
+
+1702
+Dosyalar birleþtirilemiyor:\nAkýþ sayýsý farklý!
+
+1703
+Dosyalar birleþtirilemiyor:\nVideo çözünürlüðü farklý!
+
+1704
+Dosyalar birleþtirilemiyor:\nVideo sýkýþtýrma formatý farklý: %s <-> %s
+
+1705
+Ses akýþlarý uyumsuz: \n\n%s, Akýþ %d
+
+1706
+Altyazýlar uyumsuz: \n\n%s, Akýþ %d
+
+1707
+Dosyalar birleþtirilemiyor:\nVideo kodek kodu farklý: %s <-> %s
+
+1708
+XML dosyalarý benzersiz bir "UID" içermiyor ya da UID'lerin en bir tanesi kullanýmda.\n\nXML dosyanýzýn kendine özel, benzersiz bir UID'ye sahip olduðundan ve ayný XML dosyasýný 2 defa açmaya çalýþmadýðýnýzdan emin olun.
+
+1709
+Hazýrlanan yanýnýn herhangi bir bölümünün sonunu belirtmelisiniz.
+
+1710
+Tahmini toplam çýkýþ boyutundan daha küçük bir dosya boyut sýnýrý belirtmiþsiniz.\nBu yüzden AVI-Mux GUI tüm dosya adlarýný öngöremiyor.\nSorulmadan hepsinin üstünde yazmak için Evet'i, her dosyaya karar vermek için Hayýr'ý veya iptal etmek için Ýptal'i týklatýn.
+
+1711
+Geçerli hedef dosya adý oluþturma ayarlarý(%s) bazý isimlerin birden fazla kez kullanýlmasýna neden olacak.\n\nYinede devam etmek istiyor musunuz?
+
+1712
+Açmaya çalýþtýðýnýz birden fazla akýþ içeren bir OGG dosyasý(örneðin OGM dosyalarý). Bu tarz dosyalar desteklenmiyor.
+
+1713
+Farklý sýkýþtýrma formatlarýyla altyazý akýþý eklemeye çalýþýyorsunuz.
+
+1714
+AVI dosyasý açýlýrken hata oluþtu!\n\nBu mesajý görüyorsanýz, AVI derleyicisi AVI dosyasý gibi görünen dosyayý açamýyor demektir. Büyük ihtimal dosya hasarlý.
+
+1715
+Bu dosyadaki parça bir "ParçaUID(SegmentUID)"si içermiyor. Bu yüzden bu parçadan bölümler çýkarýlamýyor hatta bu parçada oluþturulamýyorlar.
+
+1716
+Aþaðýdaki dosyalarýn örnek hýzlarý ayný deðil:\n  #%d: %s -> %d Hz\n  #%d: %s -> %d Hz
+
+1717
+Aþaðýdaki dosyalar farklý kanal sayýlarýna sahip:\n  #%d: %s -> Kanal: %d\n  #%d: %s -> Kanal: %d
+
+1718
+Aþaðýdaki dosyalar farklý MPEG katmanlarýna sahip:\n  #%d: %s -> Katman %d\n  #%d: %s -> Katman %d
+
+1719
+Aþaðýdaki dosyalar farklý MPEG sürümlerine sahip:\n  #%d: %s -> MPEG %d\n  #%d: %s -> MPEG %d
+
+1720
+Aþaðýdaki dosyalar farklý AAC profillerine sahip:\n  #%d: %s -> %s\n  #%d: %s -> %s
+
+1721
+Aþaðýdaki dosya yazmak için açýlamýyor:\n\n%s
+
+1801
+AVI dosyalarýnýn kare hýzý farklý.\nBirleþtirebilirsiniz ancak çýkýþ sadece MKV olacak.
+
+1900
+Bölüm
+
+1901
+Alt-bölüm
+
+1902
+Farklý kaydet...
+
+1903
+Sözdizimi:  from [ - till]. Bölüm aðacýndaki nesneleri kullanmak için F2'ye basýn. Ayný seviyede, seçili bölüm gibi yeni bir bölüm için INS tuþunu kullanýn. Ayýrca bölümleri yukarý/aþaðý hareket ettirmek için Page Up ve Page Down tuþlarýný kullanýn. Silmek içinse Delete'i kullanýn.
+
+1904
+Dil
+
+1905
+Baþlýk
+
+1920
+Tamamla
+
+2000
+Yayýn hazýrlanýyor
+
+2001
+Yayýn gizli
+
+2002
+Yayýn varsayýlan
+
+2003
+Bölüm gizli
+
+2004
+Bölüm etkinleþtirildi
+
+2005
+Kopyala...
+
+2006 
+Bu seviyedeki herþeyi kopyala...
+
+2007
+Ayný seviyeye yapýþtýr...
+
+2008
+Alt-bölüm olarak yapýþtýr...
+
+2009
+Hepsini yeni yayýna yapýþtýr...
+
+2010
+Herbirini yeni yayýna yapýþtýr...
+
+2011
+Panoyu Temizle
+
+2012
+UID'leri Tekrar Baþlat
+
+2013
+Tüm UID'leri Tekrar Baþlat
+
+2014
+Küçük öðeleri kopyala...
+
+2015
+Bu sevideki bütün Küçük öðeleri kopyala...
+
+2016
+Alt-bölümleri numaralandýr...

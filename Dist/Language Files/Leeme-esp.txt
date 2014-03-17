@@ -1,0 +1,47 @@
+---------------------- note by Alexander Noe ---------------------------
+
+The spanish language file needs to be updated according to changes.txt!
+------------------------------------------------------------------------
+
+
+
+Bueno, simplemente me gustaria dejar constancia de algunos detalles
+del archivo de traduccion al español de este gran programa que es
+el AVI MUX GUI.
+
+Hay ciertos palabros que, bien sea por mi falta de capacidad de
+traduccion o por mi exceso de precaucion he preferido no traducir.
+Es por eso que he decidio hacer este pequeño texto para dar una
+traduccion lo mas acertada posible a ciertos palabros. (por supuesto
+estoy seguro de que algunos de ellos los traducire mal o regular, si
+tienes una traduccion mejor, por favor, hazmelo saber ok?)
+
+Ahi van:
+
+Frame: Fotograma.
+
+Framerate: Velocidad de Fotogramas/segundo del video.
+
+Keyframe: Es un fotograma llave ¿o maestro?. (mas o menos)
+
+Delay: Retraso, las pistas AC3 a veces tienen retrasos de algunos
+       milisegundos.
+
+Chunk: Esto es un trozo de video de un tamaño mas o menos definido.
+
+Header: Cabecera de archivo, (aunque creo q esta si la he traducido en el fichero)
+
+Overhead: Esto no se como traducirlo exactamente, pero si se, por ejemplo
+          que si unes una peli de 600 mb y un audio de 100 mb el fichero resultante
+          puede que sea de 705-706 mb, pues esos 5-6 megas son el overhead. (mas o menos).
+
+Interleave: Este palabro se me escapa.
+
+Lacing: Este palabro tambien se me escapa a la traduccion.
+
+Lace: Igual que los otros dos este tampoco lo sé.
+
+
+Bueno, veis que me conocimiento mas profundo y tecnico es casi nulo, pero si
+quereis decirme algo al respecto de todo lo diho anteriormente, como correciones
+explicaciones y todo eso pues mandame un mail a: badtastexxx@msn.com

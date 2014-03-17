@@ -1,0 +1,19 @@
+Before you ask any questions, please read the manual. 
+
+Many features, like demuxing audio, setting AAC-sources to be HE-AAC, setting
+default flags, are available through the right mouse button.
+
+More notes:
+- use Open-DML, legacy-index and RIFF AVI size = 1 MB to avoid that Win XP hangs 
+  when clicking on an AVI file
+- HE-AAC is not detected automatically! Only educated guesses are used. If HE-AAC
+  is misdetected (positively or negatively) right-click on the stream and correct it
+- Video lacing is a severe hack and only there for testing purposes! Use it on your
+  own risk!
+- most hardware mpeg4 (divX/xvid) players will reject Open-DML files or files with rec lists
+  Soft-subs in AVI files usually don't work on such devices.
+- Low-overhead-mode for AVI files is not compatible with some AVI readers.
+
+
+If this does not cover the question you want to ask, please go to:
+  http://www.alexander-noe.com/contact

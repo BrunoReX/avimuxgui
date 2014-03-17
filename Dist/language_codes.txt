@@ -1,0 +1,12 @@
+:English:1:1
+ger:German:1:1
+eng:English:1:1
+fin:Finnish:1:1
+fre:French:1:1
+ita:Italian:1:1
+jpn:Japanese:1:1
+pol:Polish:1:1
+por:Portuguese:1:1
+rus:Russian:1:1
+spa:Spanish:1:1
+und:undefined:1:1

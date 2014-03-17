@@ -1,0 +1,1201 @@
+[AVI-Mux GUI Language File]
+
+NAME
+Èesky
+
+1
+OK
+
+2
+Zrušit
+
+3
+Reset
+
+101
+O programu AVI-Mux GUI
+
+102
+Tento MP3 soubor je CBR
+
+103
+Tento MP3 soubor je VBR
+
+104
+Informace
+
+105
+Upozornìní
+
+106
+Chyba
+
+107
+Tento soubor je moná MP3-CBR. Má se to provìøit?
+
+108
+Dotaz
+
+109
+Není dostupnı ádnı zdroj videa!
+
+110
+AVI soubory vìtší ne 2000 MB mohou bıt vytvoøeny jen v Open-DML formátu.\n\nPokraèovat (a nastavit vıstupní formát na Open-DML)?
+
+111
+Není vybrán ádnı zdroj videa!
+
+112
+Jsou podporovány jen následující soubory: AVI, MKV, MP3, WAV, AC3, DTS, AAC, OGG/Vorbis, SRT, SSA a platné AVI-Mux GUI - skript - soubory
+
+113
+Sobor nemohl bıt pøipojen:\n\n%s
+
+114
+Tento AVI soubor je neplatnı:\n\n%s
+
+115
+Nelze otevøít vıstupní soubor
+
+116
+Opravdu vše smazat?
+
+117
+Maximální velikost souboru byla zadána vìtší ne 4000 MB. \nVıstupní zaøízení%s pouívá s% jako souborovı systém, ale je poadován NTFS.\n\nPokraèovat (s nejvìtší pravdìpodobností nesmyslné)?
+
+119
+vytáhnout do OGG/Vorbis
+
+120
+Nelze èíst ze zdrojového audia %d. i kdy ještì nebylo dosaeno konce streamu. Dùvodem mohou bıt špatné hlavièky snímkù.
+
+121
+nastavit zpodìní
+
+122
+vytáhnout data
+
+123
+vytáhnout titulky do textového souboru
+
+124
+vytáhnout do ADTS-zabaleného AAC souboru
+
+125
+Vybranı zdroj videa nemá %d snímkù. Zadejte prosím menší èíslo.
+
+126
+Snímek %d není klíèovı!\nPokud film rozdìlíte zde, vıstup mùe bıt poštozen.\n\nPokraèovat?
+
+127
+pøidat
+
+128
+odstranit
+
+129
+zmìnit
+
+130
+vytáhnout RAW a zachovat M2F2 uivatelká data
+
+131
+Nelze èíst z Mode 2 Form 2 - zdrojového souboru!
+
+132
+provést kontrolu CRC
+
+133
+Nelze èíst ze zdroje videa!
+
+134
+Soubor
+
+135
+Zdroj
+
+136
+Informace o souboru
+
+137
+AVI-Typ
+
+138
+standartní
+
+139
+Open-DML
+
+140
+rozlišení
+
+141
+snímková frekvence
+
+142
+poèet snímkù
+
+143
+velikost video streamu
+
+144
+datovı tok videa
+
+145
+poèet audio streamù
+
+146
+formát-tag
+
+147
+audio stream
+
+148
+datovı tok
+
+149
+vzorkovací frekvence
+
+150
+kanálù
+
+151
+zrnitost
+
+152
+velikost
+
+153
+poèet dávek
+
+154
+celkovı poèet dávek
+
+155
+OpenDML + Legacy-Index
+
+156
+video stream
+
+157
+jak se zdá hodnota snímkové frekvence byla zapsána poškozenım programem!
+
+158
+délka streamu
+
+159
+snímkù
+
+160
+Open-DML index
+
+161
+poloky v superindexu
+
+162
+vstup
+
+163
+Stream
+
+164
+reálná hodnota
+
+165
+hodnota uchovaná v dwDuration
+
+166
+špatné!
+
+167
+z toho klíèovıch snímkù
+
+168
+z toho klíèovıch delta snímkù
+
+169
+z toho vypuštìnıch snímkù
+
+170
+biKompresní hodnota
+
+171
+opravit špatné dwDuration hodnoty
+
+172
+Nejsou vybrány ádné opravy!
+
+173
+Vybrané opravy a zmìny budou nyní pouity. Soubor bude zavøen stejnì jako tyto detailní informace.
+
+174
+opravit špatnou hodnotu dwMicroSecPerFrame
+
+175
+uloit jako...
+
+176
+zmìnit snímkovou frekvenci...
+
+177
+Soubor je právì pouíván:\n\n%s
+
+178
+Nastavení Flags:
+
+179
+MP3/AC3/DTS zdrojovı soubor nemohl bıt otevøen: Hlavièka prvního snímku se zdá bıt špatná.
+
+180
+zmìnit MainAVIHeader.dwFlags
+
+181
+Verze
+
+183
+Velikosti dávek
+
+184
+pøes
+
+185
+a do
+
+186
+pøidat - pokroèilá nastavení
+
+187
+smazat vše
+
+188
+Je dostupnıch %d MBajtù, ale kolem %d MBajtù je nutnıch.\n\nPokraèovat? (nedoporuèuje se!)
+
+189
+Proces ukonèen!
+
+190
+Následující soubory u existují:
+
+191
+Vyberte 'Ano' pro pøepsání všech, vyberte 'Ne' pro dotaz u kadého souboru, vyberte 'Zrušit' pro pøerušení.
+
+192
+Poškozené pozice AC3 streamu:
+
+193
+Vzhledem k nastavené maximální velikosti souboru, to bude pravdìpodobnì více ne jeden vıstupní soubor.\nTo vyaduje $Nbr nìkde v retìzci formátu, kterı není pøítomen (nebo bylo èíslování vypnuto).\n\nPokraèovat (nedoporuèuje se)?
+
+194
+uloit stream jako soubor DTS
+
+195
+bajtù
+
+199
+Vybrali jste Open-DML vıstup s více ne 3 audio streamy, ale jen 1 standartní index na stream a RIFF seznam. Kvùli chybì v Microsoft DirectShow, pravdìpodobnì nebudete schopni pøehrát tento soubor v DirectShow.\n\nPokraèovat (nedoporuèuje se)?
+
+200
+Hodnota MainAVIHeader.dwTotalFrames - byla zapsána poškozenım programem!
+
+201
+opravit špatnou hodnotu MainAVIHeader.dwTotalFrames
+
+202
+reálná hodnota
+
+203
+navrená velikost vyrovnávací pamìti
+
+204
+poèet titulkù
+
+205
+titulky
+
+206
+Informace o video zdroji
+
+207
+MBajt
+
+208
+kBajt
+
+209
+Snaíte se vytvoøit AVI 1.0 soubor s více ne 9 streamy. Kvùli starım (a ne zcela správnım) èástem kódu v AVI-Mux GUI, je vyadováno aby jste pro takové soubory pouili Open-DML.\n\nPokraèovat a nastavit vıstup na Open-DML?
+
+210
+Jazyk
+
+211
+Nelze slouèit titulky kvùli rùznım formátùm!
+
+212
+GBajt
+
+213
+pøepnout do protokolu
+
+214
+pøepnout do zdrojovıch streamù
+
+215
+Vıraz: NASTAVIT MONOSTI %s\nNeznámı: %s
+
+216
+Vıraz: %s\nNeznámı: %s
+
+217
+ihned pøidat zdroje audia
+
+218
+Pøejete si pøepsat tento soubor?
+
+219
+Celková velikost tìchto souborù
+
+301
+velikost streamu (strh)
+
+302
+velikost streamu (index)
+
+405
+Následující soubory budou odstranìny
+
+406
+Následující streamy budou odstranìny
+
+407
+Pokraèovat?
+
+501
+Otevøít soubory (pøidat soubory pomocí drag && drop - pøetáhni a pus)
+
+502
+uloit nastavení
+
+503
+vyhnout se ne nutnému vyhledávání
+
+504
+generovat data zdroje ze souborù
+
+505
+dostupné streamy:
+
+506
+video
+
+507
+audio
+
+508
+titulky
+
+509
+ádné audio
+
+510
+všechny audio streamy
+
+511
+vıchozí
+
+512
+ádné titulky
+
+513
+všechny titulky
+
+514
+protokol
+
+516
+nastavení
+
+517
+start
+
+518
+stop
+
+519
+odejít
+
+520
+zpracování
+
+521
+mnoství dat (kB)
+
+522
+aktuální soubor
+
+523
+celkem
+
+524
+video
+
+525
+audio
+
+526
+overhead
+
+527
+celkem
+
+528
+cílovı soubor
+
+529
+pozice:
+
+530
+rychlost pøenosu
+
+531
+fps
+
+532
+zpracování
+
+533
+legacy index
+
+534
+jazykové ID:
+
+535
+zpodìní (ms):
+
+536
+titulky
+
+537
+Záhlaví souboru:
+
+538
+protáhnout o
+
+539
+Rozlišení:
+
+540
+vıchozí stopa
+
+600
+Info o AVI-Mux GUI
+
+700
+místo rozdìlení
+
+701
+novı soubor na
+
+800
+monosti: otevøít soubory
+
+801
+ AVI - soubory 
+
+802
+max. velikost dávky v kB:
+
+803
+zkuste znovu získat správnou velikost dávky
+
+804
+vynutit MP3 streamy do VBR
+
+805
+zmìnit dwFourCC "DX50" na "divx"
+
+810
+ MP3 - soubory 
+
+811
+Ptát se jestli kontrolovat zda je CBR
+
+812
+vdy kontrolovat zda je CBR
+
+813
+nikdy nekontrolovat zda je CBR
+
+814
+zobrazit vısledek ovìøení
+
+820
+ Reim 2 - Forma 2 - soubory 
+
+821
+aktivovat CRC kontrolu jako vıchozí
+
+830
+ spojit AVI soubory 
+
+831
+ neovìøovat AC3 kompatibilitu pøed spojením
+
+832
+ kapitoly
+
+833
+importovat kapitoly
+
+834
+generovat kapitoly ze jmen souborù
+
+835
+ MKV - soubory
+
+836
+èíst vpøed asynchonously
+
+900
+ vstupní / vıstupní nastavení 
+
+901
+ nastavení souboru 
+
+902
+ AVI struktura
+
+903
+vytvoøit REC seznamy
+
+904
+ Nastavení Open-DML 
+
+905
+pouít Open-DML vıstup
+
+906
+ standartní indexy na stream
+
+907
+1 na RIFF seznam
+
+908
+1 na
+
+909
+snímkù
+
+910
+auto
+
+911
+vytvoøit legacy index
+
+912
+prolínání audia
+
+913
+kB
+
+914
+snímky
+
+915
+pøednaètení (ms)
+
+916
+AC3 snímkù na dávky (CBR)
+
+921
+nevyrovnávanı zápis
+
+922
+vytvoøit log soubor
+
+923
+asynchronní reim
+
+924
+pouít oddìlené vlákno
+
+925
+Vıchozí jméno souboru:
+
+926
+ádné vıchozí jméno souboru
+
+927
+pouít záhlaví segmentu
+
+928
+první zdrojovı soubor
+
+930
+ rozdìlit 
+
+931
+maximální velikost souboru (MB)
+
+932
+ruènì nastavit místa rozdìlení
+
+933
+jména souborù:
+
+934
+snímky
+
+935
+max. poèet souborù
+
+936
+MP3 CBR snímkovı reim
+
+937
+pøidat JUNK pøed MainAVIHeader
+
+938
+ Prolínání 
+
+940
+ MKV struktura - strana 1 
+
+941
+sešití
+
+942
+maximální velikost clusteru
+
+943
+maximální délka clusteru
+
+944
+zapsat "PrevClusterSize"
+
+945
+zapsat "Position"
+
+946
+omezit první cluster na 30 ku
+
+947
+vdy zapisovat Šíøku/Vıšku zobrazení
+
+948
+vynutit matroska v1 kompatibilitu
+
+950
+ obecné 
+
+951
+kapitoly
+
+952
+standartní vıstupní formát:
+
+953
+ MKV struktura - strana 2 
+
+954
+ MKV struktura
+
+955
+zapsat Cues
+
+956
+pouze pro audio soubory
+
+957
+zapsat 2 kopie Stop
+
+958
+indexovat clustery v SeekHeader
+
+959
+šíøka floats v bitech
+
+960
+poøadí náhodnıch prvkù
+
+961
+ jiné 
+
+962
+velikost hlavièek (kB, 0=auto):
+
+963
+indexovat non-Clustery v první SeekHeader
+
+964
+ MKV struktura - strana 3 
+
+965
+ Sledovat nastavení intervalu 
+
+966
+minimum (ms)
+
+967
+auto kritérium velikosti
+
+968
+kB na stream a hodinu
+
+969
+cílovı pomìr velikosti (/1000)
+
+970
+tvrdé vazbení pi rozdìlení
+
+971
+zapsat CueBlockNumber
+
+972
+stripe stream headers jsou-li moné
+
+973
+vynutitit kompatibilitu k matroska v2
+
+974
+povolit CodecID "A_AAC"
+
+975
+ Matroska verze 
+
+1001
+Zvıraznit stream zdrojovıch souborù
+
+1002
+Zvıraznit pouívané soubory
+
+1003
+zapnout potvrzování pro pøepsání
+
+1004
+zobrazit zprávu pøi ukonèení muxu
+
+1005
+zvıraznit vıchozí streamy
+
+1006
+zvıraznit streamy nekompatibilní s AVI
+
+1007
+pouít cleartype fonty
+
+1100
+nastavit dwFlags
+
+1101
+ dostupné Flags 
+
+1200
+nastavit snímkovou frekvenci
+
+1201
+ jednotná 
+
+1202
+fps
+
+1203
+µspf
+
+1204
+nspf
+
+1300
+indikovat místa rozdìlení ruènì
+
+1400
+informace o souboru
+
+1401
+informace o zdroji videa
+
+1402
+pouít zmìny
+
+1500
+Probíhá mux...
+
+1501
+novı soubor v %d:%02d:%02d.%03d (snímek %d):\n%s
+
+1502
+hotovo!
+
+1503
+zahájeno rozdìlení na snímku %d: %s %s
+
+1504
+Velikost: %s %s (pøekroèena o %s %s)\ndélka: %d:%02d:%02d.%03d (%d snímkù)
+
+1505
+audio stream %d: %s %s     délka: %d:%02d:%02d.%03d
+
+1510
+poèet audio streamù: %d
+
+1511
+poèet titulkù: %d
+
+1512
+    název: %s
+
+1513
+    zpodìní: %d
+
+1514
+  stopa: %d
+
+1515
+Maximální velikost souboru byla pøekroèena o ne více ne:\n%s %s
+
+1516
+Nerozdìleno na klíèovém snímku: %s
+
+1517
+Maximální velikost souboru: %s %s
+
+1518
+Odhadované overhead:
+
+1519
+Odhadovaná celková velikost vıstupu:
+
+1520
+Pozor! První snímek zdrojového videa není klíèovı!\nPrvní klíèovı snímek nalezen na pozici: %d
+
+1521
+Odhadovaná velikost syrového streamu:
+
+1522
+Overhead zapsány: %s %s
+
+1523
+Místo rozdìlení %d at %s
+
+1524
+Znaèka místa rozdìlení kapitoly %d nemohla bıt vyøešena!
+
+1525
+  %s spojení pouito v %s blocích obsahujících %s snímkù\n  Velikost spojovacích hlavièek: %s bajtù
+
+1526
+%s clusterù zapsáno pùsobením %s Bajtù overhead
+
+1527
+Vytvoøeno %s sledovanıch míst, %s z nich bylo zapsáno
+
+1528
+zvìtšení èasového kódu vıstupu: %s
+
+1529
+Cues pro video stream zapnuty
+
+1530
+Cues pro video stream vypnuty
+
+1531
+Cues pro audio streamy zapnuty
+
+1532
+Cues pro audio streamy zapnuty
+
+1533
+Vázání videa se %d snímky na vazbì
+
+1534
+Vázání video streamu je vypnuto
+
+1535
+    vázání vypnuto
+
+1536
+    velikost vazby: %d ms
+
+1537
+Vázání vypnuto pro všechny audio stopy
+
+1538
+Velikost vyhledávací hlavièky: %s %s
+
+1539
+Clustery budou indexovány ve vyhledávací hlavièce
+
+1540
+Clustery nebudou indexovány ve vyhledávací hlavièce
+
+1541
+    kód jazyka: %s
+
+1542
+nevyrovnávanı zápis zapnut
+
+1543
+nevyrovnávanı zápis vypnut
+
+1544
+asynchronní vıstup zapnut
+
+154
+5asynchronní vıstup vypnut
+
+1546
+    AC3 Audio: zápis %d snímkù na dávku
+
+1547
+    DTS Audio: zápis %d snímkù na dávku
+
+1548
+    MP3 Audio: vypnutí snímkového reimu pro CBR
+
+1549
+    MP3 Audio: zapnutí snímkového reimu pro CBR
+
+1550
+    MP3 Audio: nelze vypnout snímkovı reim kvùli zpodìní
+
+1551
+    MP3 Audio: zápis %d snímkù na dávku
+
+1552
+velikost prvního RIFF seznamu: kolem %s MBajtù
+
+1553
+Standartní Indexy na stream: 1 na RIFF seznam
+
+1554
+Standartní Indexy na stream: 1 na %d snímkù
+
+1555
+prolínání audia: %d kBajtù
+
+1556
+prolínání audia: %d snímkù
+
+1557
+nahrávací seznamy aktivovány
+
+1558
+nahrávací seznamy deaktivovány
+
+1559
+    formát titulkù: %s
+
+1560
+    komprese: %s
+
+1561
+Reim Low-overhead pro AVI soubory: Ano
+
+1562
+Reim Low-overhead pro AVI soubory: Ne
+
+1563
+zápis JUNK pøed AVI hlavièkami: Anos\nDùleité: Nìkteré pøehrávaèe neumí èíst takové soubory!
+
+1564
+zápis JUNK pøed AVI hlavièkami: Ne
+
+1565
+Cues pro titulky zapnuty
+
+1566
+Cues pro titulky vypnuty
+
+1567
+velikost hlavièek: %s bajtù
+
+1568
+Sledovat cílovou velikost: %4.1f%% dostupného místa
+
+1569
+náhodné poøadí prvkù zapnuto
+
+1570
+náhodné poøadí prvkù vypnuto
+
+1571
+zapisovat CueBlockNumber
+
+1572
+nezapisovat CueBlockNumber
+
+1573
+Specifikace Matroska souboru mùe bıt trochu protaena
+
+1574
+Specifikace Matroska souboru nebude protaena
+
+1575
+Tvorba Matroska v%d souboru
+
+1576
+velikost floats: %d bitù
+
+1577
+Velikost pøepisovanıch souborù:
+
+1578
+Volné místo na cílovém disku:
+
+1579
+Pouití vlastní vyrovnávací pamìti pro vıstupní soubor: Ano
+
+1580
+Pouití vlastní vyrovnávací pamìti pro vıstupní soubor: Ne
+
+1581
+Vyuití %d øádkù vyrovnávací pamìti z kadıch %s kBajtù
+
+1582
+Dokonce i pøi mazání všech souborù které se mají pøepsat, bude nedostatek místa na disku:\n\nVyadováno: %s\nVolné místo na disku: %s\nDodateèné místo získané pøepsáním souborù: %s\n\nPokraèovat (dùraznì se nedoporuèuje)?
+
+1583
+Dostupné místo na disku je nedostateèné: \n\nVyadováno: %s\nVolné místo na disku: %s\n\nPokraèovat (dùraznì nedoporuèeno)?
+
+1601
+extrahovat jako SRT...
+
+1602
+extrahovat jako SSA...
+
+1701
+Mùete pøipojit pouze nastavení AVI, MKV, MP3, AAC a AC3 souborù, ale adné \njejich smìsi, ani ádnı jinı typ souboru!
+
+1702
+Nelze spojit soubory:\nPoèet streamù je rùznı!
+
+1703
+Nelze spojit soubory:\nRozlišení videa je rùzné!
+
+1704
+Nelze spojit soubory:\nKompresní formáty videa se liší: %s <-> %s
+
+1705
+Audio streamy jsou nekompatibilní: \n\n%s, stream %d
+
+1706
+Titulky jsou nekompatibilní: \n\n%s, stream %d
+
+1707
+Nelze spojit soubory:\nID video kodekù se liší: %s <-> %s
+
+1708
+XML soubory obsahují ne-jedineèné UID, nebo pøinejmenším jeden z UID je u pouíván.\n\nUjistìte se, e váš XML obsahuje jedineèná UID, a e jste se nepokoušeli naèíst stejnı XML soubor dvakrát
+
+1709
+Musíte indikovat konec kadé kapitoly uvnitø seøazené edice
+
+1710
+Máte\n* stanovenu maximální velikost souboru menší ne je odhadovaná velikost vıstupního souboru\n* indikováno alespoò jedno místo rozdìlení ruènì\n\nProto, AVI-Mux GUI nemùe správnì pøedpovìdìt jména všech cílovıch souborù. Zvolte 'Ano' pro pøepsání všech existujících souborù bez ptaní, 'Ne' pro dotazování se na kadı soubor, a 'Zrušit' pro pøerušení.
+
+1711
+Aktuální konfigurace pro vytvoøení jmen cílovıch souborù (%s) zpùsobí, e nìkterá jména budou pouita více ne jedenkrát.\n\nPøejete si pøesto pokraèovat?
+
+1712
+Soubor, kterı jste chtìli otevøít je OGG soubor obsahující více ne jeden stream, napøíklad jako OGM soubor. Takové soubory nejsou podporovány.
+
+1713
+Pokoušíte se pøipojit stremy titulkù pouívající rùzné kompresní formáty.
+
+1714
+Chyba pøi pokusu otevøít AVI soubor!\n\nKdy vidíte tuto zprávu, selhal rozbor AVI pøi otvírání souboru, kterı vypadá jako AVI soubor. Soubor je pravdìpodobnì poškozen.
+
+1715
+Segment v tomto souboru nemá SegmentUID. Proto, není moné importovat kapitoly z tohoto segmentu, ani není moné vytvoøit odkazy na kapitoly v tomto segmentu.
+
+1716
+Vzorkovací frekvence následujících souborù nejsou stejné:\n  #%d: %s -> %d Hz\n  #%d: %s -> %d Hz
+
+1717
+Následující soubory mají rùznı poèet kanálù:\n  #%d: %s -> kanálù: %d\n  #%d: %s -> kanálù: %d
+
+1718
+Následující soubory mají rùzné verze MPEG layer:\n  #%d: %s -> Layer %d\n  #%d: %s -> Layer %d
+
+1719
+Následující soubory mají rùzné verze MPEG:\n  #%d: %s -> MPEG %d\n  #%d: %s -> MPEG %d
+
+1720
+Následující soubory mají rùzné profily AAC:\n  #%d: %s -> %s\n  #%d: %s -> %s
+
+1721
+Následující soubory nebylo moné otevøít pro zápis:\n\n%s
+
+1801
+Snímkové frekvence AVI souborù se liší.\nMùete je spojit, ale jen do MKV vıstupu.
+
+1900
+Kapitoly
+
+1901
+podkapitola
+
+1902
+uloit jako ...
+
+1903
+Syntaxe:  od [ - do]. Pouijte F2 pro úpravu poloek ve stromu kapitol. Pouijte klávesu Insert pro pøidání nové kapitoly na stejnou úroveò v jaké je vybraná kapitola a PgUp/PgDn pro pøesunutí kapitol nahoru a nebo dolù. Pouijte Del pro smazání kapitol.
+
+1904
+Jazyk
+
+1905
+Název
+
+1920
+hotovo
+
+2000
+Edice je seøazena
+
+2001
+Edice je skryta
+
+2002
+Edice je vıchozí
+
+2003
+Kapitola je skryta
+
+2004
+Kapitola je zapnuta
+
+2005
+Kopírovat...
+
+2006 
+Kopírovat vše na tuto úroveò...
+
+2007
+Vloit na stejnou úroveò...
+
+2008
+Vloit jako podkapitoly...
+
+2009
+Vloit vše do jedné nové edice...
+
+2010
+Vloit kadı do jedné nové edice...
+
+2011
+Smazat schránku
+
+2012
+znovu inicializovat UID
+
+2013
+znovu inicializovat všechna UID
+
+2014
+Kopírovat child prvky...
+
+2015
+Kopírovat child prvky všech prvkù na této úrovni...
+
+2016
+Èíslování podkapitol...

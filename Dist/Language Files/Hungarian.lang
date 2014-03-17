@@ -1,0 +1,1201 @@
+[AVI-Mux GUI Language File]
+
+NAME
+Hungarian
+
+1
+OK
+
+2
+Mégse
+
+3
+Visszavonás
+
+101
+Inf&o az AVI-Mux GUI-ról
+
+102
+Ez az MP3-fájl CBR
+
+103
+Ez az MP3-fájl VBR
+
+104
+Útmutatás
+
+105
+Figyelmeztetés
+
+106
+Hiba
+
+107
+A fájl valószínûleg MP3-CBR. Ellenõrzi?
+
+108
+Kérdés
+
+109
+Nincs videóforrás!
+
+110
+2000 MB-nál nagyobb AVI-fájlokat csak Open-DML-formátumban lehet elkészíteni!\n\nIndítsuk a folyamatot, s állítsuk a kimeneti formát Open-DML-re?
+
+111
+Nem választott videóforrást!
+
+112
+Csak  AVI-, MKV-, MP3-, WAV-, AC3-, DTS-, AAC-, OGG/Vorbis-, SRT-, SSA- és érvényes AVI-Mux GUI - script fájlokat veszünk figyelembe!
+
+113
+A fájlt nem lehetett futtatni: \n\n%s
+
+114
+A fájl nem AVI-fájl:\n\n%s
+
+115
+A célfájlt nem lehetett megnyitni!
+
+116
+Valóban töröl mindent?
+
+117
+Az egyes részek számára több mint 4000 MB lett megadva max. méretként.\nA %s céladathordozó %s-t használ fájlrendszerként, de NTFS szükséges. \n\nIndítsuk a folyamatot, és adjunk meg max. fájlméretként 4000 MB-ot?
+
+119
+OGG/Vorbis-fájlként kivonatolni
+
+120
+A(z) %d. audiófájlból nem lehetett olvasni, noha a stream-oknak még nincs vége. Ennek oka valószínûleg a hibás képkocka-fejléc.
+
+121
+Delay megadása
+
+122
+Binárisan kivonatolni
+
+123
+Alcímet szövegfájlként kivonatolni
+
+124
+ADTS-csomagolt AAC-fájlként menteni
+
+125
+A választott videoforrásnak nincs %d kéckockája. Adjon meg kisebb számot.
+
+126
+%d képkocka nem keyframe!\nHa a videó ezen az oldalon kerül darabolásra, a kimenet valószínûleg használhatatlan lesz.\n\nMégis folytatja?
+
+127
+Hozzáadni
+
+128
+Eltávolítani
+
+129
+Változtatni
+
+130
+RAW-t kivonatolni és M2F2-felhasználói adatokat menteni
+
+131
+A Mode2Form2-forrásfájl olvasása nem sikerült!
+
+132
+CRC-vizsgálat végrehajtása
+
+133
+Hiba a videoforrás olvasásakor!
+
+134
+Fájl
+
+135
+Forrás
+
+136
+Információk a fájlról
+
+137
+AVI-típus
+
+138
+alapértelmezett
+
+139
+Open-DML
+
+140
+Felbontás
+
+141
+Képkocka-arány
+
+142
+Képkockák száma
+
+143
+Videostream mérete
+
+144
+Video-adatarány
+
+145
+Audióstream-ok száma
+
+146
+Formátum-címke
+
+147
+Audióstream
+
+148
+Bitarány
+
+149
+Sampling-arány
+
+150
+Csatornák
+
+151
+Szemcsézettség
+
+152
+Méret
+
+153
+Chunk-ok száma
+
+154
+Összes chunk
+
+155
+OpenDML + Legacy-index
+
+156
+Videóstream
+
+157
+A képarányt feltehetõleg hibás program írta a fájlba!
+
+158
+Streamhossz
+
+159
+Képkocka
+
+160
+Open-DML-index
+
+161
+Bejegyzések a superindexben
+
+162
+Bejegyzés
+
+163
+Stream
+
+164
+valódi érték
+
+165
+Érték a dwDuration-ban
+
+166
+hibás!
+
+167
+ebbõl keyframe
+
+168
+ebbõl Deltaframe
+
+169
+ebbõl kihagyott képkocka
+
+170
+biCompression-érték
+
+171
+Hibás dwDuration-értékek javítása
+
+172
+Nem választott ki javítást!
+
+173
+A megadott javítások történnek most. Ezért a fájlt és a részletes infót bezárjuk.
+
+174
+Hibás dwMicroSecPerFrame-érték javítása
+
+175
+Mentés másként...
+
+176
+Képarány-változtatás...
+
+177
+Ezt a fájlt már használja:\n\n%s
+
+178
+Megadott flag-ok
+
+179
+Az MP3/AC3/DTS-forrásfájlt nem lehetett megnyitni. Valószínûleg az elsõ képkocka-fejléc hibás.
+
+180
+MainAVIHeader.dwFlag-ok változtatása
+
+181
+Verzió
+
+183
+Chunk-méret
+
+184
+Névjegy
+
+185
+eddig:
+
+186
+Hozzáadás - kibõvített opciók
+
+187
+Mind törölni
+
+188
+Az adathordozón %d MByte szabad, de kb. %d MByte szükséges.\n\nMégis folytatja? (nem ajánlott!)
+
+189
+Folyamat befejezve!
+
+190
+A köv. kimeneti fájlok már léteznek:
+
+191
+Folytatja?
+
+192
+A következõ pozícióknál hiba az  AC3-stream-ban:
+
+193
+A választott maximális fájlméret alapján több mint egy kimeneti fájl fog létrejönni.\nA fájl folytatólagos számozása nem befolyásolja a fájlnevet (hiányzik egy $Nbr a számozási-stringben vagy a számozás ki van kapcsolva).\n\nFolytatja ? (nem ajánlott)
+
+194
+Stream-ot DTS-fájlként menteni
+
+195
+Bytes
+
+199
+Open-DML-kimenetet választott több, mint 3 audiostreammal,  de csak egy alapértelmezett indexet streamenként és RIFF-listánként.  Egy  Microsoft DirectShow-hiba alapján ez a fájl valószínûleg nem játszható le DirectShow-val.\n\nFolytatja? (nem ajánlott!)
+
+200
+A MainAVIHeader.dwTotalFrame -értéket hibás program írta!
+
+201
+MainAVIHeader.dwTotalFrame-k javítása
+
+202
+Tényleges érték
+
+203
+Ajánlott puffer
+
+204
+Alcímek száma
+
+205
+Alcím
+
+206
+Információ a videoforrásról
+
+207
+MByte
+
+208
+kByte
+
+209
+Alapértelmezett AVI-fájlt kell több mint 9 stream-mal készíteni. A DirectShow-ban lévõ hibák (Bugs) miatt azonban Open-DML-t kell használni, különben a fájlt nem lehet hibátlanul lejátszani.\n\nIndítja a folyamatot és beállítja a kimenetet  Open-DML-re?
+
+210
+Nyelv
+
+211
+Különbözõ formátumok alcímeit nem lehet összefûzni!
+
+212
+GByte
+
+213
+Napló látszik
+
+214
+Napló nem látszik
+
+215
+Kifejezés: %s SET OPCIÓ \nismeretlen: %s
+
+216
+Kifejezés: %s\nismeretlen: %s
+
+217
+Audiófájlok azonnali hozzáadása audióforrásként
+
+218
+Felülírja e fájlt?
+
+219 
+E fájlok együttes mérete
+
+301
+Stream-méret (strh)
+
+302
+Stream-méret (index)
+
+405
+A következõ fájlok eltávolítása történik
+
+406
+A következõ streamok eltávolítása történik
+
+407
+Folytatja?
+
+501
+Nyitott fájlok (hozzáadás drag && drop-al)
+
+502
+Konfiguráció mentése
+
+503
+Szükségtelen keresés elkerülése
+
+504
+Adatforrást a forrásfájlból létrehozni
+
+505
+Rendelkezésre álló stream-ok:
+
+506
+Videó
+
+507
+Audió
+
+508
+Alcím
+
+509
+Nincs audió
+
+510
+Minden audió-stream
+
+511
+Alapértelmezett
+
+512
+Egy alcím se
+
+513
+Minden alcím
+
+514
+Napló
+
+516
+Opciók
+
+517
+Indítás
+
+518
+Állj
+
+519
+Befejezés
+
+520
+Haladásjelzõ
+
+521
+Adatmennyiség (kByte)
+
+522
+Jelenlegi fájl
+
+523
+összes
+
+524
+Videó
+
+525
+Audió
+
+526
+Overhead
+
+527
+Összes
+
+528
+Célfájl
+
+529
+Pozíció:
+
+530
+Átviteli arány
+
+531
+fps
+
+532
+Haladásjelzõ
+
+533
+Legacy-index
+
+534
+Attribútum érték:
+
+535
+Audióstream-késés (ms):
+
+536
+Alcím
+
+537
+Cím
+
+538
+Nyújtás ennyivel:
+
+539
+Felbontás
+
+540
+Alapértelmezett sáv
+
+600
+Info az AVI-Mux GUI-ról
+
+700
+Split-pont
+
+701
+Új rész ettõl:
+
+800
+Opciók: Fájlok megnyitása
+
+801
+ AVI - fájlok 
+
+802
+Maximális megengedett chunkméret kByte-ban:
+
+803
+Helyes chunkméret megállapításának kísérlete
+
+804
+VBR kikényszerítése MP3-stream-okhoz
+
+805
+dwFourCC változtatás "DX50"-ról "divx"-re
+
+810
+ MP3 - fájlok 
+
+811
+Felhasználót megkérdezni
+
+812
+Mindig CBR vizsgálat
+
+813
+Mindig CBR vizsgálat
+
+814
+Vizsgálat eredménye látszik
+
+820
+ 2-es mód  - 2-es forma - fájlok 
+
+821
+CRC-ellenõrzés alapértelmezett
+
+830
+ AVI-k összefûzése 
+
+831
+AC3 -at összefûzés elõtt nem ellenõrizni
+
+832
+ Fejezet 
+
+833
+Fejezet importálása
+
+834
+Fejezet létrehozása a fájlnévbõl
+
+835
+ MKV - fájlok
+
+836
+Aszinkron elõolvasása
+
+900
+ Opciók: Bemenet / Kimenet 
+
+901
+ Opciók
+
+902
+ AVI - szerkezet 
+
+903
+Elkészített REC-listák
+
+904
+ Open-DML - Opciók 
+
+905
+Open-DML - kimenet
+
+906
+ Standardindize per stream
+
+907
+1 RIFF-listánként
+
+908
+1 per
+
+909
+Képkocka
+
+910
+automatikus
+
+911
+Legacy-index készítés
+
+912
+Audió-beszúrás
+
+913
+kB
+
+914
+Képkocka
+
+915
+Preload (ms)
+
+916
+AC3-képkocka per chunk (CBR)
+
+921
+Pufferelés nélküli írás
+
+922
+Logfájl készítése
+
+923
+Aszinkron-mód
+
+924
+Külön thread 
+
+925
+Alapértelmezett fájlnév
+
+926
+Nem alapértelmezett fájlnév
+
+927
+Szegmensnév
+
+928
+Elsõ forrásfájl neve
+
+930
+ Felosztás 
+
+931
+Max. fájlméret (MB)
+
+932
+Interfész manuális megadása
+
+933
+Számozás:
+
+934
+Képkocka
+
+935
+Fájlok maximális száma:
+
+936
+MP3-CBR képkocka-mód
+
+937
+JUNK-beszúrás a MainAVIHeader elé
+
+938
+ Interleave
+
+940
+ MKV - szerkezet - 1. oldal
+
+941
+Lacing
+
+942
+Max. clusterméret
+
+943
+Max. clusterhossz
+
+944
+ "PrevClusterSize" írása
+
+945
+ "Pozíció" írása
+
+946
+1. Cluster limitálása 30 ku-ra
+
+947
+DisplayWidth/Height-t mindig írni
+
+948
+Matroska v1 kikényszerítése
+
+950
+ Általános dolgok
+
+951
+Fejezet
+
+952
+Alapértelmezett kimeneti forma:
+
+953
+ MKV - szerkezet - 2. oldal
+
+954
+ MKV - szerkezet
+
+955
+Cue-k készítése
+
+956
+csak tiszta audiófájlokhoz
+
+957
+a sávokból 2 másolat elkészítése
+
+958
+Cluster-ek indikálása a seekhead-ban
+
+959
+Bit per float
+
+960
+Elemsorrend véletlenszerûsítése
+
+961
+ más 
+
+962
+Headerméret (kB, 0=auto):
+
+963
+Nem cluster az elsõ SeakHead-ban
+
+964
+ MKV - szerkezet - oldal 3 
+
+965
+ Cue - Intervallum - Beállítások 
+
+966
+Minimum (ms)
+
+967
+automatikus méret
+
+968
+Adat-arány (kB/h/stream)
+
+969
+Célméret/Hely (/1000)
+
+970
+Hard-linking használata részekre osztásnál
+
+971
+CueBlockNumber írása
+
+972
+Stream-fejléc eltávolítása, ha lehetséges
+
+973
+Matroska v2 kikényszerítése
+
+974
+"A_AAC" codecID engedélyezése
+
+975
+ Matroska-verzió 
+
+1001
+Stream-forrásfájlok kiemelése
+
+1002
+Fájlok kiemelése használatkor
+
+1003
+Felülírás megerõsítése
+
+1004
+Jelentés látszik, ha kész
+
+1005
+Alapértelmezet Stream-ok kiemelése
+
+1006
+AVI-inkompatibilis Stream-ok kiemelése
+
+1007
+Cleartype-betûk használata
+
+1100
+dwFlag-ok megállapítása
+
+1101
+ meglévõ flag-ok 
+
+1200
+Képkocka-arány beállítása
+
+1201
+ mértékegység 
+
+1202
+fps
+
+1203
+µspf
+
+1204
+nspf
+
+1300
+Splitpontok manuális megadása
+
+1400
+Információk a fájlról
+
+1401
+Információk a videoforrásról
+
+1402
+Változtatások átvétele
+
+1500
+Muxing indítása
+
+1501
+új fájlok itt %d:%02d:%02d.%03d (= frame %d):\n%s
+
+1502
+kész!
+
+1503
+Splitfolyamat  megkezdése a köv. képkockáknál: %d: %s %s
+
+1504
+Méret: %s %s (Túlméret: %s %s)\nIdõtartam: %d:%02d:%02d.%03d (%d képkocka)
+
+1505
+Audióstream %d: %s %s     Idõtartam: %d:%02d:%02d.%03d
+
+1510
+ Audióstreamok száma: %d
+
+1511
+Alcímek száma: %d
+
+1512
+    Név: %s
+
+1513
+    Késleltetés: %d
+
+1514
+  Sáv: %d
+
+1515
+Elõre beállított fájlméret túllépése max.:\n%s %s
+
+1516
+Keyframe átlépve: %s
+
+1517
+Maximális fájlméret: %s %s
+
+1518
+Becsült overhead: %s %s
+
+1519
+Kimeneti becsült mérete: %s %s
+
+1520
+Figyelem! A videóstream nem keyframe-mel kezdõdik!\nElsõ keyframe a köv. pozíciónál: %d
+
+1521
+becsült RAW-adatok: %s %s
+
+1522
+Overhead megírva: %s %s
+
+1523
+Splitpont %d %s-nál
+
+1524
+%d splitpont fejezetjelét nem lehetett szétválasztani!
+
+1525:
+  %s lacing %s blokkokban %s képkockával használva\n  Lace-fejléc mérete: %s Bytes
+
+1526
+%s cluster elkészítve %s Byte méretben az overhead-hoz)
+
+1527
+%s cuepoint-ok elkészítve
+
+1528
+A kimeneti fájl idõkód-skálája: %s
+
+1529
+Cue-k a videóstream számára bekapcsolva
+
+1530
+Cue-k a videostream számára kikapcsolva
+
+1531
+Cue-k a audióstream-ok számára bekapcsolva
+
+1532
+Cue-k a videóstream-ok számára kikapcsolva
+
+1533
+Videó összefûzése: %d képkocka per lace
+
+1534
+Összefûzés a videóstream számára kikapcsova
+
+1535
+    Összefûzés kikapcsolva
+
+1536
+    Lace-nkénti méret: %d ms
+
+1537
+Videósávok összefûzése kikapcsolva
+
+1538
+Seekhead mérete: %s %s
+
+1539
+Cluster-ek indikálva a seekhead-ban
+
+1540
+Cluster-ek nem indikálva a seekhead-ban
+
+1541
+    Nyelvi kód: %s
+
+1542
+nem pufferelt írás bekapcsolva
+
+1543
+nem pufferelt írás kikapcsolva
+
+1544
+aszinkron írás bekapcsolva
+
+1545
+aszinkron írás kikapcsolva
+
+1546
+    AC3-audió: %d képkocka per chunk írása
+
+1547
+    DTS-audió: %d képkocka per chunk írása
+
+1548
+    MP3-audió: képkocka-mód kikapcsolása CBR-hez
+
+1549
+    MP3-audió: képkocka-mód bekapcsolása CBR-hez
+
+1550
+    MP3-audió: képkocka-mód nem kapcsolható ki, mivel egy késletetés beállított
+
+1551
+    MP3-audió: %d képkocka per chunk írása
+
+1552
+Az elsõ RIFF mérete - lista: kb. %s MBytes
+
+1553
+Alapértelmezett-indic per stream: 1 per RIFF-lista
+
+1554
+Alapértelmezett-indic per stream: 1 per %d képkocka
+
+1555
+Audió-interleave: %d kByte
+
+1556
+Audió-interleave: %d képkocka
+
+1557
+Rec-listák készítése: Igen
+
+1558
+Rec-listák készítése: Nem
+
+1559
+    Alcím-formátum: %s
+
+1560
+    Tömörítés-algoritmus: %s
+
+1561
+Low-Overhead-mód AVI-fájlokhoz: Igen
+
+1562
+Low-Overhead-mód AVI-kimenethez: Nem
+
+1563
+JUNK az AVI-fejlécek elõtt: Igen\nFontos: néhány lejátszó nem ismeri fel az ilyen AVI-fájlt!
+
+1564
+JUNK az AVI-fejlécek elõtt: Nem
+
+1565
+Cue-k bekapcsolálva az alcímhez
+
+1566
+Cue-k kikapcsolva az alcímhez
+
+1567
+Fejlécméret: %s bytes
+
+1568
+Cue-k célméret: %4.1f%%-a a rendelkezésre álló tárhelynek
+
+1569
+Az elemek véletlenszerû sorrendje: Igen
+
+1570
+Az elemek véletlenszerû sorrendje: Nem
+
+1571
+CueBlockNumber írása: Igen
+
+1572
+CueBlockNumber írása: Nem
+
+1573
+Matroska-specifikáció kiterjesztésének engedélyezése
+
+1574
+Matroska-specifikáció kiterjesztésének letiltása
+
+1575
+Matroska v%d - fájl készítése
+
+1576
+Float-ok mérete: %d Bit
+
+1577
+A felülírandó fájlok mérete:
+
+1578
+Szabad tárhely a cél-adathordozón:
+
+1579
+Saját cache a kimeneti fájl számára: Igen
+
+1580
+Saját Cache a kimeneti fájl számára: Nem
+
+1581
+A cache %d blokkot és %s kB-ot használ blokkonként
+
+1582
+Nincs elég tárhely még akkor sem, ha minden felülírandó fájlt törlünk:\n\nSzükséges: %s\nVan: %s\nA felülírandó fájlok révén szükséges kiegészítõ tárhely: %s\n\nMégis folytatja (nem javasolt)?
+
+1583
+Nincs elég szabad tárhely:\n\nSzükséges: %s\nVan: %s\n\nMégis folytatja ? (nem ajánlott)
+
+1601
+SRT-ként kivonatolni...
+
+1602
+SSA-ként kivonatolni...
+
+1701
+Csak több MKV- vagy több AVI-fájl kapcsolható össze,  de se e formátumok,\nse mások kombinációja nem! 
+
+1702
+A fájlok nem kapcsolhatók össze:\nA stream-ok száma eltérõ!
+
+1703
+A fájlok nem kapcsolhatók össze:\nA videóstream-ok mérete eltérõ!
+
+1704
+A fájlok nem kapcsolhatók össze:\nVideotömörítés-formátumok eltérõek: %s <-> %s
+
+1705
+Audióstream-ok inkompatibilisek: \n\n%s, Stream %d
+
+1706
+Alcím inkompatibilis: \n\n%s, Stream %d
+
+1707
+A fájlok nem kapcsolhatók össze:\nVideo-codec-ID-k eltérõek: %s <-> %s
+
+1708
+Ez az XML - fájl nem egyértelmû UID-okat tartalmaz, vagy egy UID már használatban van\n\n. Gyõzõdjön meg arról, hogy az XML - fájl csak egyértelmû UID-okat tartalmaz és hogy Ön nem próbálja meg ugyanazt az XML - fájlt kétszer betölteni.
+
+1709
+Meg kell adni egy véget azoknak a fejezeteknek, melyek "ordered Edition"-ban vannak.
+
+1710
+Ön\n * olyan maximális fájlméretet adott meg, mely a megbecsült összes fájmennyiség alatt van\n * legalább egy pozíciót adjon meg manuálisan, amelyen egy új fájl kezdõdik\n\nezért az AVI-Mux GUI nem tud elõre meghatározni minden fájlnevet. Válassza az 'Igen'-t, ha minden fájlt felülír, 'Nem'-et ha minden létezõ fájl felülírását egyenként meg akarja erõsíteni, és 'Mégse'-t, ha a folyamatot megszakítja.
+
+1711
+A (%s) kimeneti fájlok nevének elkészítésekor a jelenlegi konfigurációval egyes fájlnevek többször is elõfordulnak majd\n\nMégis folytatja?
+
+1712
+Ön megpróbált megnyitni egy több, mint egy stream-ot tartalmazó OGG-fájlt, tehát pl. egy OGM-fájlt. Az ilyen fájlok nem támogatottak.
+
+1713
+Ön megpróbál különbözõ tömörítésformátumot használó alcímeket összefûzni.
+
+1714
+Hiba az AVI-fájl megnyitásakor!\n\nHa látja ezt az üzenetet, akkor az AVI-Parser nem tudott megnyitni egy AVI-kinézetû fájlt. Valószínûleg a fájl sérült.
+
+1715
+Ez a fájl nem tartalmaz SegmentUID-ot. Ezért nem lehetséges, e fájlon belül fejezetet importálni vagy e szegmensre vonatkozó fejezetet létrehozni.
+
+1716
+A fájlok mintaaránya különbözõ:\n  #%d: %s -> %d Hz\n  #%d: %s -> %d Hz
+
+1717
+Az audiócsatornák száma különbözik:\n  #%d: %s -> csatorna: %d\n  #%d: %s -> csatorna: %d
+
+1718
+Az MPEG-Layer - verziók különbözõk:\n  #%d: %s -> Layer %d\n  #%d: %s -> Layer %d
+
+1719
+Az MPEG - verziók különbözõk: \n  #%d: %s -> MPEG %d\n  #%d: %s -> MPEG %d
+
+1720
+Mindkét fájl AAC-profiljai különbözõk: \n  #%d: %s -> %s\n  #%d: %s -> %s
+
+1721
+A köv. fájl nem nyitható meg írásra:\n\n%s
+
+1801
+Az AVI-fájlok képkockaarányai eltérõek.\nA fájlok egymáshoz fûzhetõk, de kimeneti formátumként csak MKV lehetséges.
+
+1900
+Fejezet
+
+1901
+Subchapter
+
+1902
+Mentés másként...
+
+1903
+Syntaxis: tól [ - ig]. Használja az F2-t, a faszerkezet bejegyzéseinek változtatása céljából. Nyomja le az Insert-et, ha egy fejezetet a kiválasztott szintjén akar beszúrni és a PgUp/PgDn-t egy bejegyzés áthelyezéséhez. Nyomjon Delete-t egy fejezet törlése céljából.
+
+1904
+Nyelv
+
+1905
+Cím
+
+1920
+komplett
+
+2000
+Az Edition egy lejátszás-lista
+
+2001
+Az Edition rejtett
+
+2002
+Az Edition alapértelmezettként kiválasztott
+
+2003
+A fejezet rejtett
+
+2004
+A fejezet bekapcsolt
+
+2005
+Másolás...
+
+2006
+Mind másolni...
+
+2007
+Beszúrás azonos szinten...
+
+2008
+Beszúrás alfejezetként...
+
+2009
+Mindent beszúrni egyetlen új Edition-ként...
+
+2010
+Mindegyiket külön Edition beszúrni...
+
+2011
+Vágólap törlése
+
+2012
+UID-ok létrehozása újként
+
+2013
+Minden UID új létrehozása
+
+2014
+Alfejezet másolása...
+
+2015
+A fejezetek minden alfejezetét e szintre másolni...
+
+2016
+Alfejezet számozása...

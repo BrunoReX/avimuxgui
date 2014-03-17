@@ -1,0 +1,1195 @@
+[AVI-Mux GUI Language File]
+
+NAME
+Français
+
+1
+OK
+
+2
+Annuler
+
+3
+Remise à 0
+
+101
+A propos d'AVI-Mux GUI
+
+102
+Ce fichier MP3 est CBR
+
+103
+Ce fichier MP3 est VBR
+
+104
+Informations
+
+105
+Attention
+
+106
+Erreur
+
+107
+Ce fichier semble être un MP3-CBR. Doit-il être vérifié?
+
+108
+Question
+
+109
+Aucune source vidéo disponible!
+
+110
+Les fichiers AVI supérieurs à 2000 Mo peuvent seulement être créés en format Open-DML.\n\nContinuer (et mofifier le format de sortie en Open-DML)?
+
+111
+Pas de source vidéo sélectionnée
+
+112
+Seuls les formats suivants sont supportés: AVI, MKV, MP3, WAV, AC3, DTS, AAC, OGG/Vorbis, SRT, SSA et AVI-Mux GUI - script - files valides
+
+113
+Les fichiers ne peuvent pas être collés:\n\n%s
+
+114
+Ce n'est pas un fichier AVI valide:\n\n%s
+
+115
+Impossible d'ouvrir le fichier!
+
+116
+Tout supprimer?
+
+117
+Une taille max de fichier de plus de 4000 Mo a été sélectionnée. \nLe périphérique de sortie %s utilise %s comme un fichier système, mais NTFS est nécessaire.\n\nVoulez-vous continuer quand même (cela n'a probablement aucun sens)?
+
+119
+convertir en OGG/Vorbis
+
+120
+La source audio %d ne peut être lue. Cependant la fin du flux n'a pas encore été atteinte. Une raison peut être la présence d'un header de frame defectueux.
+
+121
+regler le décalage son
+
+122
+extraire le binaire
+
+123
+convertir les sous-titres en fichier texte
+
+124
+convertir en fichier ADTS-packed AAC
+
+125
+La vidéo sélectionnée n'a pas %d frames. Entrez un nombre inférieur, s'il vous plaît.
+
+126
+La frame %d n'est pas une keyframe!\nSi vous voulez couper le film ici, le fichier de sortie peut être défectueux.\n\nContinuer?
+
+127
+ajouter
+
+128
+enlever
+
+129
+modifier
+
+130
+extraire RAW et enregistrer les données utilisateurs M2F2
+
+131
+Impossible de lire le fichier source en Mode 2 Form 2!
+
+132
+effectuer vérification CRC
+
+133
+Impossible de lire la source vidéo!
+
+134
+Fichier
+
+135
+Source
+
+136
+Informations du fichier
+
+137
+Type AVI
+
+138
+standard
+
+139
+Open-DML
+
+140
+Résolution:
+
+141
+framerate
+
+142
+nombre de frames
+
+143
+taille du flux vidéo
+
+144
+fréquence des données vidéo
+
+145
+numbre de flux audio
+
+146
+format-tag
+
+147
+flux audio
+
+148
+bitrate
+
+149
+fréquence d'échantillonnage
+
+150
+canaux
+
+151
+granularité
+
+152
+taille
+
+153
+nombre de tronçons
+
+154
+nombre total de tronçons
+
+155
+OpenDML + Legacy-Index
+
+156
+flux vidéo
+
+157
+La valeur du framerate a apparemment été écrite par un programme corrompu!
+
+158
+longueur de flux
+
+159
+frames
+
+160
+index Open-DML
+
+161
+entrées dans l'index supérieur
+
+162
+entrée
+
+163
+Flux
+
+164
+valeur réelle
+
+165
+valeur stockée dans dwDuration
+
+166
+Corrompu!
+
+167
+thereof keyframes
+
+168
+thereof deltaframes
+
+169
+thereof dropped frames
+
+170
+valeur de biCompression
+
+171
+réparer les valeurs dwDuration corrompues
+
+172
+Pas de réparation sélectionnée!
+
+173
+Les réparations sélectionnées et les modifications vont à présent être appliquées. Le fichier, ainsi que ces informations, vont être fermés.
+
+174
+réparer la valeur dwMicroSecPerFrame corrompue
+
+175
+Sauver sous...
+
+176
+modifier le framerate...
+
+177
+Le Fichier est déjà ouvert:\n\n%s
+
+178
+Flags set:
+
+179
+Le fichier source MP3/AC3/DTS ne peut être ouvert: Le premier header semble corrompu.
+
+180
+modifier MainAVIHeader.dwFlags
+
+181
+Version
+
+183
+Tailles des Tronçons
+
+184
+fini
+
+185
+jusqu'à
+
+186
+ajouter - paramètres avancés
+
+187
+tout supprimer
+
+188
+Il y a %d Moctets libres, et environ %d Moctects sont nécessaires.\n\nContinuer? (non recommandé!)
+
+189
+Processus accompli!
+
+190
+Le fichier de destination existe déjà:
+
+191
+Veuillez choisir 'Oui' pour écraser tous ces fichiers, 'Non' pour que vous puissiez le confirmer pour chaque fichier, et 'Anuller' pour terminer le processus.
+
+192
+position flux AC3 corrompue:
+
+193
+A cause du paramètre "taille max du fichier", il va probablement y avoir plusieurs fichiers en sortie.\nIl est nécessaire un $Nbr dans la format string, qui n'est pas présent (ou le numbering a été désactivé).\n\nContinuer (non recommandé)?
+
+194
+sauver le flux comme un fichier DTS
+
+195
+octets
+
+199
+Vous avez sélectionné une sortie Open-DML avec plus de 3 flux audio, mais avec seulement 1 index standard par flux et une liste RIFF. A cause d'un bug de Microsoft DirectShow, vous n'allez probablement pas pouvoir lire ce fichier avec DirectShow.\n\nContinuer (non recommandé)?
+
+200
+La valeur MainAVIHeader.dwTotalFrames a été écrite avec un programme corrompu!
+
+201
+réparer la valeur MainAVIHeader.dwTotalFrames corrompues
+
+202
+valeur réelle
+
+203
+taille du buffer suggérée
+
+204
+numbre de sous-titres
+
+205
+sous-titre
+
+206
+Informations concernant la source vidéo
+
+207
+Moctet
+
+208
+koctet
+
+209
+Vous êtes en train de créer un fichier AVI standard contenant plus de 9 flux. A cause de quelques parts (assez anciennes) de code dans AVI-Mux GUI qui ne sont pas totalement correctes, vous devez utiliser Open-DML pour de tels fichiers.\n\nConinuer et régler la sortie en Open-DML?
+
+210
+Langues
+
+211
+Impossible de coller les sous-titres à cause de différents formats!
+
+212
+Goctet
+
+213
+Basculer en mode protocole
+
+214
+Basculer en mode Flux sources
+
+215
+Expression: SET OPTION %s\nInconnue: %s
+
+216
+Expression: %s\nInconnue: %s
+
+217
+Ajouter immédiatement les sources audio
+
+218
+Voulez-vous écraser ce fichier?
+
+219
+Taille totale de ces fichiers
+
+301
+taille du flux (strh)
+
+302
+taille du flux (index)
+
+405
+Les fichiers suivants seront supprimés de la liste
+
+406
+Les flux suivants seront supprimés de la liste
+
+407
+Continuer?
+
+501
+Fichiers ouverts (ajouter des fichiers par glisser && déposer)
+
+502
+Enregistrer la configuration
+
+503
+éviter les opérations d'accès non nécessaires
+
+504
+générer des sources de données à partir des fichiers
+
+507
+audio
+
+508
+sous-titres
+
+509
+pas d'audio
+
+510
+tous les flux audio
+
+511
+défaut
+
+512
+pas de sous-titres
+
+513
+tous les sous-titres
+
+514
+protocole
+
+516
+paramètres
+
+517
+démarrer
+
+518
+arrêter
+
+519
+quitter
+
+520
+progrès
+
+521
+quantité de données (ko)
+
+522
+fichier courant
+
+523
+total
+
+524
+vidéo
+
+525
+audio
+
+526
+overhead
+
+527
+total
+
+528
+fichier dest
+
+529
+position:
+
+530
+taux de tranfert
+
+531
+fps
+
+532
+progrès
+
+533
+legacy index
+
+534
+ID de la langue:
+
+535
+délai (ms):
+
+536
+sous-titres
+
+537
+Titre du fichier
+
+538
+stretch par
+
+539
+Résolution:
+
+540
+piste par défaut
+
+600
+Info à propos d'AVI-Mux GUI
+
+700
+split-point
+
+701
+nouveau fichier à
+
+800
+options: ouvrir les fichiers
+
+801
+ fichiers - AVI 
+
+802
+taille max des tronçons en ko:
+
+803
+essayer de corriger la taille des tronçons
+
+804
+forcer les flux MP3 en VBR
+
+805
+modifier dwFourCC "DX50" en "divx"
+
+810
+ fichiers - MP3 
+
+811
+Demander ou non de vérifier le CBR
+
+812
+toujours vérifier le CBR
+
+813
+ne jamais vérifier le CBR
+
+814
+afficher le résultat de la vérification
+
+820
+ fichiers - Mode 2 - Form 2
+
+821
+activer la vérification du CRC par défaut
+
+830
+ coller des fichiers AVI 
+
+831
+ ne pas vérifier la compatibilité des AC3 avant de coller
+
+832
+ chapitres
+
+833
+importer les chapitres
+
+834
+générer les chapitres à partir des noms de fichiers
+
+835
+ fichiers MKV
+
+836
+"overlapped"
+
+900
+ paramètres d'entrée / sortie 
+
+901
+ paramètres des fichiers 
+
+902
+ structure AVI
+
+903
+créer les listes REC
+
+904
+ paramètres Open-DML 
+
+905
+utiliser le format Open-DML
+
+906
+ indice standard par flux
+
+907
+1 par liste RIFF
+
+908
+1 par
+
+909
+frames
+
+910
+auto
+
+911
+créer un legacy index
+
+912
+audio interleave
+
+913
+ko
+
+914
+frames
+
+915
+preload (ms)
+
+916
+AC3 frames per Chunk (CBR)
+
+921
+unbuffered 
+
+922
+Créer fichier log
+
+923
+mode asynchrone
+
+924
+utiliser un thread particulier
+
+925
+Nom de fichier proposé
+
+926
+aucun
+
+927
+titre du segment
+
+928
+nom du premier fichier source
+
+930
+ couper 
+
+931
+taille max du fichier (Mo)
+
+932
+indiquer manuellement des points de coupure
+
+933
+noms des fichiers:
+
+934
+frames
+
+935
+nb max de fichiers
+
+936
+mode frame - MP3 CBR
+
+937
+placer un JUNK devant les en-têtes
+
+938
+ Interleave 
+
+940
+ structure MKV - page 1 
+
+941
+lacing
+
+942
+taille max du fragment
+
+943
+longueur max du fragment
+
+944
+écrire "PrevClusterSize"
+
+945
+écrire "Position"
+
+946
+limiter le premier fragment à 30 ku
+
+947
+toujours écrire DisplayWidth/Height
+
+948
+forcer compatibilité matroska v1
+
+950
+ général 
+
+951
+chapitres
+
+952
+format de sortie standard:
+
+953
+ structure MKV - page 2 
+
+954
+ structure MKV
+
+955
+écrire les cues
+
+956
+seulement pour les audio-only
+
+957
+écrire 2 copies des Tracks
+
+958
+index des Clusters dans le Seekhead
+
+959
+longueur des float en bit
+
+960
+ordre des eléments aléatoire
+
+961
+ autres
+
+962
+taille des headers (ko, 0=auto)
+
+963
+non-clusters dans le premier Seekhead
+
+964
+ structure MKV - page 3 
+
+965
+ configuration de l'intervalle des Cues
+
+966
+minimum (ms)
+
+967
+détérminer la taille automatiquement
+
+968
+débit (kB/h/flux)
+
+969
+taille désirée/espace (/1000)
+
+970
+hard-linking pour des segments coupés
+
+971
+enregistrer CueBlockNumber
+
+972
+enlever des headers si possible
+
+973
+forcer compatibilité matroska v2
+
+974
+permettre CodecID "A_AAC"
+
+975
+ Version matroska 
+
+1001
+accentuer les fichiers sources des flux
+
+1002
+accentuer fichiers utilisés
+
+1003
+cofirmer avant d'écraser
+
+1004
+message lorsque muxage est terminé
+
+1005
+accentuer des flux defaults
+
+1006
+accentuer des flux incompatibles à AVI
+
+1007
+utiliser "Cleartype"
+
+1100
+régler dwFlags
+
+1101
+ Flags disponibles 
+
+1200
+régler le framerate
+
+1201
+ unité 
+
+1202
+fps
+
+1203
+µspf
+
+1204
+nspf
+
+1300
+indiquer les points de coupure manuellement
+
+1400
+informations à propos du fichier
+
+1401
+informations à propos de la source vidéo
+
+1402
+appliquer les modifications
+
+1500
+Commencer à multiplexer...
+
+1501
+nouveau fichier créé %d:%02d:%02d.%03d (frame %d):\n%s
+
+1502
+accompli!
+
+1503
+coupure initiale à la frame %d: %s %s
+
+1504
+Taille: %s %s (dépassée par %s %s)\ndurée: %d:%02d:%02d.%03d (%d frames)
+
+1505
+flux audio %d: %s %s     durée: %d:%02d:%02d.%03d
+
+1510
+nombre de flux audio: %d
+
+1511
+nombre de sous-titres: %d
+
+1512
+    nom: %s
+
+1513
+    délai: %d
+
+1514
+  piste: %d
+
+1515
+La taille max a été dépassée par pas plus de:\n%s %s
+
+1516
+Ne pas couper à la keyframe: %s
+
+1517
+Taille max du fichier: %s %s
+
+1518
+Overhead estimé: 
+
+1519
+Taille totale en sortie:
+
+1520
+Attention! La première frame de cette source vidéo n'est pas une keyframe!\nPremière keyframe trouvée en position: %d
+
+1521
+Taille estimée des données raw:
+
+1522
+Overhead écrit: %s %s
+
+1523
+Point de coupure %d at %s
+
+1524
+Le marker du chapitre du point de coupure %d ne peut être constitué!
+
+1525
+  %s lacing utiliser dans les blocs %s contenant les frames %s\n  taille des lace headers: %s octets
+
+1526
+%s fragments écrits causant %s octets d'overhead
+
+1527
+%s cue points ont été créés, dont %s enregistrés
+
+1528
+Echelle timecode de sortie: %s
+
+1529
+Cues des flux vidéo activées
+
+1530
+Cues des flux vidéo désactivées
+
+1531
+Cues des flux audio activées
+
+1532
+Cues des flux audio désactivées
+
+1533
+Vidéo lacing avec %d frames par lace
+
+1534
+Vidéo lacing est désactivé
+
+1535
+    lacing désactivé
+
+1536
+    taille lace: %d ms
+
+1537
+Lacing désactivé pour toutes les pistes audio
+
+1538
+Taille du Seekhead: %s %s
+
+1539
+Les fragments vont être indexés dans le Seekhead
+
+1540
+Les fragments ne vont pas être indexés dans le Seekhead
+
+1541
+    code langue: %s
+
+1542
+écriture sans buffer activée
+
+1543
+écriture sans buffer désactivée
+
+1544
+sortie asynchrone activée
+
+1545
+sortie asynchrone désactivée
+
+1546
+    AC3 Audio: écrire %d frames par tronçon
+
+1547
+    DTS Audio: écrire %d frames par tronçon
+
+1548
+    MP3 Audio: désactivé le mode frame pour le CBR
+
+1549
+    MP3 Audio: activé le mode frame pour le CBR
+
+1550
+    MP3 Audio: impossible de désactivé le mode frame à cause du délai
+
+1551
+    MP3 Audio: écrire %d frames par tronçon
+
+1552
+taille de la première liste RIFF: environ %s Moctets
+
+1553
+Index standards par flux: 1 par liste Riff
+
+1554
+Index standrads par flux: 1 toutes les %d frames
+
+1555
+audio intercalé: %d koctets
+
+1556
+audio intercalé: %d frames
+
+1557
+listes d'enregistrement activatées
+
+1558
+listes d'enregistrement deactivatées
+
+1559
+    format ss-titres: %s
+
+1560
+    compression: %s
+
+1561
+mode en-tête courte pour sorties AVI activé
+
+1562
+mode en-tête courte pour sorties AVI désactivé
+
+1563
+un JUNK sera écrit avant les en-têtes\nVeuillez noter que quelques lecteurs ne savent pas jouer de tels fichiers!
+
+1564
+pas de JUNK sera écrit avant les en-têtes
+
+1565
+Cues des sous-titres activées
+
+1566
+Cues des sous-titres désactivées
+
+1567
+taille des headers: %s octets
+
+1568
+taille des cues: %4.1f%% de l'espace disponible
+
+1569
+ordre aléatoire des éléments activé
+
+1570
+ordre aléatoire des éléments desactivé
+
+1571
+enregistre CueBlockNumber
+
+1572
+n'enregistre pas CueBlockNumber
+
+1573
+pousser les spécifications un peu: activé
+
+1574
+pousser les spécifications un peu: desactivé
+
+1575
+crée fichier matroska v%d
+
+1576
+Taille tes floats: %d bits
+
+1577
+Taille des fichiers qui seront écrasés:
+
+1578
+Espace disponible:
+
+1579
+Utiliser une cache pour le fichier de déstination: Oui
+
+1580
+Utiliser une cache pour le fichier de déstination: Non
+
+1581
+Utilisant %d cache lines à %s ko 
+
+1582
+Même si tous les fichiers qui seront écrasés sont écrasés, il n'y a pas suffisamment d'espace: \n\nNécessaire: %s\nDisponible: %s\nEspace supplémentaire en écrasant des fichiers: %s\n\nVoulez-vous continuer quand même (cette procédure n'est pas recommandée)?
+
+1583
+Il n'y a pas suffisamment d'espace: \n\nNécessaire: %s\nDisponible: %s\n\nVoulez-vous continuer quand même (cette procédure n'est pas recommandée)?
+
+1601
+extraire en SRT...
+
+1602
+extraire en SSA...
+
+1701
+Vous pouvez seulement coller des morceaux d'AVI, MKV, MP3, AAC et de fichiers AC3, mais pas un mélange\nde ceux-ci, ni des fichiers d'un autre type!
+
+1702
+Impossible de coller les fichier:\nNombre de flux différents!
+
+1703
+Impossible de coller les fichiers:\nRésolution vidéo différente!
+
+1704
+Impossible de coller les fichiers:\nFormats de compression Vidéo différents: %s <-> %s
+
+1705
+Les flux audio sont oncompatibles: \n\n%s, flux %d
+
+1706
+Les sous-titres sont incompatibles: \n\n%s, stream %d
+
+1707
+Impossible de coller les fichiers:\nIDs des codecs vidéo différents: %s <-> %s
+
+1708
+Ce fichier XML contient des UIDs pas uniques, ou l'un des UIDs est déjà utilisé. Veuillez vérifier que le fichier ne contient que des UIDs uniques et que vous ne tentez pas de charger le même fichier XML une deuxième fois.
+
+1709
+Comme ce chapitre se trouve dans une édition ordonnée, il faut que vous en indiquiez la fin
+
+1710
+Vous avez\n* indiqué une taille maximale de fichier inférieure à la taille totale éstimative\n* indiqué au moins une position spécifique où vous voulez couper le fichier\n\nEn consequence, AVI-Mux GUI ne peut prédire tous les nom des fichiers de déstination. Veuillez sélectionner 'Oui' pour écraser tous les fichier déjà existants, 'Non' pour que vous deviez le confirmer pour chaque fichier, et 'Anuller' pour abandonner le processus.
+
+1711
+Quelques noms de fichiers de déstination générés selon votre paramétrage (%s) ne seront pas uniques.\n\nVoulez-vous continuer quand-même?
+
+1712
+Vous avez essayé d'ouvrir un fichier OGG contenant plusieurs flux, par exemple un fichier OGM. De tels fichiers ne sont pas supportés.
+
+1713
+Vous avez essayé de coller des sous-titres dont les formats de compression sont différents!
+
+1714
+Fichier AVI n'a pas pu être ouvert!\n\nLorsque vous voyez ce message, le parser pour les fichier AVI n'a pas pu ouvrir un fichier ayant l'air d'être un fichier AVI. La cause la plus probable est que le fichier est endommagé.
+
+1715
+Ce segment n'a pas de SegmentUID. C'est pour ça qu'aucun chapitre de ce segment ne peut être importé et qu'aucun chapitre ne peut référencer ce segment.
+
+1716
+Les taux d'échantillonage sont différents:\n  #%d: %s -> %d Hz\n  #%d: %s -> %d Hz
+
+1717
+Les nombres de canaux sont différents:\n  #%d: %s -> canaux: %d\n  #%d: %s -> canaux: %d
+
+1718
+Les versions du 'MPEG-Layer' sont différentes:\n  #%d: %s -> Layer %d\n  #%d: %s -> Layer %d
+
+1719
+Les versions MPEG sont différentes:\n  #%d: %s -> MPEG %d\n  #%d: %s -> MPEG %d
+
+1720
+Les profiles AAC sont différants:\n  #%d: %s -> %s\n  #%d: %s -> %s
+
+1721
+Le fichier suivant n'a pu être ouvert pour l'enregistrement:\n\n%s
+
+1801
+Les Frame rates des fichiers AVI sont différents.\nVous pouvez les coller, mais le seul format de sortie est le MKV.
+
+1900
+Chapitres
+
+1901
+sous-chapitres
+
+1902
+enregistrer sous ...
+
+1903
+Syntax: début [ - fin ]. Appuyez sur F2 pour editer un chapitre. Appuyez sur Inser pour ajouter un chapitre au même niveau que le chapitre actuellement sélectionné. Déplacez un chapitre en appuyant sur Pg.prec/Pg.suiv. Supprimez un chapitre en appuyant sur suppr.
+
+1904
+Langue
+
+1905
+Titre
+
+1920
+compléter
+
+2000
+Édition est ordonnée
+
+2001
+Édition est cachée
+
+2002
+Édition est activée par default
+
+2003
+Chapitre est caché
+
+2004
+Chapitre est activé
+
+2005
+Copier...
+
+2006
+Copier tous à ce niveau
+
+2007
+Coller à même niveau
+
+2008
+Coller comme sous-chapitres
+
+2009
+Coller tous dans une seule nouvelle édition
+
+2010
+Coller chaque chapitre dans une nouvelle édition
+
+2011
+Effacer le clipboard
+
+2012
+réinitialiser les UIDs
+
+2013
+réinitialiser toutes les UIDs
+
+2014
+Copier tous les sous-chapitres...
+
+2015
+Copier tous les sous-chapitre des chapitre à ce niveau...
+
+2016
+Numéroter sous-chapitres...
